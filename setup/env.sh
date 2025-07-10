@@ -15,6 +15,6 @@ export PROJ_ROOT_DIR="$(dirname "$ENV_SCRIPT_DIR")"
 # Get the Python version in the format pyXXX 
 python_version=$(python3 --version 2>&1 | awk '{split($2, v, "."); print "py" v[1] v[2]}')
 
-export PROJ_VENV_NAME=venv_${PROJECT_NAME}_${python-version}
+export PROJ_VENV_NAME=venv_${PROJECT_NAME}_${python_version}
 export PROJ_VENV_DIR=$PROJ_ROOT_DIR/$PROJ_VENV_NAME
 export PROJ_DATA_DIR=$PROJ_ROOT_DIR"/data_dir"
