@@ -120,6 +120,11 @@ def analyze_dataset_batches(dataset_file_path, template_file_path, output_dir_pa
     print(f"Batch-wise analysis complete. Generated documents can be found at: {output_dir_path}.")
         
 def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
+    
+    temp_doc_dir = os.path.join(doc_dir, "temp")
+    
+    create_directory_if_not_exists(temp_doc_dir)
+    
     # Find all the documents in this directory
     batch_files = [f for f in os.listdir(doc_dir) if f.endswith('_analysis.md')]
 
@@ -133,7 +138,7 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
             merged_content = file.read()
 
     # Merge the batch analysis documents
-    for batch_file in batch_files[1:]:
+    for batch_file in tqdm(batch_files[1:], desc='Merging analyses'):
         with open(os.path.join(doc_dir, batch_file), 'r', encoding='utf-8') as file:
             batch_content = file.read()
 
@@ -156,7 +161,7 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
         merged_content = send_to_llm(merge_prompt, client_instance, model_id)
 
         # Save the intermediate merge to a temporary file
-        with open(os.path.join(doc_dir, f'intermediate_merge_{batch_file}'), 'w', encoding='utf-8') as merge_file:
+        with open(os.path.join(temp_doc_dir, f'intermediate_merge_{batch_file}'), 'w', encoding='utf-8') as merge_file:
             merge_file.write(merged_content)
 
     # Save the final merge
