@@ -4,26 +4,8 @@ import os
 from openai import OpenAI
 import time
 from tqdm import tqdm
+from src.util.common import read_dataset, create_directory_if_not_exists, send_to_llm
 
-
-def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-        message = f"Directory '{directory_path}' created."
-    else:
-        message = f"Directory '{directory_path}' already exists."
-    
-    if not quiet:
-        if logger:
-            logger.debug(message)
-        else:
-            print(message)
-
-# Function to read dataset files
-def read_dataset(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-    return data
 
 # Function to replace large lists with a placeholder
 def replace_large_lists(data, threshold=10):
@@ -55,24 +37,6 @@ def gen_batch_prompt(batch, markdown_content):
     {markdown_content}"""
     
     return prompt
-
-
-# Function to send batches to OpenAI API
-def send_to_llm(prompt, client_instance, model_id):
-    try:
-        # Call the OpenAI API
-        completion = client_instance.chat.completions.create(
-            model=model_id,
-            messages=[{"role": "user", "content": prompt}]
-        )
-    except Exception as e:
-        # Write the prompt to a temporary file if an exception occurs
-        print('Failed for prompt: {prompt}')
-        raise e
-    # Extract the analysis from theresponse
-    model_res_text = completion.choices[0].message.content
-    return model_res_text
-
 
 # Function to process the dataset in batches
 def analyze_dataset_batches(dataset_file_path, template_file_path, output_dir_path, client_instance, model_id, batch_size=10):
@@ -179,8 +143,7 @@ if __name__ == "__main__":
     model_id="gemma-3-27b-it"
 
     input_dataset_path='data_dir/kgqa_datasets/qald10/qald_9_plus_train_wikidata.json'
-    analysis_template_path='src/template/qald9plus_analysis_template.md'
-    #analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'
+    analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'
 
     analysis_output_dir='data_dir/qald9plus_analysis/'
 
