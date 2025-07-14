@@ -10,6 +10,6 @@ IDs analysed:
 
 ### Which unique relations were observed?
 
-### If you are given access to a RDF Knowledge Graph, how would you find the answers using graph traversing tools?
+### If you are given access to a RDF Knowledge Graph and are allowed to search through it without using SPARQL how would you find the answers?
 
 ### Other brief remarks

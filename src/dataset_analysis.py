@@ -43,7 +43,7 @@ def replace_large_lists(data, threshold=10):
 
 def gen_batch_prompt(batch, markdown_content):
     # Create a prompt for the language model
-    prompt = f"""You are analyzing a batch of examples for a question answering dataset, use the notes template provided after the examples to fill in the required information
+    prompt = f"""You are analyzing a batch of examples for a question answering dataset, use the notes template provided after the examples to fill in the required information, follow the template structure strictly.
     
     Current batch: 
 
@@ -180,6 +180,7 @@ if __name__ == "__main__":
 
     input_dataset_path='data_dir/kgqa_datasets/qald10/qald_9_plus_train_wikidata.json'
     analysis_template_path='src/template/qald9plus_analysis_template.md'
+    #analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'
 
     analysis_output_dir='data_dir/qald9plus_analysis/'
 
