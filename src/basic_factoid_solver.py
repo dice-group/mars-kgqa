@@ -77,15 +77,14 @@ def process_input_query(question_txt, model_config):
         visited_nodes.add(entity_uri)
     
     priority_queue = get_triples_similarity(aug_qtxt, triple_data_list)
-    # Sort the triples based on similarity in a priority-queue
-    heapq.heapify(priority_queue)
+    
 
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
     context_window_size = 10
     found_answer = False
     while not found_answer and priority_queue:
         # Get the top triples
-        top_triples = heapq.nsmallest(context_window_size, priority_queue)
+        top_triples = heapq.nsmallest(context_window_size, priority_queue) # Sorts the triples based on similarity in a priority-queue
         # Ask LLM if it can find an answer in these triples
         answer_triple, next_triple_index = check_if_answer(question_txt, top_triples, model_config)
         
@@ -101,33 +100,45 @@ def process_input_query(question_txt, model_config):
             
             new_triples = find_1_hop_triples(next_node_uri, WIKIDATA_ENDPOINT_URL)
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_triples)
-            # TODO: Check if it auto sorts the new additions
             priority_queue.extend(new_trip_sim_list)
       
     # Repeat until the answer is found
     return answer_triple
 
 def check_if_answer(question_txt, top_triples, model_config):
-    # Implement logic to check if the triple contains the answer to the question
-    
+    # Check if the triple contains the answer to the question
+
     triples_list = '\n'.join([triple_data.get_verbalization() for triple_data in top_triples])
-    
+
     check_prompt = f"""Look at the following triples and then either use the provided Answer Format if you find one triple that directly answers the question or use Next Triple Format if no answer is found. Do not write anything else, use only single format.
-    
+
+    Question: {question_txt}
+
+    Triples list:
     {triples_list}
+
     ---
-    
+
     Answer Format:
-    
+
     Answer: <place the answer triple here>
 
     ---
 
     Next Triple Format:
-    
+
     Next Triple Index: <place the index of the next triple to consider here, use 0-indexing>
 
     """
     llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
-    # TODO: parse the llm response
-    return llm_resp_text
+
+    # Parse the LLM response
+    if "Answer:" in llm_resp_text:
+        answer_triple = llm_resp_text.split("Answer:")[1].strip()
+        return answer_triple, None
+    elif "Next Triple Index:" in llm_resp_text:
+        next_triple_index = int(llm_resp_text.split("Next Triple Index:")[1].strip())
+        return None, next_triple_index
+    else:
+        # If the response doesn't match either format, return None for both
+        return None, None
