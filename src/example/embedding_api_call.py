@@ -1,17 +1,19 @@
+# Sample usage: python -m src.example.embedding_api_call
+# Example inspired from: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 import requests
-
-def dot(va, vb):
-    return sum(a * b for a, b in zip(va, vb))
+from src.const.llm import DEFAULT_EMBED_LLM_CONFIG
+from src.util.common import dot
 
 def embed(texts):
-    resp = requests.post('http://localhost:8080/v1/embeddings', json={'input': texts}).json()
+    resp = requests.post(DEFAULT_EMBED_LLM_CONFIG.endpoint + '/embeddings', json={'input': texts}).json()
     return [d['embedding'] for d in resp['data']]
 
-docs = ['嵌入很酷', '骆驼很酷']  # 'embeddings are cool', 'llamas are cool'
-docs_embed = embed(['search_document: ' + d for d in docs])
 
-query = '跟我讲讲嵌入'  # 'tell me about embeddings'
-query_embed = embed(['search_query: ' + query])[0]
+docs = ['Angela Merkel place of birth Eimsbüttel', 'Angel Merkel father Horst Kasner']
+docs_embed = embed([d for d in docs])
+
+query = 'What is the birthplace of Angela Merkel?'
+query_embed = embed([query])[0]
 print(f'query: {query!r}')
 for d, e in zip(docs, docs_embed):
     print(f'similarity {dot(query_embed, e):.2f}: {d!r}')

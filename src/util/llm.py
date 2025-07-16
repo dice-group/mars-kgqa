@@ -1,5 +1,5 @@
 from openai import OpenAI
-from src.const.llm import DEFAULT_EMBED_LLM_CONFIG
+import requests
 
 def get_opai_client(endpoint=None, api_key=None):
     opai_client = OpenAI(base_url=endpoint, api_key=api_key)
@@ -25,6 +25,8 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id):
     model_res_text = completion.choices[0].message.content
     return model_res_text
 
-def get_embeddings(input_list, embed_config=DEFAULT_EMBED_LLM_CONFIG):
-    # TODO: Compute input embeddings
-    raise NotImplementedError()
+def get_embeddings(input_texts, embed_config=None):
+    # Compute input embeddings
+    embed_endpoint = embed_config.endpoint
+    resp = requests.post(embed_endpoint + '/embeddings', json={'input': input_texts}).json()
+    return [d['embedding'] for d in resp['data']]
