@@ -4,8 +4,8 @@ import os
 import time
 from tqdm import tqdm
 from src.util.common import read_dataset, create_directory_if_not_exists
-from src.util.llm import send_to_llm, get_opai_client
-from src.const.llm import GEMMA3_CONFIG, QWEN3_CONFIG, MISTRAL3_CONFIG
+from src.util.llm import prompt_chat_llm
+from src.const.llm import ChatModels
 
 
 # Function to replace large lists with a placeholder
@@ -69,7 +69,7 @@ def analyze_dataset_batches(dataset_file_path, template_file_path, output_dir_pa
         cur_prompt = gen_batch_prompt(batch_str, markdown_content)
         
         # Send the batch to OpenAI and get the analysis
-        analysis = send_to_llm(cur_prompt, client_instance, model_id)
+        analysis = prompt_chat_llm(cur_prompt, None, client_instance, model_id)
         
         # Update the markdown document with the new analysis
         markdown_content = analysis
@@ -123,7 +123,7 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
         """
 
         # Send the merge prompt to OpenAI and get the merged analysis
-        merged_content = send_to_llm(merge_prompt, client_instance, model_id)
+        merged_content = prompt_chat_llm(merge_prompt, None, client_instance, model_id)
 
         # Save the intermediate merge to a temporary file
         with open(os.path.join(temp_doc_dir, f'intermediate_merge_{batch_file}'), 'w', encoding='utf-8') as merge_file:
@@ -138,10 +138,10 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
 
 # Main function
 if __name__ == "__main__":
-    
+    model_config = ChatModels.GEMMA3.value
     # Initializing variables
-    opai_client = get_opai_client(GEMMA3_CONFIG.endpoint, GEMMA3_CONFIG.api_key)
-    model_id=GEMMA3_CONFIG.model_id
+    opai_client = model_config.get_static_instance()
+    model_id=model_config.model_id
     
     input_dataset_path='data_dir/kgqa_datasets/qald10/qald_9_plus_train_wikidata.json'
     analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'

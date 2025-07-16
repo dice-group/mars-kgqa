@@ -1,0 +1,1 @@
+WIKIDATA_ENDPOINT_URL = "https://wikidata.data.dice-research.org/sparql"
