@@ -16,17 +16,28 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     PREFIX wikibase: <http://wikiba.se/ontology#>
     SELECT ?subject ?predicate ?object ?subjectLabel ?propLabel ?objectLabel
     WHERE {{
-        {{ 
+        {{
+            VALUES ?object {{ <{node_uri}> }} 
             ?subject ?predicate <{node_uri}> .
+            
             OPTIONAL {{ ?subject rdfs:label ?subjectLabel . FILTER (lang(?subjectLabel) in ('en'{formatted_lang_list}) ) }}
+            
+            OPTIONAL {{ <{node_uri}> rdfs:label ?objectLabel . FILTER (lang(?objectLabel) in ('en'{formatted_lang_list}) ) }}
             
         }}
         UNION
         {{ 
-            <{node_uri}> ?predicate ?object . 
+            VALUES ?subject {{ <{node_uri}> }}
+            <{node_uri}> ?predicate ?object .
+            
             OPTIONAL {{ ?object rdfs:label ?objectLabel . FILTER (lang(?objectLabel) in ('en'{formatted_lang_list}) ) }}
+            
+            OPTIONAL {{ <{node_uri}> rdfs:label ?subjectLabel . FILTER (lang(?subjectLabel) in ('en'{formatted_lang_list}) ) }}
+            
         }}
+        
         OPTIONAL {{ ?prop wikibase:directClaim ?predicate . ?prop rdfs:label ?propLabel. FILTER (lang(?propLabel) = 'en') }} # English labels are sufficient for the properties
+        
         FILTER(?predicate NOT IN (<http://schema.org/description>, <http://www.w3.org/2004/02/skos/core#altLabel>, <http://www.w3.org/2004/02/skos/core#prefLabel>, <http://www.w3.org/2000/01/rdf-schema#label>))  # Excluding specific predicates
     }}
     """
@@ -36,7 +47,6 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     headers = {
         "Accept": "application/sparql-results+json"
     }
-    
 
     try:
         response = requests.get(endpoint_url, params={'query': query, 'format': 'json'}, headers=headers)
@@ -49,6 +59,7 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     triples = []
     for binding in data['results']['bindings']:
         triple = {
+            'root': node_uri,
             'subject': binding.get('subject', {}).get('value', ''),
             'predicate': binding.get('predicate', {}).get('value', ''),
             'object': binding.get('object', {}).get('value', ''),

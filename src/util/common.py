@@ -1,6 +1,10 @@
 import json
 import os
 
+# Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
+def dot(va, vb):
+    return sum(a * b for a, b in zip(va, vb))
+
 def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
