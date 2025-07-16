@@ -1,10 +1,11 @@
 # Sample usage: python -m src.main
 import json
 import os
-from openai import OpenAI
 import time
 from tqdm import tqdm
-from src.util.common import read_dataset, create_directory_if_not_exists, send_to_llm
+from src.util.common import read_dataset, create_directory_if_not_exists
+from src.util.llm import send_to_llm, get_opai_client
+from src.const.llm import GEMMA3_CONFIG, QWEN3_CONFIG, MISTRAL3_CONFIG
 
 
 # Function to replace large lists with a placeholder
@@ -139,9 +140,9 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
 if __name__ == "__main__":
     
     # Initializing variables
-    opai_client = OpenAI(base_url=os.environ.get("OPENAI_LLM_ENDPOINT"), api_key=os.environ.get("OWUI"))
-    model_id="gemma-3-27b-it"
-
+    opai_client = get_opai_client(GEMMA3_CONFIG.endpoint, GEMMA3_CONFIG.api_key)
+    model_id=GEMMA3_CONFIG.model_id
+    
     input_dataset_path='data_dir/kgqa_datasets/qald10/qald_9_plus_train_wikidata.json'
     analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'
 

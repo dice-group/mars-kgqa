@@ -1,10 +1,10 @@
 # Sample usage: python -m src.example.openai_api_call
-import os
 from openai import OpenAI
+from src.const.llm import GEMMA3_CONFIG
 
-OPAI_CLIENT = OpenAI(base_url=os.environ.get("OPENAI_LLM_ENDPOINT"), api_key=os.environ.get("OWUI"))
+OPAI_CLIENT = OpenAI(base_url=GEMMA3_CONFIG.endpoint, api_key=GEMMA3_CONFIG.api_key)
 
-MODEL_ID="gemma-3-27b-it"
+MODEL_ID=GEMMA3_CONFIG.model_id
 
 completion = OPAI_CLIENT.chat.completions.create(
     model=MODEL_ID,
