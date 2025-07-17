@@ -63,9 +63,12 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
     triple_cossim_list = [(-similarity, triple_data) for similarity, triple_data in zip(triple_similarity_list, triple_data_list)]
     return triple_cossim_list
 
-def process_input_query(question_txt, model_config):
+def process_input_query(question_txt, model_config, preprocessed_input=None):
     # Retrieve entities and relations for the input question
-    aug_qtxt, entity_list, relation_list = find_entities_and_relations(question_txt)
+    if preprocessed_input:
+        aug_qtxt, entity_list, relation_list = preprocessed_input # unpack
+    else:
+        aug_qtxt, entity_list, relation_list = find_entities_and_relations(question_txt)
 
     triple_data_list = []
     

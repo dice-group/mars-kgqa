@@ -39,3 +39,13 @@ def check_if_answer(question_txt, top_triples, model_config):
     else:
         # If the response doesn't match either format, return None for both
         return None, None
+    
+def recognize_entities_and_relations(question_txt, model_config):
+    model_prompt = f"""
+    Your task is to help to link Information from Questions to Knowledge Graphs. 
+    Please generate a list with all Entities, relations and Types for the following Question.
+    Please generate one list with all entities. Do not format the json output.
+    Question: \\textbf{{{question_txt}}}
+    """
+    llm_resp_text = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    return llm_resp_text
