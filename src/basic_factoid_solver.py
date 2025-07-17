@@ -1,9 +1,11 @@
+# Sample usage: python -m src.basic_factoid_solver
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer
 from src.util.llm import get_embeddings
+from src.const.llm import DEFAULT_CHAT_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL
-from src.util.common import dot
+from src.util.common import dot, read_dataset
 import heapq
 
 
@@ -66,15 +68,19 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
 def process_input_query(question_txt, model_config, preprocessed_input=None):
     # Retrieve entities and relations for the input question
     if preprocessed_input:
-        aug_qtxt, entity_list, relation_list = preprocessed_input # unpack
+        aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
     else:
-        aug_qtxt, entity_list, relation_list = find_entities_and_relations(question_txt)
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_txt)
+        
+    # TODO: Filter entity dictionary to remove entities that will lead to too many child nodes
+    
 
     triple_data_list = []
     
     visited_nodes = set()
     # Find all one-hop triples for the entities
-    for entity_uri in entity_list:    
+    for entity_qid in entity_dict.values():
+        entity_uri = 'http://www.wikidata.org/entity/' + entity_qid    
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
         triple_data_list.extend(extract_triples_data(triples))
@@ -108,3 +114,23 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
       
     # Repeat until the answer is found
     return answer_triple
+
+
+# Example usage
+if __name__ == "__main__":
+    qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
+    # Read the qald9 preprocessed file
+    qald_json = read_dataset(qald_file_path)
+    # For each question
+    for question_item in qald_json['questions']:
+        # extract aug_text, extracted_ents, extracted_rels
+        aug_text = question_item['augmented_seq']
+        ent_dict = question_item['found_ent']
+        rel_dict = question_item['found_rel']
+        
+        question_text = aug_text
+        # send to process_input_query
+        cur_answer = process_input_query(aug_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
+        # TODO: add the answer to a qald format list
+    
+    # TODO: write the answer to a QALD format file
