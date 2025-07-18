@@ -1,12 +1,13 @@
 # Sample usage: python -m src.basic_factoid_solver
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
-from src.kgqa_tool.llm_request import check_if_answer
+from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL
 from src.util.common import dot, read_dataset
 import heapq
+import csv
 
 
 class TripleData:
@@ -72,14 +73,14 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     else:
         aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_txt)
         
-    # TODO: Filter entity dictionary to remove entities that will lead to too many child nodes
-    
+    # Filter entity dictionary to remove entities that will lead to too many child nodes
+    filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
 
     triple_data_list = []
     
     visited_nodes = set()
     # Find all one-hop triples for the entities
-    for entity_qid in entity_dict.values():
+    for entity_qid in filter_entity_dict.values():
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid    
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
@@ -116,21 +117,38 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     return answer_triple
 
 
+def save_answers_as_tsv(answers_dict, file_path):
+    with open(file_path, 'w', newline='', encoding='utf-8') as tsvfile:
+        writer = csv.writer(tsvfile, delimiter='\t')
+        # Write header
+        writer.writerow(['Question ID', 'Answer'])
+        # Write data
+        for question_id, answer in answers_dict.items():
+            writer.writerow([question_id, answer])
+
 # Example usage
 if __name__ == "__main__":
     qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
     # Read the qald9 preprocessed file
     qald_json = read_dataset(qald_file_path)
+    
+    answers_dict = dict()
     # For each question
     for question_item in qald_json['questions']:
+        question_id = question_item['id']
         # extract aug_text, extracted_ents, extracted_rels
         aug_text = question_item['augmented_seq']
         ent_dict = question_item['found_ent']
         rel_dict = question_item['found_rel']
         
-        question_text = aug_text
+         # Extract the English question text
+        question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
         # send to process_input_query
         cur_answer = process_input_query(aug_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
-        # TODO: add the answer to a qald format list
+        
+        answers_dict[question_id] = cur_answer
     
-    # TODO: write the answer to a QALD format file
+    # Save answers dict as tsv
+    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_answers.tsv")
+    
+    
