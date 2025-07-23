@@ -3,7 +3,7 @@ from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
-from src.const.llm import DEFAULT_CHAT_LLM_CONFIG
+from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL
 from src.util.common import dot, read_dataset
 import heapq
@@ -53,7 +53,7 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
         # Build text list
         cur_text_batch = [trip_data.get_verbalization() for trip_data in triple_data_batch]
         # llm request tool
-        cur_embd_batch = get_embeddings(cur_text_batch)
+        cur_embd_batch = get_embeddings(cur_text_batch, DEFAULT_EMBED_LLM_CONFIG)
         triple_data_embd_list.extend(cur_embd_batch)
 
     # Compute cosine similarity of the verbalized triples to the augmented input
@@ -77,19 +77,17 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
 
     triple_data_list = []
-    
-    visited_nodes = set()
+
     # Find all one-hop triples for the entities
     for entity_qid in filter_entity_dict.values():
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid    
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
         triple_data_list.extend(extract_triples_data(triples))
-        visited_nodes.add(entity_uri)
     
     priority_queue = get_triples_similarity(aug_qtxt, triple_data_list)
     
-
+    visited_nodes = set()
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
     context_window_size = 10
     found_answer = False
@@ -108,7 +106,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
             next_node_uri = next_triple.root
             if next_node_uri in visited_nodes:
                 continue
-            
+            visited_nodes.add(next_node_uri)
             new_triples = find_1_hop_triples(next_node_uri, WIKIDATA_ENDPOINT_URL)
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_triples)
             priority_queue.extend(new_trip_sim_list)
@@ -144,7 +142,7 @@ if __name__ == "__main__":
          # Extract the English question text
         question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
         # send to process_input_query
-        cur_answer = process_input_query(aug_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
+        cur_answer = process_input_query(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
         
         answers_dict[question_id] = cur_answer
     

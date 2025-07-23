@@ -9,7 +9,7 @@ class ModelAPIConfig:
         self.api_key = api_key
         
     def get_static_instance(self):
-        if not self.static_instance:
+        if not hasattr(self, 'static_instance'):
             self.static_instance = self.get_new_instance()
         return self.static_instance
     
