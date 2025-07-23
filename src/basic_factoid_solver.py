@@ -22,6 +22,9 @@ class TripleData:
 
     def get_verbalization(self):
         return f"{self.subjectLabel} {self.propLabel} {self.objectLabel}"
+    
+    def __str__(self):
+        return self.get_verbalization()
 
 def extract_triples_data(triples_dict):
     # Process the dictionary and create a list of triple objects with verbalization function
@@ -57,7 +60,7 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
         triple_data_embd_list.extend(cur_embd_batch)
 
     # Compute cosine similarity of the verbalized triples to the augmented input
-    query_embedding = get_embeddings([aug_qtxt])[0]
+    query_embedding = get_embeddings([aug_qtxt], DEFAULT_EMBED_LLM_CONFIG)[0]
     triple_similarity_list = []
     for triple_embd in triple_data_embd_list:
         triple_similarity_list.append(dot(query_embedding, triple_embd)) # as mentioned in https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
@@ -91,14 +94,20 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
     context_window_size = 10
     found_answer = False
+    answer_tuple = None
+    # Repeat until the answer is found
     while not found_answer and priority_queue:
         # Get the top triples
-        top_triples = heapq.nsmallest(context_window_size, priority_queue) # Sorts the triples based on similarity in a priority-queue
+        top_triples = heapq.nsmallest(context_window_size, priority_queue, key=lambda x: x[0]) # Sorts the triples based on similarity in a priority-queue
         # Ask LLM if it can find an answer in these triples
-        answer_triple, next_triple_index = check_if_answer(question_txt, top_triples, model_config)
+        answer_triple_index, next_triple_index = check_if_answer(question_txt, top_triples, model_config)
         
-        if answer_triple:
+        answer_triple_index = answer_triple_index.strip()
+        
+        if len(answer_triple_index) > 0:
             found_answer = True
+            answer_triple_index = int(answer_triple_index)
+            answer_tuple = top_triples[answer_triple_index]
         else :
             # Expand the preferred node next and add it's triples to the list
             next_triple = top_triples[next_triple_index]
@@ -111,8 +120,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_triples)
             priority_queue.extend(new_trip_sim_list)
       
-    # Repeat until the answer is found
-    return answer_triple
+    return answer_tuple
 
 
 def save_answers_as_tsv(answers_dict, file_path):
@@ -142,9 +150,9 @@ if __name__ == "__main__":
          # Extract the English question text
         question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
         # send to process_input_query
-        cur_answer = process_input_query(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
+        cur_answer_tuple = process_input_query(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
         
-        answers_dict[question_id] = cur_answer
+        answers_dict[question_id] = cur_answer_tuple
     
     # Save answers dict as tsv
     save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_answers.tsv")

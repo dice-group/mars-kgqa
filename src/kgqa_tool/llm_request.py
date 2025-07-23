@@ -5,7 +5,7 @@ from src.util.llm import prompt_chat_llm
 def check_if_answer(question_txt, top_triples, model_config):
     # Check if the triple contains the answer to the question
 
-    triples_list = '\n'.join([triple_data.get_verbalization() for triple_data in top_triples])
+    triples_list = '\n'.join([triple_data.get_verbalization() for _, triple_data in top_triples])
 
     check_prompt = f"""Look at the following triples and then either use the provided Answer Format if you find one triple that directly answers the question or use Next Triple Format if no answer is found. Do not write anything else, use only single format.
 
@@ -18,7 +18,7 @@ def check_if_answer(question_txt, top_triples, model_config):
 
     Answer Format:
 
-    Answer: <place the answer triple here>
+    Answer: <place the index of the answer triple here, use 0-indexing>
 
     ---
 
