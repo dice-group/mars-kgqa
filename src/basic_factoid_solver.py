@@ -24,7 +24,18 @@ class TripleData:
         return f"{self.subjectLabel} {self.propLabel} {self.objectLabel}"
     
     def __str__(self):
-        return self.get_verbalization()
+        return str({
+            'root': self.root,
+            'subject': self.subject,
+            'predicate': self.predicate,
+            'object': self.object,
+            'propLabel': self.propLabel,
+            'subjectLabel': self.subjectLabel,
+            'objectLabel': self.objectLabel
+        })
+        
+    def __repr__(self):
+        return self.__str__()
 
 def extract_triples_data(triples_dict):
     # Process the dictionary and create a list of triple objects with verbalization function
@@ -70,6 +81,7 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
     return triple_cossim_list
 
 def process_input_query(question_txt, model_config, preprocessed_input=None):
+    print(f'Processing question: {question_text}')
     # Retrieve entities and relations for the input question
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
@@ -78,15 +90,19 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
     filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
-
+    print(f'Entities to visit: {filter_entity_dict}')
     triple_data_list = []
 
     # Find all one-hop triples for the entities
     for entity_qid in filter_entity_dict.values():
+        print(f'Traversing: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid    
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
+        print(f'Triples found for {entity_uri}: {len(triples)}')
         triple_data_list.extend(extract_triples_data(triples))
+    
+    print(f'Total triples to process: {len(triple_data_list)}')
     
     priority_queue = get_triples_similarity(aug_qtxt, triple_data_list)
     
@@ -102,24 +118,27 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
         # Ask LLM if it can find an answer in these triples
         answer_triple_index, next_triple_index = check_if_answer(question_txt, top_triples, model_config)
         
-        answer_triple_index = answer_triple_index.strip()
-        
-        if len(answer_triple_index) > 0:
+        if answer_triple_index is not None and len(answer_triple_index) > 0:
+            answer_triple_index = answer_triple_index.strip()
             found_answer = True
             answer_triple_index = int(answer_triple_index)
             answer_tuple = top_triples[answer_triple_index]
+            answer_tuple = (-answer_tuple[0], answer_tuple[1]) # removing the negative sign from before
         else :
+            print(f'Answer not found in top ten, expanding: {top_triples[next_triple_index]}')
             # Expand the preferred node next and add it's triples to the list
-            next_triple = top_triples[next_triple_index]
-            priority_queue.remove(next_triple)
-            next_node_uri = next_triple.root
+            next_triple_tuple = top_triples[next_triple_index]
+            priority_queue.remove(next_triple_tuple)
+            # TODO: Rework on root logic
+            next_node_uri = next_triple_tuple[1].root
             if next_node_uri in visited_nodes:
                 continue
             visited_nodes.add(next_node_uri)
             new_triples = find_1_hop_triples(next_node_uri, WIKIDATA_ENDPOINT_URL)
-            new_trip_sim_list = get_triples_similarity(aug_qtxt, new_triples)
+            new_trip_data_list = extract_triples_data(new_triples)
+            new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
             priority_queue.extend(new_trip_sim_list)
-      
+    print(f'Answer found: {answer_tuple}')  
     return answer_tuple
 
 

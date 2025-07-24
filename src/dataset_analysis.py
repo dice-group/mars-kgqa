@@ -138,13 +138,14 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
 
 # Main function
 if __name__ == "__main__":
-    model_config = ChatModels.GEMMA3.value
+    #model_config = ChatModels.GEMMA3.value
+    model_config = ChatModels.QWEN3.value
     # Initializing variables
     opai_client = model_config.get_static_instance()
     model_id=model_config.model_id
     
     input_dataset_path='data_dir/kgqa_datasets/qald10/qald_9_plus_train_wikidata.json'
-    analysis_template_path='src/template/qald9plus_analysis_template_nosparql.md'
+    analysis_template_path='src/template/qald9plus_analysis_template.md'
 
     analysis_output_dir='data_dir/qald9plus_analysis/'
 
