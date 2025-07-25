@@ -4,7 +4,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
-from src.const.misc import WIKIDATA_ENDPOINT_URL
+from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES
 from src.util.common import dot, read_dataset
 import heapq
 import csv
@@ -18,7 +18,10 @@ class TripleData:
         self.object = object
         self.propLabel = propLabel
         self.subjectLabel = subjectLabel
-        self.objectLabel = objectLabel
+        if len(objectLabel) > 0: # To handle cases where no object label is retrieved because object is literal
+            self.objectLabel = objectLabel
+        else:
+            self.objectLabel = 'literal_val:' + object
 
     def get_verbalization(self):
         return f"{self.subjectLabel} {self.propLabel} {self.objectLabel}"
@@ -92,11 +95,12 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
     print(f'Entities to visit: {filter_entity_dict}')
     triple_data_list = []
-
+    visited_nodes = set()
     # Find all one-hop triples for the entities
     for entity_qid in filter_entity_dict.values():
         print(f'Traversing: {entity_qid}')
-        entity_uri = 'http://www.wikidata.org/entity/' + entity_qid    
+        entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
+        visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already    
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
         print(f'Triples found for {entity_uri}: {len(triples)}')
@@ -106,17 +110,26 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     
     priority_queue = get_triples_similarity(aug_qtxt, triple_data_list)
     
-    visited_nodes = set()
+    
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
     context_window_size = 10
     found_answer = False
     answer_tuple = None
+    current_imp_context = []
+    expand_count = 0
+    loop_count = 0
     # Repeat until the answer is found
     while not found_answer and priority_queue:
+        if expand_count > ADD_NODES_EXPANSION_LIMIT or loop_count > MAX_TRIES:
+            print(f'Cannot find answer within the set traversal limit. Expanded Node Limit: {expand_count}/{ADD_NODES_EXPANSION_LIMIT}, Max Tries Limit: {loop_count}/{MAX_TRIES}')
+            answer_tuple = (0, 'Answer not found')
+            break
+        
+        loop_count += 1
         # Get the top triples
         top_triples = heapq.nsmallest(context_window_size, priority_queue, key=lambda x: x[0]) # Sorts the triples based on similarity in a priority-queue
         # Ask LLM if it can find an answer in these triples
-        answer_triple_index, next_triple_index = check_if_answer(question_txt, top_triples, model_config)
+        answer_triple_index, next_triple_index, additional_context = check_if_answer(question_txt, top_triples, current_imp_context, model_config)
         
         if answer_triple_index is not None and len(answer_triple_index) > 0:
             answer_triple_index = answer_triple_index.strip()
@@ -124,21 +137,37 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
             answer_triple_index = int(answer_triple_index)
             answer_tuple = top_triples[answer_triple_index]
             answer_tuple = (-answer_tuple[0], answer_tuple[1]) # removing the negative sign from before
+            print(f'Answer found: {answer_tuple}')  
         else :
-            print(f'Answer not found in top ten, expanding: {top_triples[next_triple_index]}')
+            print(f'Answer not found in top ten')
+            print(f'LLM suggested additional context: {additional_context}')
+            if next_triple_index is None:
+                print(f'No top ten triples worthy of expansion.')
+                for item in top_triples:
+                    priority_queue.remove(item)
+                continue
+            if next_triple_index < 0 or next_triple_index >= len(top_triples):
+                print(f'LLM suggested out-of-index triple: {next_triple_index}')
+                continue
+            print(f'LLM suggests expanding: {top_triples[next_triple_index]}')
+            # Extend the current context
+            current_imp_context.extend(additional_context)
             # Expand the preferred node next and add it's triples to the list
             next_triple_tuple = top_triples[next_triple_index]
             priority_queue.remove(next_triple_tuple)
-            # TODO: Rework on root logic
-            next_node_uri = next_triple_tuple[1].root
+            
+            triple_val = next_triple_tuple[1]
+            root_uri = triple_val.root
+            next_node_uri = triple_val.subject if root_uri == triple_val.object else triple_val.object
             if next_node_uri in visited_nodes:
                 continue
             visited_nodes.add(next_node_uri)
+            expand_count+=1
             new_triples = find_1_hop_triples(next_node_uri, WIKIDATA_ENDPOINT_URL)
             new_trip_data_list = extract_triples_data(new_triples)
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
             priority_queue.extend(new_trip_sim_list)
-    print(f'Answer found: {answer_tuple}')  
+        
     return answer_tuple
 
 
