@@ -4,7 +4,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
-from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES
+from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT
 from src.util.common import dot, read_dataset
 import heapq
 import csv
@@ -113,31 +113,41 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
     context_window_size = 10
-    found_answer = False
-    answer_tuple = None
+    finish_search = False
+    answer_tuples = []
     current_imp_context = []
     expand_count = 0
     loop_count = 0
+    extended_answer_search = 0
     # Repeat until the answer is found
-    while not found_answer and priority_queue:
+    while not finish_search and priority_queue:
         if expand_count > ADD_NODES_EXPANSION_LIMIT or loop_count > MAX_TRIES:
             print(f'Cannot find answer within the set traversal limit. Expanded Node Limit: {expand_count}/{ADD_NODES_EXPANSION_LIMIT}, Max Tries Limit: {loop_count}/{MAX_TRIES}')
-            answer_tuple = (0, 'Answer not found')
+            answer_tuples.append((0, 'Answer not found'))
             break
         
         loop_count += 1
         # Get the top triples
         top_triples = heapq.nsmallest(context_window_size, priority_queue, key=lambda x: x[0]) # Sorts the triples based on similarity in a priority-queue
         # Ask LLM if it can find an answer in these triples
-        answer_triple_index, next_triple_index, additional_context = check_if_answer(question_txt, top_triples, current_imp_context, model_config)
-        
-        if answer_triple_index is not None and len(answer_triple_index) > 0:
-            answer_triple_index = answer_triple_index.strip()
-            found_answer = True
-            answer_triple_index = int(answer_triple_index)
-            answer_tuple = top_triples[answer_triple_index]
-            answer_tuple = (-answer_tuple[0], answer_tuple[1]) # removing the negative sign from before
-            print(f'Answer found: {answer_tuple}')  
+        answer_triple_index_list, next_triple_index, additional_context = check_if_answer(question_txt, top_triples, current_imp_context, model_config)
+        # If answers found, add them to the list
+        if answer_triple_index_list is not None and len(answer_triple_index_list) > 0:
+            answer_triple_index_list = [int(item) for item in answer_triple_index_list]
+            # Remove out-of-index entries
+            valid_indices = [idx for idx in answer_triple_index_list if 0 <= idx < len(top_triples)]
+            answer_tuples.extend([(-top_triples[item][0], top_triples[item][1]) for item in valid_indices])  # removing the negative sign from before
+            # remove seen entries
+            [priority_queue.remove(item) for item in top_triples]
+        # If no answers are found
+        # But previously they were found, keep looking in the top triples and ignore everything else for now
+        elif len(answer_tuples) > 0:
+            # continue search in the existing triples
+            loop_count=0
+            if extended_answer_search > EXTENDED_ANSWER_SEARCH_LIMIT:
+                print(f'Answer found: {answer_tuples}')
+                break
+            extended_answer_search+=1
         else :
             print(f'Answer not found in top ten')
             print(f'LLM suggested additional context: {additional_context}')
@@ -168,7 +178,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
             priority_queue.extend(new_trip_sim_list)
         
-    return answer_tuple
+    return answer_tuples
 
 
 def save_answers_as_tsv(answers_dict, file_path):

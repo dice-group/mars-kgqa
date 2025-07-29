@@ -8,7 +8,7 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
     triples_str = '\n'.join([triple_data.get_verbalization() for _, triple_data in top_triples])
     context_str = '\n'.join(context_list)
 
-    check_prompt = f"""Look at the following triples and added important context and then either use the provided Answer Format if you find one triple that directly answers the question or use Next Triple Format if no answer is found. Do not write anything else, use only single format.
+    check_prompt = f"""Look at the following triples and added important context and then either use the provided Answer Format if you find one or more triples that directly answer the question or use Next Triple Format if no answer is found. Only choose the triples that actually fit as an answer, do not write anything else, use only single format.
 
     Question: {question_txt}
 
@@ -23,7 +23,7 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
 
     Answer Format:
 
-    Answer: <place the index of the answer triple here, use 0-indexing>
+    Answer: <place the comma-separated index of the answer triples here, use 0-indexing>
 
     ---
 
@@ -37,8 +37,8 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
 
     # Parse the LLM response
     if "Answer:" in llm_resp_text:
-        answer_triple = llm_resp_text.split("Answer:")[1].strip()
-        return answer_triple, None, None
+        answer_triple_list = llm_resp_text.split("Answer:")[1].strip().split(',')
+        return answer_triple_list, None, None
     elif "Next Triple Index:" in llm_resp_text:
         resp_items = llm_resp_text.split('\n')
         # find the next triple index
