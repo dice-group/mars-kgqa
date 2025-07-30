@@ -3,7 +3,7 @@ import json
 import os
 import time
 from tqdm import tqdm
-from src.util.common import read_dataset, create_directory_if_not_exists
+from src.util.common import read_json_file, create_directory_if_not_exists
 from src.util.llm import prompt_chat_llm
 from src.const.llm import ChatModels
 
@@ -42,7 +42,7 @@ def gen_batch_prompt(batch, markdown_content):
 # Function to process the dataset in batches
 def analyze_dataset_batches(dataset_file_path, template_file_path, output_dir_path, client_instance, model_id, batch_size=10):
     # Read the dataset
-    data = read_dataset(dataset_file_path)
+    data = read_json_file(dataset_file_path)
     
     # Extract the questions
     data = data['questions']

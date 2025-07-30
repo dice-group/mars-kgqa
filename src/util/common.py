@@ -19,7 +19,7 @@ def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
             print(message)
 
 # Function to read dataset files
-def read_dataset(file_path):
+def read_json_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
     return data

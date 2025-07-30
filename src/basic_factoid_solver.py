@@ -5,7 +5,7 @@ from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT
-from src.util.common import dot, read_dataset
+from src.util.common import dot, read_json_file
 import heapq
 import csv
 
@@ -194,7 +194,7 @@ def save_answers_as_tsv(answers_dict, file_path):
 if __name__ == "__main__":
     qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
     # Read the qald9 preprocessed file
-    qald_json = read_dataset(qald_file_path)
+    qald_json = read_json_file(qald_file_path)
     
     answers_dict = dict()
     # For each question
