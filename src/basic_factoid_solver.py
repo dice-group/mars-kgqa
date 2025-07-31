@@ -4,7 +4,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
-from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT
+from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX
 from src.util.common import dot, read_json_file
 import heapq
 import csv
@@ -21,7 +21,7 @@ class TripleData:
         if len(objectLabel) > 0: # To handle cases where no object label is retrieved because object is literal
             self.objectLabel = objectLabel
         else:
-            self.objectLabel = 'literal_val:' + object
+            self.objectLabel = LITERAL_VAL_PREFIX + object
 
     def get_verbalization(self):
         return f"{self.subjectLabel} {self.propLabel} {self.objectLabel}"
@@ -123,7 +123,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     while not finish_search and priority_queue:
         if expand_count > ADD_NODES_EXPANSION_LIMIT or loop_count > MAX_TRIES:
             print(f'Cannot find answer within the set traversal limit. Expanded Node Limit: {expand_count}/{ADD_NODES_EXPANSION_LIMIT}, Max Tries Limit: {loop_count}/{MAX_TRIES}')
-            answer_tuples.append((0, 'Answer not found'))
+            answer_tuples.append((0, ANSWER_NOT_FOUND_STR))
             break
         
         loop_count += 1

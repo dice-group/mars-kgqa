@@ -6,6 +6,13 @@ def dot(va, vb):
     return sum(a * b for a, b in zip(va, vb))
 
 def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
+    # Convert the path to an absolute path
+    directory_path = os.path.abspath(directory_path)
+    
+    # Check if the path is a file path and extract the parent directory
+    if not os.path.isdir(directory_path):
+        directory_path = os.path.dirname(directory_path)
+    
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
         message = f"Directory '{directory_path}' created."
