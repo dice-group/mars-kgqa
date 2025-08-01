@@ -83,16 +83,16 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
     triple_cossim_list = [(-similarity, triple_data) for similarity, triple_data in zip(triple_similarity_list, triple_data_list)]
     return triple_cossim_list
 
-def process_input_query(question_txt, model_config, preprocessed_input=None):
+def process_input_query(question_text, model_config, preprocessed_input=None):
     print(f'Processing question: {question_text}')
     # Retrieve entities and relations for the input question
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
     else:
-        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_txt)
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
-    filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
+    filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
     print(f'Entities to visit: {filter_entity_dict}')
     triple_data_list = []
     visited_nodes = set()
@@ -130,7 +130,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
         # Get the top triples
         top_triples = heapq.nsmallest(context_window_size, priority_queue, key=lambda x: x[0]) # Sorts the triples based on similarity in a priority-queue
         # Ask LLM if it can find an answer in these triples
-        answer_triple_index_list, next_triple_index, additional_context = check_if_answer(question_txt, top_triples, current_imp_context, model_config)
+        answer_triple_index_list, next_triple_index, additional_context = check_if_answer(question_text, top_triples, current_imp_context, model_config)
         # If answers found, add them to the list
         if answer_triple_index_list is not None and len(answer_triple_index_list) > 0:
             answer_triple_index_list = [int(item) for item in answer_triple_index_list]
@@ -192,7 +192,7 @@ def save_answers_as_tsv(answers_dict, file_path):
 
 # Example usage
 if __name__ == "__main__":
-    qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
+    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     # Read the qald9 preprocessed file
     qald_json = read_json_file(qald_file_path)
     
@@ -213,6 +213,6 @@ if __name__ == "__main__":
         answers_dict[question_id] = cur_answer_tuple
     
     # Save answers dict as tsv
-    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_answers.tsv")
+    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv")
     
     

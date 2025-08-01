@@ -133,16 +133,16 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
-    # tsv_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_answers.tsv"
-    # output_file_path = "data_dir/processed_kgqa_ds/prediction/pred_qald_linked_augmented_gold_ent.json"
+    # tsv_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv"
+    # output_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/json/aug_pred_gt.json"
     # has_tuples = True
     
     ## Sample convert_basic_output call for SPARQL Generation approach
-    tsv_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_gen_sparqls.tsv"
-    output_file_path = "data_dir/processed_kgqa_ds/prediction/pred_sparql_qald_linked_augmented_gold_ent.json"
+    tsv_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
+    output_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/json/aug_pred_sparql.json"
     has_tuples = False
     
     
-    qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
+    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     
     convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples=has_tuples)

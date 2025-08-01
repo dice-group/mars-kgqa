@@ -1,7 +1,30 @@
 
 from src.util.llm import prompt_chat_llm
 
-def generate_sparql(question_txt, top_triples, context_list, model_config):
+
+def generate_baseline_sparql(question_txt, model_config):
+
+    check_prompt = f"""Given a question generate a Wikidata SPARQL to answer the question. Strictly follow the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    print(f'LLM Response: {llm_resp_text}')
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        
+    return answer_sparql
+
+def generate_simple_sparql(question_txt, top_triples, context_list, model_config):
     # Check if the triple contains the answer to the question
     triples_str = ''
     for triple_tuple in top_triples:

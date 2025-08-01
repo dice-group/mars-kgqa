@@ -1,8 +1,8 @@
 # Sample usage: python -m src.simple_sparql_generator
-from simple_factoid_solver import extract_triples_data, get_triples_similarity, save_answers_as_tsv
+from src.simple_factoid_solver import extract_triples_data, get_triples_similarity, save_answers_as_tsv
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
-from src.kgqa_tool.llm_request import generate_sparql, filter_common_nodes
+from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL
 from src.util.common import read_json_file
@@ -11,16 +11,16 @@ from tqdm import tqdm
 
 
 
-def process_input_query(question_txt, model_config, preprocessed_input=None):
+def process_input_query(question_text, model_config, preprocessed_input=None):
     print(f'Processing question: {question_text}')
     # Retrieve entities and relations for the input question
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
     else:
-        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_txt)
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
-    filter_entity_dict = filter_common_nodes(question_txt, entity_dict, model_config)
+    filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
     print(f'Entities to visit: {filter_entity_dict}')
     triple_data_list = []
     visited_nodes = set()
@@ -42,7 +42,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
     context_window_size = 50
     top_triples = heapq.nsmallest(context_window_size, priority_queue, key=lambda x: x[0])
     
-    sparql = generate_sparql(question_text, top_triples, [], model_config)
+    sparql = generate_simple_sparql(question_text, top_triples, [], model_config)
     
     print(f'Generated SPARQL: {sparql}')
         
@@ -51,7 +51,7 @@ def process_input_query(question_txt, model_config, preprocessed_input=None):
 
 # Example usage
 if __name__ == "__main__":
-    qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
+    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     # Read the qald9 preprocessed file
     qald_json = read_json_file(qald_file_path)
     
@@ -72,6 +72,6 @@ if __name__ == "__main__":
         answers_dict[question_id] = cur_generated_sparql
     
     # Save answers dict as tsv
-    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent_gen_sparqls.tsv")
+    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv")
     
     
