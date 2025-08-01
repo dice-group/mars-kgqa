@@ -16,7 +16,7 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     PREFIX wdt: <http://www.wikidata.org/prop/direct/>
     PREFIX wikibase: <http://wikiba.se/ontology#>
     
-    SELECT ?subject ?predicate ?object ?subjectLabel ?propLabel ?objectLabel
+    SELECT DISTINCT ?subject ?predicate ?object ?subjectLabel ?propLabel ?objectLabel
     WHERE {{
         {{
             VALUES ?object {{ <{node_uri}> }} 

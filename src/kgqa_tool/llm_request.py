@@ -1,6 +1,50 @@
 
 from src.util.llm import prompt_chat_llm
 
+def generate_sparql(question_txt, top_triples, context_list, model_config):
+    # Check if the triple contains the answer to the question
+    triples_str = ''
+    for triple_tuple in top_triples:
+        triple_item = triple_tuple[1]
+        # Subject details
+        sub_uri = triple_item.subject
+        # Predicate details
+        pred_uri = triple_item.predicate
+        # Object details
+        obj_val = triple_item.object
+        
+        triple_line = f'{sub_uri}\t {pred_uri}\t {obj_val}\t "{triple_item.get_verbalization()}"\n'
+        triples_str+=triple_line
+    
+    context_str = '\n'.join(context_list)
+
+    check_prompt = f"""Given a question and a table of extracted related triples alongside their verbalization from Wikidata, generate a SPARQL to answer the question. Strictly follow the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    ### Triples table:
+    subject\t predicate\t object\t verbalization
+    {triples_str}
+    
+    ### Important context:
+    
+    {context_str}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    print(f'LLM Response: {llm_resp_text}')
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        
+    return answer_sparql
 
 def check_if_answer(question_txt, top_triples, context_list, model_config):
     # Check if the triple contains the answer to the question

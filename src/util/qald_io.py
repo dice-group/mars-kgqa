@@ -4,6 +4,9 @@ import csv
 import json
 import ast
 
+def get_qald_answer_sparql(sparql, endpoint):
+    pass
+
 
 def get_qald_answer_obj(answer_tuples):
     # Generate bindings
