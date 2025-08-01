@@ -28,7 +28,7 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_end
             if key_item in qa_item:
                 qald_item[key_item] = qa_item[key_item]
             
-        qald_questions.append(qa_item)
+        qald_questions.append(qald_item)
     # Create QALD Dataset    
     qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions' : qald_questions}
     # Save json
