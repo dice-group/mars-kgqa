@@ -32,6 +32,12 @@ def read_json_file(file_path):
         data = json.load(file)
     return data
 
+def save_json_file(json_obj, output_file_path):
+    create_directory_if_not_exists(output_file_path)
+    # Write qald_obj to output_file_path
+    with open(output_file_path, 'w', encoding='utf-8') as outfile:
+        json.dump(json_obj, outfile, ensure_ascii=False, indent=4)
+
 def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     headers = {
         "Accept": "application/sparql-results+json"

@@ -51,7 +51,8 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
 
 # Example usage
 if __name__ == "__main__":
-    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
+    #qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
+    qald_file_path = "data_dir/processed_kgqa_ds/qald10/test/aug_gold.json"
     # Read the qald9 preprocessed file
     qald_json = read_json_file(qald_file_path)
     
@@ -71,7 +72,10 @@ if __name__ == "__main__":
         
         answers_dict[question_id] = cur_generated_sparql
     
+    #output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
+    output_path = "data_dir/processed_kgqa_ds/qald10/test/prediction/tsv/aug_pred_sparql.tsv"
+    
     # Save answers dict as tsv
-    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv")
+    save_answers_as_tsv(answers_dict, output_path)
     
     

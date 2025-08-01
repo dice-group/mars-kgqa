@@ -1,3 +1,4 @@
+#WIKIDATA_ENDPOINT_URL = "https://skynet.coypu.org/wikidata/" # QALD10
 WIKIDATA_ENDPOINT_URL = "https://wikidata.data.dice-research.org/sparql"
 # WIKIDATA_ENDPOINT_URL = "https://query.wikidata.org/sparql"
 

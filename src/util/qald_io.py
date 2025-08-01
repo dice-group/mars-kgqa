@@ -1,18 +1,75 @@
-from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query
+from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file
 from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, WIKIDATA_ENDPOINT_URL
 import csv
 import json
 import ast
 from tqdm import tqdm
 
+def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint):
+    lcquad_data = read_json_file(lcquad2_file_path)
+    qald_questions = []
+    copy_keys = ['found_ent', 'found_rel', 'gold_ent', 'gold_rel', 'augmented_ent', 'augmented_rel']
+    for qa_item in tqdm(lcquad_data, desc='Processing Questions'):
+        qald_item = {}
+        
+        id = qa_item['uid']
+        sparql = qa_item['sparql_wikidata']
+        # Fetch the answer
+        question_text = qa_item['paraphrased_question']
+        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint)
+        answer_obj = [sparql_response]
+        # Build QALD item dictionary
+        qald_item['id'] = id
+        qald_item['answers'] = answer_obj
+        qald_item['query'] = { 'sparql': formatted_sparql}
+        qald_item['question'] = [{ "language": "en", "string": question_text}]
+        # Copy augmented fields
+        for key_item in copy_keys:
+            if key_item in qa_item:
+                qald_item[key_item] = qa_item[key_item]
+            
+        qald_questions.append(qa_item)
+    # Create QALD Dataset    
+    qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions' : qald_questions}
+    # Save json
+    save_json_file(qald_dict, output_qald_file_path)
+    
+
 def get_qald_answer_sparql(sparql, endpoint):
     
     formatted_sparql = f"""
+    PREFIX bd: <http://www.bigdata.com/rdf#>
+    PREFIX cc: <http://creativecommons.org/ns#>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX hint: <http://www.bigdata.com/queryHints#> 
+    PREFIX ontolex: <http://www.w3.org/ns/lemon/ontolex#>
+    PREFIX owl: <http://www.w3.org/2002/07/owl#>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX schema: <http://schema.org/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
     PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+    PREFIX p: <http://www.wikidata.org/prop/>
+    PREFIX pq: <http://www.wikidata.org/prop/qualifier/>
+    PREFIX pqn: <http://www.wikidata.org/prop/qualifier/value-normalized/>
+    PREFIX pqv: <http://www.wikidata.org/prop/qualifier/value/>
+    PREFIX pr: <http://www.wikidata.org/prop/reference/>
+    PREFIX prn: <http://www.wikidata.org/prop/reference/value-normalized/>
+    PREFIX prv: <http://www.wikidata.org/prop/reference/value/>
+    PREFIX psv: <http://www.wikidata.org/prop/statement/value/>
+    PREFIX ps: <http://www.wikidata.org/prop/statement/>
+    PREFIX psn: <http://www.wikidata.org/prop/statement/value-normalized/>
     PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wdata: <http://www.wikidata.org/wiki/Special:EntityData/>
+    PREFIX wdno: <http://www.wikidata.org/prop/novalue/>
+    PREFIX wdref: <http://www.wikidata.org/reference/>
+    PREFIX wds: <http://www.wikidata.org/entity/statement/>
     PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX wdtn: <http://www.wikidata.org/prop/direct-normalized/>
+    PREFIX wdv: <http://www.wikidata.org/value/>
     PREFIX wikibase: <http://wikiba.se/ontology#>
     
     {sparql}
@@ -125,10 +182,7 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
 
         question_item['answers'] = answer_obj    
     
-    create_directory_if_not_exists(output_file_path)
-    # Write qald_obj to output_file_path
-    with open(output_file_path, 'w', encoding='utf-8') as outfile:
-        json.dump(qald_obj, outfile, ensure_ascii=False, indent=4)
+    save_json_file(qald_obj, output_file_path)
     
 
 if __name__ == "__main__":
