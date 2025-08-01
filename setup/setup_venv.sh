@@ -15,4 +15,6 @@ source $PROJ_VENV_DIR/bin/activate
 
 pip install -r $CUR_SCRIPT_DIR/requirements.txt
 
+ipython kernel install --user --name=$PROJ_VENV_NAME
+
 echo "Setup finished. Python virtual environment can be found at: "$PROJ_VENV_DIR

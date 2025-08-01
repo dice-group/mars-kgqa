@@ -1,4 +1,4 @@
-# Sample usage: python -m src.basic_factoid_solver
+# Sample usage: python -m src.simple_factoid_solver
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes

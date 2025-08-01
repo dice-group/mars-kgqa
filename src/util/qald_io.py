@@ -20,11 +20,25 @@ def get_qald_answer_sparql(sparql, endpoint):
     
     if "limit" not in formatted_sparql.lower():
         # Adding hard limit for the results
-        formatted_sparql += "\nLIMIT 100"
+        formatted_sparql += "\nLIMIT 1000"
     
-    sparql_bindings = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
-    return formatted_sparql, sparql_bindings
+    sparql_response = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
+    return formatted_sparql, sparql_response
 
+def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
+    qald_obj = read_json_file(qald_file_path)
+     # For each id in the qald_gold
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        # Extract SPARQL query
+        gold_sparql = question_item['query']['sparql']
+        sparql_response = execute_sparql_query(gold_sparql, sparql_endpoint, get_only_bindings=False)
+        answer_obj = [sparql_response]
+        question_item['answers'] = answer_obj
+    # Save the QALD file
+    create_directory_if_not_exists(output_file_path)
+    # Write qald_obj to output_file_path
+    with open(output_file_path, 'w', encoding='utf-8') as outfile:
+        json.dump(qald_obj, outfile, ensure_ascii=False, indent=4)
 
 def get_qald_answer_obj(answer_tuples):
     # Generate bindings
@@ -111,6 +125,7 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
 
         question_item['answers'] = answer_obj    
     
+    create_directory_if_not_exists(output_file_path)
     # Write qald_obj to output_file_path
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         json.dump(qald_obj, outfile, ensure_ascii=False, indent=4)
@@ -129,7 +144,5 @@ if __name__ == "__main__":
     
     
     qald_file_path = "data_dir/processed_kgqa_ds/qald_linked_augmented_gold_ent.json"
-    
-    create_directory_if_not_exists(output_file_path)
     
     convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples=has_tuples)

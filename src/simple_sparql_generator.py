@@ -1,5 +1,5 @@
-# Sample usage: python -m src.basic_sparql_generator
-from src.basic_factoid_solver import extract_triples_data, get_triples_similarity, save_answers_as_tsv
+# Sample usage: python -m src.simple_sparql_generator
+from simple_factoid_solver import extract_triples_data, get_triples_similarity, save_answers_as_tsv
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import generate_sparql, filter_common_nodes
