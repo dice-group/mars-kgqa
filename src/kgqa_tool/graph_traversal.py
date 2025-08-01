@@ -1,6 +1,7 @@
 # Sample usage: python -m src.kgqa_tool.graph_traversal
 import requests
 from src.const.misc import SPARQL_HARD_LIMIT
+from src.util.common import execute_sparql_query
 
 # Find all the 1-hop triples for a node (given URI), alongside the labels for relations and nodes using SPARQL
 def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
@@ -47,30 +48,18 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     }} LIMIT {SPARQL_HARD_LIMIT}
     """
     
-    #print(query)
-    
-    headers = {
-        "Accept": "application/sparql-results+json"
-    }
-
-    try:
-        response = requests.get(endpoint_url, params={'query': query, 'format': 'json'}, headers=headers)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
-        data = response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP Request failed: {e}")
-        return []
+    bindings = execute_sparql_query(query, endpoint_url)
 
     triples = []
-    for binding in data['results']['bindings']:
+    for binding_item in bindings:
         triple = {
             'root': node_uri,
-            'subject': binding.get('subject', {}).get('value', ''),
-            'predicate': binding.get('predicate', {}).get('value', ''),
-            'object': binding.get('object', {}).get('value', ''),
-            'propLabel': binding.get('propLabel', {}).get('value', ''),
-            'subjectLabel': binding.get('subjectLabel', {}).get('value', ''),
-            'objectLabel': binding.get('objectLabel', {}).get('value', '')
+            'subject': binding_item.get('subject', {}).get('value', ''),
+            'predicate': binding_item.get('predicate', {}).get('value', ''),
+            'object': binding_item.get('object', {}).get('value', ''),
+            'propLabel': binding_item.get('propLabel', {}).get('value', ''),
+            'subjectLabel': binding_item.get('subjectLabel', {}).get('value', ''),
+            'objectLabel': binding_item.get('objectLabel', {}).get('value', '')
         }
         triples.append(triple)
 
