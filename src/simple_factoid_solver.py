@@ -5,9 +5,11 @@ from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX
-from src.util.common import dot, read_json_file
+from src.util.common import dot, read_json_file, create_directory_if_not_exists
 import heapq
 import csv
+from tqdm import tqdm
+import os
 
 
 class TripleData:
@@ -56,7 +58,10 @@ def extract_triples_data(triples_dict):
     return triple_data_list
 
 
-def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
+def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 512):
+    
+    print(f'Computing similarity of {len(triple_data_list)} triples with batch size of {batch_size}..')
+    
     batched_triple_data = []
 
     # Split triple_data_list into batches
@@ -66,7 +71,7 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 20):
 
     # Fetch embeddings
     triple_data_embd_list = []
-    for triple_data_batch in batched_triple_data:
+    for triple_data_batch in tqdm(batched_triple_data, desc='Processing triple batches'):
         # Build text list
         cur_text_batch = [trip_data.get_verbalization() for trip_data in triple_data_batch]
         # llm request tool
@@ -189,30 +194,46 @@ def save_answers_as_tsv(answers_dict, file_path):
         # Write data
         for question_id, answer in answers_dict.items():
             writer.writerow([question_id, answer])
-
-# Example usage
-if __name__ == "__main__":
-    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
-    # Read the qald9 preprocessed file
+            
+def process_dataset(proc_name, qald_file_path, output_path, process_fn):
+    # Output directory
+    output_path = os.path.abspath(output_path)
+    out_dir = os.path.dirname(output_path)
+    create_directory_if_not_exists(out_dir)
+    # Handle cache file
+    cache_file = os.path.join(out_dir, f'{proc_name}_cache.temp')
+    # TODO: Implement cache logic for cur_generated_output
+    # Read the qald preprocessed file
     qald_json = read_json_file(qald_file_path)
     
     answers_dict = dict()
     # For each question
-    for question_item in qald_json['questions']:
+    for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
+        # Extract the English question text
+        question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
+        
+        # TODO: Check if cached
+
         # extract aug_text, extracted_ents, extracted_rels
         aug_text = question_item['augmented_seq']
         ent_dict = question_item['found_ent']
         rel_dict = question_item['found_rel']
-        
-         # Extract the English question text
-        question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
+         
         # send to process_input_query
-        cur_answer_tuple = process_input_query(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
-        
-        answers_dict[question_id] = cur_answer_tuple
+        cur_generated_output = process_fn(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
+        # Cache the generated SPARQL
+        answers_dict[question_id] = cur_generated_output
     
     # Save answers dict as tsv
-    save_answers_as_tsv(answers_dict, "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv")
+    save_answers_as_tsv(answers_dict, output_path)
+
+# Example usage
+if __name__ == "__main__":
+    # Input QALD dataset file
+    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
+    # Output file path
+    output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv"
     
+    process_dataset('sfs', qald_file_path, output_path, process_input_query)
     
