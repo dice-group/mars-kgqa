@@ -5,11 +5,12 @@ from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX
-from src.util.common import dot, read_json_file, create_directory_if_not_exists
+from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file
 import heapq
 import csv
 from tqdm import tqdm
 import os
+import json
 
 
 class TripleData:
@@ -200,20 +201,34 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
     create_directory_if_not_exists(out_dir)
+    
     # Handle cache file
-    cache_file = os.path.join(out_dir, f'{proc_name}_cache.temp')
-    # TODO: Implement cache logic for cur_generated_output
+    cache_file = os.path.join(out_dir, f'{proc_name}_cache.json')
+    
+    # Read cache if it exists
+    answers_cache = {}
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            answers_cache = json.load(f)
+    
+    cur_answers_dict = {}
+    
     # Read the qald preprocessed file
     qald_json = read_json_file(qald_file_path)
     
-    answers_dict = dict()
     # For each question
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
         # Extract the English question text
         question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
         
-        # TODO: Check if cached
+        cache_id = str(question_id) + '_' + question_text
+        
+        # Check if cached
+        if cache_id in answers_cache:
+            print(f'Using cached answer for cache ID: {cache_id}')
+            cur_answers_dict[question_id] = answers_cache[cache_id]
+            continue
 
         # extract aug_text, extracted_ents, extracted_rels
         aug_text = question_item['augmented_seq']
@@ -223,10 +238,14 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
         # send to process_input_query
         cur_generated_output = process_fn(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
         # Cache the generated SPARQL
-        answers_dict[question_id] = cur_generated_output
+        answers_cache[cache_id] = cur_generated_output
+        # Save updated cache to disk
+        save_json_file(answers_cache, cache_file)
+        # Update current answers dictionary
+        cur_answers_dict[question_id] = cur_generated_output
     
     # Save answers dict as tsv
-    save_answers_as_tsv(answers_dict, output_path)
+    save_answers_as_tsv(cur_answers_dict, output_path)
 
 # Example usage
 if __name__ == "__main__":
