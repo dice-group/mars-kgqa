@@ -4,7 +4,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
-from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX
+from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, TRIPLE_VERBALIZATION_LENGTH_LIMIT
 from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file
 import heapq
 import csv
@@ -55,6 +55,9 @@ def extract_triples_data(triples_dict):
         subjectLabel = triple['subjectLabel']
         objectLabel = triple['objectLabel']
         triple_data = TripleData(root, subject, predicate, object, propLabel, subjectLabel, objectLabel)
+        # Reject triples with very long verbalization
+        if len(triple_data.get_verbalization()) > TRIPLE_VERBALIZATION_LENGTH_LIMIT:
+            continue
         triple_data_list.append(triple_data)
     return triple_data_list
 
@@ -110,7 +113,9 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
         print(f'Triples found for {entity_uri}: {len(triples)}')
-        triple_data_list.extend(extract_triples_data(triples))
+        extracted_triples = extract_triples_data(triples)
+        triple_data_list.extend(extracted_triples)
+        print(f'Filtered triples for {entity_uri}: {len(extracted_triples)}')
     
     print(f'Total triples to process: {len(triple_data_list)}')
     

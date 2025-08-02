@@ -29,7 +29,9 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         # graph traversal tool
         triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
         print(f'Triples found for {entity_uri}: {len(triples)}')
-        triple_data_list.extend(extract_triples_data(triples))
+        extracted_triples = extract_triples_data(triples)
+        triple_data_list.extend(extracted_triples)
+        print(f'Filtered triples for {entity_uri}: {len(extracted_triples)}')
     
     print(f'Total triples to process: {len(triple_data_list)}')
     
