@@ -51,10 +51,12 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
 # Example usage
 if __name__ == "__main__":
     #qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
-    qald_file_path = "data_dir/processed_kgqa_ds/qald10/test/aug_gold.json"
+    #qald_file_path = "data_dir/processed_kgqa_ds/qald10/test/aug_gold.json"
+    qald_file_path = "data_dir/processed_kgqa_ds/lcquad2/test/updt_qald_aug_gold.json"
     
     #output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
-    output_path = "data_dir/processed_kgqa_ds/qald10/test/prediction/tsv/aug_pred_sparql.tsv"
+    #output_path = "data_dir/processed_kgqa_ds/qald10/test/prediction/tsv/aug_pred_sparql.tsv"
+    output_path = "data_dir/processed_kgqa_ds/lcquad2/test/prediction/tsv/aug_pred_sparql.tsv"
     
     process_dataset('ssg', qald_file_path, output_path, process_input_query)
     

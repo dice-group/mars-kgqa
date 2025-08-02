@@ -226,7 +226,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
         question_id = question_item['id']
         # Extract the English question text
         question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
-        
+        # print(question_id, question_text)
         cache_id = str(question_id) + '_' + question_text
         
         # Check if cached
@@ -236,6 +236,10 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
             continue
 
         # extract aug_text, extracted_ents, extracted_rels
+        
+        if not all(key in question_item for key in ['augmented_seq', 'found_ent', 'found_rel']):
+            continue # skip if augmented data is missing
+        
         aug_text = question_item['augmented_seq']
         ent_dict = question_item['found_ent']
         rel_dict = question_item['found_rel']

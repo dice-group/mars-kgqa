@@ -8,18 +8,21 @@ from tqdm import tqdm
 def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint):
     lcquad_data = read_json_file(lcquad2_file_path)
     qald_questions = []
-    copy_keys = ['found_ent', 'found_rel', 'gold_ent', 'gold_rel', 'augmented_ent', 'augmented_rel']
+    copy_keys = ['augmented_seq', 'found_ent', 'found_rel', 'gold_ent', 'gold_rel', 'augmented_ent', 'augmented_rel']
     for qa_item in tqdm(lcquad_data, desc='Processing Questions'):
         qald_item = {}
         
         id = qa_item['uid']
         sparql = qa_item['sparql_wikidata']
         # Fetch the answer
-        question_text = qa_item['paraphrased_question']
+        para_text = qa_item['paraphrased_question']
+        question_text = para_text if para_text else qa_item['question']
+        if not question_text:
+            continue
         formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint)
         answer_obj = [sparql_response]
         # Build QALD item dictionary
-        qald_item['id'] = id
+        qald_item['id'] = str(id) # For uniformity
         qald_item['answers'] = answer_obj
         qald_item['query'] = { 'sparql': formatted_sparql}
         qald_item['question'] = [{ "language": "en", "string": question_text}]
@@ -148,7 +151,7 @@ def load_tsv_answers_dict(file_path, has_tuples=False):
         reader = csv.reader(tsvfile, delimiter='\t')
         next(reader)  # Skip the header row
         for row in reader:
-            question_id = row[0]
+            question_id = str(row[0]) # convert to string for uniformity
             answer_str = row[1]
             answer = answer_str
             if has_tuples:
@@ -167,7 +170,7 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
     # For each id in the qald_gold
     for question_item in tqdm(qald_obj['questions'], desc='Processing Answers'):
         # Extract answers out of tsv_data and create a qald answer object
-        question_id = question_item['id']
+        question_id = str(question_item['id'])
         answer_item = None
         if question_id in tsv_dict:
             answer_item = tsv_dict[question_id]
