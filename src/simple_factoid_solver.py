@@ -82,8 +82,9 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 512):
         cur_embd_batch = get_embeddings(cur_text_batch, DEFAULT_EMBED_LLM_CONFIG)
         triple_data_embd_list.extend(cur_embd_batch)
 
+    query_text = aug_qtxt[:TRIPLE_VERBALIZATION_LENGTH_LIMIT] # Truncating the input text to limit to avoid exception during embedding
     # Compute cosine similarity of the verbalized triples to the augmented input
-    query_embedding = get_embeddings([aug_qtxt], DEFAULT_EMBED_LLM_CONFIG)[0]
+    query_embedding = get_embeddings([query_text], DEFAULT_EMBED_LLM_CONFIG)[0]
     triple_similarity_list = []
     for triple_embd in triple_data_embd_list:
         triple_similarity_list.append(dot(query_embedding, triple_embd)) # as mentioned in https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
