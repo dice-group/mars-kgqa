@@ -138,4 +138,5 @@ if __name__ == "__main__":
     output_file = "data_dir/cache/wikidata_relations.json"
     create_directory_if_not_exists(output_file)
     save_relations_to_json(relations_dict, output_file)
+    ## Last run (11.08.2025): Saved 7493 properties to wikidata_relations.json
     print(f"Saved {len(relations_dict)} properties to {output_file}")

@@ -65,6 +65,10 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
 
     return triples
 
+def find_1_hop_patterns(node_uri, endpoint_url, lang_list=[]):
+    # TODO: Implement
+    pass
+
 # Example usage
 if __name__ == "__main__":
     node_uri = "http://www.wikidata.org/entity/Q567"
