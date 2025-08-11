@@ -82,7 +82,7 @@ def get_qald_answer_sparql(sparql, endpoint):
         # Adding hard limit for the results
         formatted_sparql += "\nLIMIT 1000"
     
-    sparql_response = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
+    sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
     return formatted_sparql, sparql_response
 
 def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
@@ -91,7 +91,7 @@ def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
     for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
         # Extract SPARQL query
         gold_sparql = question_item['query']['sparql']
-        sparql_response = execute_sparql_query(gold_sparql, sparql_endpoint, get_only_bindings=False)
+        sparql_response, _ = execute_sparql_query(gold_sparql, sparql_endpoint, get_only_bindings=False)
         answer_obj = [sparql_response]
         question_item['answers'] = answer_obj
     # Save the QALD file

@@ -48,7 +48,7 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     }} LIMIT {SPARQL_HARD_LIMIT}
     """
     
-    bindings = execute_sparql_query(query, endpoint_url)
+    bindings, _ = execute_sparql_query(query, endpoint_url)
 
     triples = []
     for binding_item in bindings:

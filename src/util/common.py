@@ -42,16 +42,20 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     headers = {
         "Accept": "application/sparql-results+json"
     }
+    
+    req_failed = False
 
     try:
-        response = requests.get(endpoint_url, params={'query': query, 'format': 'json'}, headers=headers)
+        response = requests.get(endpoint_url, params={'query': query, 'format': 'json'}, headers=headers, timeout=600)
         response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
     except requests.exceptions.RequestException as e:
+        print(f"Failed SPARQL: {query}")
         print(f"HTTP Request failed: {e}")
-        return [] if get_only_bindings else {}
+        req_failed = True
+        return [] if get_only_bindings else {}, req_failed
 
     ret_val = data
     if get_only_bindings:
         ret_val = data['results']['bindings']
-    return ret_val
+    return ret_val, req_failed
