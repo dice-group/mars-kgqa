@@ -65,9 +65,65 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
 
     return triples
 
-def find_1_hop_patterns(node_uri, endpoint_url, lang_list=[]):
-    # TODO: Implement
-    pass
+def find_1_hop_patterns(node_uri, endpoint_url):
+    
+    query = f"""
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+    SELECT DISTINCT ?direction ?property
+    WHERE {{
+        
+        ?property a wikibase:Property
+        
+        {{   # outgoing statements
+            BIND ("out" AS ?direction)
+            <{node_uri}> ?property ?object .
+        }}
+        UNION
+        {{   # incoming statements
+            BIND ("in" AS ?direction)
+            ?subject ?property <{node_uri}> .
+        }}
+    }}
+    """
+    
+    bindings, _ = execute_sparql_query(query, endpoint_url)
+
+    patterns = []
+    for b in bindings:
+        patterns.append({
+            "direction": b.get("direction", {}).get("value", ""),
+            "property":  b.get("property",  {}).get("value", "")
+        })
+    return patterns
+
+
+def get_node_label(node_uri, endpoint_url, lang = "en"):
+    # A query that prefers the requested language, falling back to any label.
+    query = f"""
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+    SELECT ?label WHERE {{
+        {{ <{node_uri}> rdfs:label ?label FILTER (lang(?label) = "{lang}") }}
+        UNION
+        {{ <{node_uri}> skos:prefLabel ?label FILTER (lang(?label) = "{lang}") }}
+        UNION
+        {{ <{node_uri}> rdfs:label ?label FILTER (lang(?label) = "" ) }}
+        UNION
+        {{ <{node_uri}> skos:prefLabel ?label FILTER (lang(?label) = "" ) }}
+    }}
+    LIMIT 1
+    """
+
+    bindings, _ = execute_sparql_query(query, endpoint_url)
+
+    if bindings:
+        return bindings[0].get("label", {}).get("value", "")
+    return ""
 
 # Example usage
 if __name__ == "__main__":

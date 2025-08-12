@@ -1,7 +1,7 @@
 # Sample usage: python -m src.simple_sparql_generator
 from src.simple_factoid_solver import extract_triples_data, get_triples_similarity, process_dataset, generate_output_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
-from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns
+from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
 from src.util.common import read_json_file
@@ -15,10 +15,10 @@ PROPERTY_INFO_MAP = None
 
 class EdgeDirection(Enum):
     """Indicates whether a relation is an incoming or outgoing edge."""
-    INCOMING = auto()
-    OUTGOING = auto()
+    INCOMING = 'in'
+    OUTGOING = 'out'
 
-class GraphElement:
+class NodeEdge:
     def __init__(
         self,
         node_uri: str,
@@ -41,9 +41,17 @@ class GraphElement:
             f"relation_uri={self.relation_uri!r}, direction={self.direction.name})"
         )
 
-def extract_patterns_data(patterns_list):
-    # TODO: Implement
-    pass
+def extract_patterns_data(root_uri, root_label, patterns_list):
+    patterns_data_list = []
+    # For each pattern item
+    for pattern_item in patterns_list:
+        prop_uri = pattern_item['property']
+        direction_str = pattern_item['direction']
+        edge_dir = EdgeDirection(direction_str)
+        pattern_obj = NodeEdge(root_uri, root_label, prop_uri, edge_dir)
+        patterns_data_list.append(pattern_obj)
+    
+    return patterns_data_list
 
 def load_property_info(cached_file_path):
     global PROPERTY_INFO_MAP
@@ -72,9 +80,10 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
         print(f'Traversing: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
+        entity_label = get_node_label(entity_uri, wd_ep)
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
         print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
-        extracted_patterns = extract_patterns_data(patterns_list)
+        extracted_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list)
         patterns_data_list.extend(extracted_patterns)
         print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
