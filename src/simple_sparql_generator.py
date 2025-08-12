@@ -3,7 +3,7 @@ from src.simple_factoid_solver import extract_triples_data, get_triples_similari
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
-from src.const.misc import WIKIDATA_ENDPOINT_URL
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL
 import heapq
 
 
@@ -27,7 +27,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already    
         # graph traversal tool
-        triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
+        triples = find_1_hop_triples(entity_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
         print(f'Triples found for {entity_uri}: {len(triples)}')
         extracted_triples = extract_triples_data(triples)
         triple_data_list.extend(extracted_triples)

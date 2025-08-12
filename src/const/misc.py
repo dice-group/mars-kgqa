@@ -1,6 +1,8 @@
-#WIKIDATA_ENDPOINT_URL = "https://skynet.coypu.org/wikidata/" # QALD10
-WIKIDATA_ENDPOINT_URL = "https://wikidata.data.dice-research.org/sparql"
-#WIKIDATA_ENDPOINT_URL = "https://query.wikidata.org/sparql"
+QALD10_WIKIDATA_EP = "https://skynet.coypu.org/wikidata/" # Dump: https://zenodo.org/records/7496690
+TENTRIS_WIKIDATA_EP = "https://wikidata.data.dice-research.org/sparql" # Dump: https://files.dice-research.org/datasets/Wikidata/wikidata-20240904-truthy-BETA/
+CURRENT_WIKIDATA_EP = "https://query.wikidata.org/sparql"
+
+DEFAULT_WIKIDATA_ENDPOINT_URL = TENTRIS_WIKIDATA_EP
 
 SPARQL_HARD_LIMIT = 10000
 

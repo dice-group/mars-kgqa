@@ -4,7 +4,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples
 from src.kgqa_tool.llm_request import check_if_answer, filter_common_nodes
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG, DEFAULT_EMBED_LLM_CONFIG
-from src.const.misc import WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, TRIPLE_VERBALIZATION_LENGTH_LIMIT
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, ADD_NODES_EXPANSION_LIMIT, MAX_TRIES, EXTENDED_ANSWER_SEARCH_LIMIT, ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, TRIPLE_VERBALIZATION_LENGTH_LIMIT
 from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file
 import heapq
 import csv
@@ -112,7 +112,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already    
         # graph traversal tool
-        triples = find_1_hop_triples(entity_uri, WIKIDATA_ENDPOINT_URL)
+        triples = find_1_hop_triples(entity_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
         print(f'Triples found for {entity_uri}: {len(triples)}')
         extracted_triples = extract_triples_data(triples)
         triple_data_list.extend(extracted_triples)
@@ -185,7 +185,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
                 continue
             visited_nodes.add(next_node_uri)
             expand_count+=1
-            new_triples = find_1_hop_triples(next_node_uri, WIKIDATA_ENDPOINT_URL)
+            new_triples = find_1_hop_triples(next_node_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
             new_trip_data_list = extract_triples_data(new_triples)
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
             priority_queue.extend(new_trip_sim_list)
@@ -201,6 +201,29 @@ def save_answers_as_tsv(answers_dict, file_path):
         # Write data
         for question_id, answer in answers_dict.items():
             writer.writerow([question_id, answer])
+            
+def generate_output_path(approach_name, input_file_path):
+    # Ensure we work with absolute paths
+    input_abs_path = os.path.abspath(input_file_path)
+
+    # Parent directory of the input file
+    parent_dir = os.path.dirname(input_abs_path)
+
+    # Base name of the input file (without extension)
+    input_file_name = os.path.splitext(os.path.basename(input_abs_path))[0]
+
+    # Build the directory hierarchy
+    prediction_dir = os.path.join(parent_dir, "prediction")
+    file_dir = os.path.join(prediction_dir, input_file_name, "tsv")
+
+    # Ensure the directories exist (optional – caller can create if desired)
+    # os.makedirs(file_dir, exist_ok=True)
+
+    # Final output file path
+    output_file = f"{approach_name}.tsv"
+    output_path = os.path.join(file_dir, output_file)
+
+    return output_path
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn):
     # Output directory

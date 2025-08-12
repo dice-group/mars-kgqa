@@ -5,7 +5,7 @@ import time
 from tqdm import tqdm
 from src.util.common import read_json_file, create_directory_if_not_exists
 from src.util.llm import prompt_chat_llm
-from src.const.llm import ChatModels
+from src.const.llm import ChatModel
 
 
 # Function to replace large lists with a placeholder
@@ -139,7 +139,7 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
 # Main function
 if __name__ == "__main__":
     #model_config = ChatModels.GEMMA3.value
-    model_config = ChatModels.QWEN3.value
+    model_config = ChatModel.QWEN3.value
     # Initializing variables
     opai_client = model_config.get_static_instance()
     model_id=model_config.model_id

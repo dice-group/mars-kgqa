@@ -1,5 +1,5 @@
 from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file
-from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, WIKIDATA_ENDPOINT_URL
+from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, DEFAULT_WIKIDATA_ENDPOINT_URL
 import csv
 import json
 import ast
@@ -179,7 +179,7 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
             answer_obj = get_qald_answer_obj(answer_item)
             question_item['query'] = {}
         else:
-            formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, WIKIDATA_ENDPOINT_URL)
+            formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, DEFAULT_WIKIDATA_ENDPOINT_URL)
             answer_obj = [qald_answer]
             question_item['query'] = { 'sparql': formatted_sparql}
 

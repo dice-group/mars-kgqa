@@ -1,12 +1,15 @@
 # Sample usage: python -m src.simple_sparql_generator
-from src.simple_factoid_solver import extract_triples_data, get_triples_similarity, process_dataset
+from src.simple_factoid_solver import extract_triples_data, get_triples_similarity, process_dataset, generate_output_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
-from src.const.misc import WIKIDATA_ENDPOINT_URL
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL
+from src.util.common import read_json_file
 import heapq
 
 from enum import Enum, auto
+
+PROPERTY_INFO_MAP = None
 
 
 class EdgeDirection(Enum):
@@ -41,6 +44,10 @@ def extract_patterns_data(patterns_list):
     # TODO: Implement
     pass
 
+def load_property_info(cached_file_path):
+    global PROPERTY_INFO_MAP
+    PROPERTY_INFO_MAP = read_json_file(cached_file_path)
+
 
 def process_input_query(question_text, model_config, preprocessed_input=None):
     print(f'Processing question: {question_text}')
@@ -62,7 +69,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         print(f'Traversing: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
-        patterns_list = find_1_hop_patterns(entity_uri, WIKIDATA_ENDPOINT_URL)
+        patterns_list = find_1_hop_patterns(entity_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
         print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
         extracted_patterns = extract_patterns_data(patterns_list)
         patterns_data_list.extend(extracted_patterns)
@@ -94,12 +101,19 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
 
 # Example usage
 if __name__ == "__main__":
+    
+    approach_name = 'pbsg'
+    
     qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     #qald_file_path = "data_dir/processed_kgqa_ds/qald10/test/aug_gold.json"
     #qald_file_path = "data_dir/processed_kgqa_ds/lcquad2/test/updt_qald_aug_gold.json"
     
-    output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
+    output_path = generate_output_path(approach_name, qald_file_path)
+    #output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
     #output_path = "data_dir/processed_kgqa_ds/qald10/test/prediction/tsv/aug_pred_sparql.tsv"
     #output_path = "data_dir/processed_kgqa_ds/lcquad2/test/prediction/tsv/aug_pred_sparql.tsv"
     
-    process_dataset('pbsg', qald_file_path, output_path, process_input_query)
+    # Load the cached property info map
+    load_property_info("data_dir/cache/wikidata_relations.json")
+    
+    process_dataset(approach_name, qald_file_path, output_path, process_input_query)
