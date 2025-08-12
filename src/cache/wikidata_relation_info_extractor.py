@@ -1,6 +1,7 @@
 
 # Sample usage: python -m src.cache.wikidata_relation_info_extractor
 from src.util.common import execute_sparql_query, create_directory_if_not_exists
+from src.const.misc import WIKIDATA_PROP_INFO_CACHE_FILEPATH
 from tqdm import tqdm
 import json
 import time
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     # collect everything (the function handles pagination internally)
     relations_dict = collect_all_relations(endpoint, lang='en')
     # store to JSON
-    output_file = "data_dir/cache/wikidata_relations.json"
+    output_file = WIKIDATA_PROP_INFO_CACHE_FILEPATH
     create_directory_if_not_exists(output_file)
     save_relations_to_json(relations_dict, output_file)
     ## Last run (11.08.2025): Saved 7493 properties to wikidata_relations.json

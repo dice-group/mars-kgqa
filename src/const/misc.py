@@ -14,3 +14,5 @@ TRIPLE_VERBALIZATION_LENGTH_LIMIT = 400 # To keep things under for a tokenizatio
 
 ANSWER_NOT_FOUND_STR = 'Answer not found'
 LITERAL_VAL_PREFIX = 'literal_val:'
+
+WIKIDATA_PROP_INFO_CACHE_FILEPATH = "data_dir/cache/wikidata_relations.json"

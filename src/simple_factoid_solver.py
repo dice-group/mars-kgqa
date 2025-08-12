@@ -11,6 +11,7 @@ import csv
 from tqdm import tqdm
 import os
 import json
+from src.const.dataset import KgqaDataset, DatasetSplit
 
 
 class TripleData:
@@ -93,8 +94,10 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 512):
     triple_cossim_list = [(-similarity, triple_data) for similarity, triple_data in zip(triple_similarity_list, triple_data_list)]
     return triple_cossim_list
 
-def process_input_query(question_text, model_config, preprocessed_input=None):
+def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None):
     print(f'Processing question: {question_text}')
+    
+    wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
     # Retrieve entities and relations for the input question
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
@@ -112,7 +115,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already    
         # graph traversal tool
-        triples = find_1_hop_triples(entity_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
+        triples = find_1_hop_triples(entity_uri, wd_ep)
         print(f'Triples found for {entity_uri}: {len(triples)}')
         extracted_triples = extract_triples_data(triples)
         triple_data_list.extend(extracted_triples)
@@ -185,7 +188,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None):
                 continue
             visited_nodes.add(next_node_uri)
             expand_count+=1
-            new_triples = find_1_hop_triples(next_node_uri, DEFAULT_WIKIDATA_ENDPOINT_URL)
+            new_triples = find_1_hop_triples(next_node_uri, wd_ep)
             new_trip_data_list = extract_triples_data(new_triples)
             new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
             priority_queue.extend(new_trip_sim_list)
@@ -225,7 +228,7 @@ def generate_output_path(approach_name, input_file_path):
 
     return output_path
             
-def process_dataset(proc_name, qald_file_path, output_path, process_fn):
+def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -269,7 +272,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
         rel_dict = question_item['found_rel']
          
         # send to process_input_query
-        cur_generated_output = process_fn(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict))
+        cur_generated_output = process_fn(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict), wd_ep)
         # Cache the generated SPARQL
         answers_cache[cache_id] = cur_generated_output
         # Save updated cache to disk
@@ -282,10 +285,16 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn):
 
 # Example usage
 if __name__ == "__main__":
-    # Input QALD dataset file
-    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
-    # Output file path
-    output_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv"
     
-    process_dataset('sfs', qald_file_path, output_path, process_input_query)
+    approach_name = 'sfs'
+    
+    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED.value
+    
+    wd_ep = kgqa_ds.preferred_wd_endpoint
+    
+    qald_file_path = kgqa_ds.split_dict[DatasetSplit.TEST]
+    
+    output_path = generate_output_path(approach_name, qald_file_path)
+    
+    process_dataset(approach_name, qald_file_path, output_path, process_input_query, wd_ep)
     

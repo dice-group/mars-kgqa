@@ -33,3 +33,8 @@ class KgqaDataset(Enum):
         # DatasetSplit.TRAIN: "",
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/updt_aug_gold.json"
     }, TENTRIS_WIKIDATA_EP)
+    
+    LCQUAD2_UPDATED =  KgqaDatasetInfo("lcquad2_updt", "LC-QuAD2.0 (Updated)", {
+        # DatasetSplit.TRAIN: "",
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/updt_qald_aug_gold.json"
+    }, TENTRIS_WIKIDATA_EP)
