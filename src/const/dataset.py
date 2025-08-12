@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from const.misc import QALD10_WIKIDATA_EP, CURRENT_WIKIDATA_EP, TENTRIS_WIKIDATA_EP
+from src.const.misc import QALD10_WIKIDATA_EP, CURRENT_WIKIDATA_EP, TENTRIS_WIKIDATA_EP
 
 class DatasetSplit(Enum):
     TRAIN = auto()
