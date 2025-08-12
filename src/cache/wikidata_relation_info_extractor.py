@@ -1,8 +1,6 @@
 
-# Sample usage: python -m 
-# Write Wikidata SPARQL to extract information about all the relations (predicates), including labels, domain and range and their labels as well
+# Sample usage: python -m src.cache.wikidata_relation_info_extractor
 from src.util.common import execute_sparql_query, create_directory_if_not_exists
-from src.const.misc import WIKIDATA_ENDPOINT_URL
 from tqdm import tqdm
 import json
 import time
@@ -86,7 +84,7 @@ def collect_all_relations(endpoint_url, lang='en', batch_size=10000):
         batch = extract_relation_info(
             endpoint_url, lang=lang, limit=batch_size, offset=offset
         )
-        time.sleep(3) # Sleep for 3 seconds
+        time.sleep(3) # Sleep for 3 seconds between requests
         if not batch:
             break   # no more results
 
@@ -129,12 +127,12 @@ def save_relations_to_json(relations_dict, file_path):
         json.dump(relations_dict, f, ensure_ascii=False, indent=2)
 
 
-# Optional: quick test / usage when the module is run directly
+
 if __name__ == "__main__":
-    endpoint = "https://query.wikidata.org/sparql" # This to be done on official endpoint, it does not work on Tentris
+    endpoint = "https://query.wikidata.org/sparql" # This has to be done on official endpoint, it does not work on Tentris
     # collect everything (the function handles pagination internally)
     relations_dict = collect_all_relations(endpoint, lang='en')
-    # store to JSON – change the path as needed
+    # store to JSON
     output_file = "data_dir/cache/wikidata_relations.json"
     create_directory_if_not_exists(output_file)
     save_relations_to_json(relations_dict, output_file)
