@@ -22,30 +22,48 @@ class NodeEdge:
     def __init__(
         self,
         node_uri: str,
-        label: str,
+        node_label: str,
         relation_uri: str,
         direction: EdgeDirection | str,
     ) -> None:
         self.node_uri = node_uri
-        self.label = label
+        self.node_label = node_label
         self.relation_uri = relation_uri
         # Allow passing either the enum member or its name as a string
         if isinstance(direction, EdgeDirection):
             self.direction = direction
         else:
-            self.direction = EdgeDirection[direction.upper()]
+            self.direction = EdgeDirection[direction.lower()]
+            
+    def get_dr_aug_verbalization(self, prop_info_map=PROPERTY_INFO_MAP):
+        # get the property label
+        prop_label = prop_info_map[self.relation_uri]['label']
+        # get the domain label(s)
+        dom_label_list = [dom_item['label'] for dom_item in prop_info_map[self.relation_uri]['domains']]
+        # get the range label(s)
+        range_label_list = [range_item['label'] for range_item in prop_info_map[self.relation_uri]['ranges']]
+        
+        if self.direction == EdgeDirection.OUTGOING:
+            verbalized_str = f'{self.node_label} {prop_label} _object_ \t (possible subject classes: {','.join(dom_label_list)}), (possible object classes: {','.join(range_label_list)}) '
+        else:
+            verbalized_str = f'_subject_ {prop_label} {self.node_label} \t (possible subject classes: {','.join(dom_label_list)}), (possible object classes: {','.join(range_label_list)}) '
+
+        return verbalized_str
 
     def __repr__(self) -> str:
         return (
-            f"GraphElement(node_uri={self.node_uri!r}, label={self.label!r}, "
+            f"GraphElement(node_uri={self.node_uri!r}, label={self.node_label!r}, "
             f"relation_uri={self.relation_uri!r}, direction={self.direction.name})"
         )
 
-def extract_patterns_data(root_uri, root_label, patterns_list):
+def extract_patterns_data(root_uri, root_label, patterns_list, prop_info_map):
     patterns_data_list = []
     # For each pattern item
     for pattern_item in patterns_list:
         prop_uri = pattern_item['property']
+        # Reject if property is not in our cached info
+        if prop_uri not in prop_info_map:
+            continue
         direction_str = pattern_item['direction']
         edge_dir = EdgeDirection(direction_str)
         pattern_obj = NodeEdge(root_uri, root_label, prop_uri, edge_dir)
@@ -83,11 +101,12 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
         entity_label = get_node_label(entity_uri, wd_ep)
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
         print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
-        extracted_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list)
+        extracted_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_INFO_MAP)
         patterns_data_list.extend(extracted_patterns)
         print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
     # TODO: Implement
+    print(PROPERTY_INFO_MAP)
     # Extract domain and range for each relation to use as augmented information
     
     # Compute similarity of the patterns to the query
