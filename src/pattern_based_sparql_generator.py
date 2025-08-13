@@ -62,6 +62,7 @@ def extract_patterns_data(root_uri, root_label, patterns_list, prop_info_map):
     for pattern_item in patterns_list:
         prop_uri = pattern_item['property']
         # Reject if property is not in our cached info
+        # TODO: Match only the the last part of the identifier
         if prop_uri not in prop_info_map:
             continue
         direction_str = pattern_item['direction']

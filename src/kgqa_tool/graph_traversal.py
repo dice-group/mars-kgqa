@@ -76,8 +76,6 @@ def find_1_hop_patterns(node_uri, endpoint_url):
     SELECT DISTINCT ?direction ?property
     WHERE {{
         
-        ?property a wikibase:Property
-        
         {{   # outgoing statements
             BIND ("out" AS ?direction)
             <{node_uri}> ?property ?object .
