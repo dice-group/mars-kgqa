@@ -39,6 +39,7 @@ def extract_relation_info(endpoint_url, lang='en', limit=5000, offset=0):
         FILTER (LANG(?rangeLabel) = "{lang}")
       }}
     }}
+    ORDER BY ?property   # <‑‑ deterministic ordering
     LIMIT {limit}
     OFFSET {offset}
     """
@@ -74,7 +75,7 @@ def extract_relation_info(endpoint_url, lang='en', limit=5000, offset=0):
     return result
 
 
-def collect_all_relations(endpoint_url, lang='en', batch_size=10000):
+def collect_all_relations(endpoint_url, lang='en', batch_size=50000): # 14.08.25: query without limit returns "37395 results in 23221 ms"
     offset = 0
     all_relations = {}
     
@@ -138,5 +139,6 @@ if __name__ == "__main__":
     create_directory_if_not_exists(output_file)
     save_relations_to_json(relations_dict, output_file)
     ## Obsolete run (11.08.2025): Saved 7493 properties to wikidata_relations.json
-    ## Last run (14.08.2025): Saved 10569 properties to data_dir/cache/wikidata_relations.json
+    ## Obsolete run (14.08.2025): Saved 10569 properties to data_dir/cache/wikidata_relations.json
+    ## Last run (14.08.2025): Saved 12779 properties to data_dir/cache/wikidata_relations.json
     print(f"Saved {len(relations_dict)} properties to {output_file}")

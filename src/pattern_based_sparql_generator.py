@@ -111,7 +111,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     patterns_data_list = []
     visited_nodes = set()
     
-    all_rejected_patterns = []
+    all_rejected_patterns = [] # Mostly for debugging
     # For each entity, find all the triple patterns that exist
     for entity_qid in filter_entity_dict.values():
         print(f'Traversing: {entity_qid}')
