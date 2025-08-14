@@ -74,7 +74,7 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question.
+    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow the provided "Answer Format", do not write anything else.
 
     Question: {question_txt}

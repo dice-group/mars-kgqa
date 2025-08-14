@@ -18,9 +18,11 @@ class ModelAPIConfig:
 
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        
 class ChatModel(Enum):
+    # All models are using Q8
     GEMMA3 = ModelAPIConfig("gemma-3-27b-it", os.environ.get("GEMMA3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
     QWEN3 = ModelAPIConfig("Qwen3-32B", os.environ.get("QWEN3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
     MISTRAL3 = ModelAPIConfig("Mistral-Small-3.2-24B-Instruct-2506", os.environ.get("MISTRAL3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
+    GPTOSS120B = ModelAPIConfig("gpt-oss-120b", os.environ.get("GPTOSS120B_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
 
 # Embedding model
 class EmbeddingModel(Enum):

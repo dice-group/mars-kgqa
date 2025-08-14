@@ -178,7 +178,7 @@ if __name__ == "__main__":
     
     approach_name = 'pbsg'
     
-    llm_config = ChatModel.GEMMA3.value
+    llm_config = ChatModel.GPTOSS120B.value
     
     run_name = f'{approach_name}__{llm_config.model_id}'
     
