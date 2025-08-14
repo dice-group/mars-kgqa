@@ -6,6 +6,12 @@ import requests
 def dot(va, vb):
     return sum(a * b for a, b in zip(va, vb))
 
+def get_last_uri_fragment(uri):
+    # Split on '/' first, then on '#', and take the final non‑empty part.
+    fragment = uri.rsplit('/', 1)[-1]
+    fragment = fragment.rsplit('#', 1)[-1]
+    return fragment
+
 def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
     # Convert the path to an absolute path
     directory_path = os.path.abspath(directory_path)
@@ -40,7 +46,9 @@ def save_json_file(json_obj, output_file_path):
 
 def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     headers = {
-        "Accept": "application/sparql-results+json"
+        "Accept": "application/sparql-results+json",
+        # Identify the client as Firefox (optional version string)
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0"
     }
     
     req_failed = False

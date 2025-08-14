@@ -25,14 +25,14 @@ def extract_relation_info(endpoint_url, lang='en', limit=5000, offset=0):
       ?property rdfs:label ?propertyLabel .
       FILTER (LANG(?propertyLabel) = "{lang}")
 
-      {{  # domain constraints
+      OPTIONAL {{  # domain constraints
         ?constraint ps:P2302 wd:Q21503250 .
         ?constraint pq:P2308 ?domain .
         ?domain rdfs:label ?domainLabel .
         FILTER (LANG(?domainLabel) = "{lang}")
       }}
-      UNION
-      {{  # range constraints
+      
+      OPTIONAL {{  # range constraints
         ?constraint ps:P2302 wd:Q21510865 .
         ?constraint pq:P2308 ?range .
         ?range rdfs:label ?rangeLabel .
@@ -137,5 +137,6 @@ if __name__ == "__main__":
     output_file = WIKIDATA_PROP_INFO_CACHE_FILEPATH
     create_directory_if_not_exists(output_file)
     save_relations_to_json(relations_dict, output_file)
-    ## Last run (11.08.2025): Saved 7493 properties to wikidata_relations.json
+    ## Obsolete run (11.08.2025): Saved 7493 properties to wikidata_relations.json
+    ## Last run (14.08.2025): Saved 10569 properties to data_dir/cache/wikidata_relations.json
     print(f"Saved {len(relations_dict)} properties to {output_file}")

@@ -4,13 +4,14 @@ from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
-from src.util.common import read_json_file
+from src.util.common import read_json_file, get_last_uri_fragment
 import heapq
 
 from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
 
 PROPERTY_INFO_MAP = None
+PROPERTY_ID_MAP = None
 
 
 class EdgeDirection(Enum):
@@ -24,24 +25,27 @@ class NodeEdge:
         node_uri: str,
         node_label: str,
         relation_uri: str,
+        relation_id: str,
         direction: EdgeDirection | str,
     ) -> None:
         self.node_uri = node_uri
         self.node_label = node_label
         self.relation_uri = relation_uri
+        self.relation_id = relation_id
         # Allow passing either the enum member or its name as a string
         if isinstance(direction, EdgeDirection):
             self.direction = direction
         else:
             self.direction = EdgeDirection[direction.lower()]
             
-    def get_dr_aug_verbalization(self, prop_info_map=PROPERTY_INFO_MAP):
+    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP):
+        prop_ent_uri = prop_id_map[self.relation_id]
         # get the property label
-        prop_label = prop_info_map[self.relation_uri]['label']
+        prop_label = prop_info_map[prop_ent_uri]['label']
         # get the domain label(s)
-        dom_label_list = [dom_item['label'] for dom_item in prop_info_map[self.relation_uri]['domains']]
+        dom_label_list = [dom_item['label'] for dom_item in prop_info_map[prop_ent_uri]['domains']]
         # get the range label(s)
-        range_label_list = [range_item['label'] for range_item in prop_info_map[self.relation_uri]['ranges']]
+        range_label_list = [range_item['label'] for range_item in prop_info_map[prop_ent_uri]['ranges']]
         
         if self.direction == EdgeDirection.OUTGOING:
             verbalized_str = f'{self.node_label} {prop_label} _object_ \t (possible subject classes: {','.join(dom_label_list)}), (possible object classes: {','.join(range_label_list)}) '
@@ -55,26 +59,39 @@ class NodeEdge:
             f"GraphElement(node_uri={self.node_uri!r}, label={self.node_label!r}, "
             f"relation_uri={self.relation_uri!r}, direction={self.direction.name})"
         )
+        
+def match_property(truthy_uri, property_uri):
+    # Matching the property identifiers since they have different prefixes in Wikidata based on the use-case: https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual/yo
+    truthy_prop_id = get_last_uri_fragment(truthy_uri)
+    ent_prop_id = get_last_uri_fragment(property_uri)
+    return truthy_prop_id == ent_prop_id
 
-def extract_patterns_data(root_uri, root_label, patterns_list, prop_info_map):
+def extract_patterns_data(root_uri, root_label, patterns_list, prop_id_map):
     patterns_data_list = []
+    rejected_patterns = []
     # For each pattern item
     for pattern_item in patterns_list:
         prop_uri = pattern_item['property']
         # Reject if property is not in our cached info
-        # TODO: Match only the the last part of the identifier
-        if prop_uri not in prop_info_map:
+        prop_id = get_last_uri_fragment(prop_uri)
+        if prop_id not in prop_id_map:
+            rejected_patterns.append(pattern_item)
             continue
         direction_str = pattern_item['direction']
         edge_dir = EdgeDirection(direction_str)
-        pattern_obj = NodeEdge(root_uri, root_label, prop_uri, edge_dir)
+        pattern_obj = NodeEdge(root_uri, root_label, prop_uri, prop_id, edge_dir)
         patterns_data_list.append(pattern_obj)
     
-    return patterns_data_list
+    return patterns_data_list, rejected_patterns
 
 def load_property_info(cached_file_path):
-    global PROPERTY_INFO_MAP
+    global PROPERTY_INFO_MAP, PROPERTY_ID_MAP
+    
     PROPERTY_INFO_MAP = read_json_file(cached_file_path)
+    PROPERTY_ID_MAP = {}
+    for key in PROPERTY_INFO_MAP:
+        prop_id = get_last_uri_fragment(key)
+        PROPERTY_ID_MAP[prop_id] = key
 
 
 def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None):
@@ -94,6 +111,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     patterns_data_list = []
     visited_nodes = set()
     
+    all_rejected_patterns = []
     # For each entity, find all the triple patterns that exist
     for entity_qid in filter_entity_dict.values():
         print(f'Traversing: {entity_qid}')
@@ -102,10 +120,12 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
         entity_label = get_node_label(entity_uri, wd_ep)
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
         print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
-        extracted_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_INFO_MAP)
+        extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
         patterns_data_list.extend(extracted_patterns)
+        all_rejected_patterns.extend(rejected_patterns)
         print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
+    # TODO: Check which ones are getting rejected and find why were they not cached
     # TODO: Implement
     print(PROPERTY_INFO_MAP)
     # Extract domain and range for each relation to use as augmented information
