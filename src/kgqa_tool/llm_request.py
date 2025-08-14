@@ -74,13 +74,12 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    check_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question.  Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question.
-    Strictly follow the provided "Answer Format", do not write anything else. Make sure the SPARQL makes sense syntactically and semantically.
+    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question.
+    Strictly follow the provided "Answer Format", do not write anything else.
 
     Question: {question_txt}
 
-    ### Triple patterns table:
-    SUBJECT label, ID\tPROPERTY label, ID\tObject label, ID\t\t(property domain info), (property range info)\n
+    ### Triple patterns:
     {patterns_str}
 
     ---
@@ -90,7 +89,7 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(gen_prompt, None, model_config.get_static_instance(), model_config.model_id)
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL

@@ -5,7 +5,7 @@ from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_pattern
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
 from src.const.llm import ChatModel
-from src.util.common import read_json_file, get_last_uri_fragment
+from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
 from src.util.qald_io import convert_basic_output
 
@@ -42,36 +42,32 @@ class NodeEdge:
             
     def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False):
         prop_ent_uri = prop_id_map[self.relation_id]
-        
-        prop_id = self.relation_id
-        node_id = get_last_uri_fragment(self.node_uri)
-        
+
         # get the property label
         prop_label = prop_info_map[prop_ent_uri]['label']
         # get the domain label(s)
         dom_label_list = [dom_item['label'] for dom_item in prop_info_map[prop_ent_uri]['domains']]
         # get the range label(s)
         range_label_list = [range_item['label'] for range_item in prop_info_map[prop_ent_uri]['ranges']]
-        
+
         class_info = (
             f"(possible subject classes: {','.join(dom_label_list)}), "
             f"(possible object classes: {','.join(range_label_list)})"
         )
-
-        # Build the node representation, optionally prefixing the node_id
-        node_repr = (
-            f"{self.node_label}, ID: {node_id}" if include_id else f"{self.node_label}"
-        )
-
-        # Build the property representation, optionally prefixing the property_id
-        prop_repr = (
-            f"{prop_label}, ID: {prop_id}" if include_id else f"{prop_label}"
-        )
-
+        
         if self.direction == EdgeDirection.OUTGOING:
-            verbalized_str = f"{node_repr}\t{prop_repr}\t?some_object\t\t{class_info}"
-        else:
-            verbalized_str = f"?some_subject\t{prop_repr}\t{node_repr}\t\t{class_info}"
+            # verbal part: "<node_label> <property_label> ?object"
+            verbal_part = f"'{self.node_label}' '{prop_label}' ?object"
+            # ID part (only if requested)
+            id_part = f"\t{get_prefixed_id(self.node_uri)} {get_prefixed_id(self.relation_uri)} ?object" if include_id else ""
+        else:  # EdgeDirection.INCOMING
+            # verbal part: "?subject <property_label> <node_label>"
+            verbal_part = f"?subject '{prop_label}' '{self.node_label}'"
+            # ID part (only if requested)
+            id_part = f"\t?subject {get_prefixed_id(self.relation_uri)} {get_prefixed_id(self.node_uri)}" if include_id else ""
+
+        # combine verbalization, optional ID triple, and class info
+        verbalized_str = f"{verbal_part}{id_part}\t {class_info}"
 
         return verbalized_str
 
@@ -161,8 +157,8 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
     print(f'First SPARQL: {sparql}')
     ## refine this SPARQL (extra step that is needed for certain models)
-    sparql = sparql_refinement(question_text, sparql, model_config)
-    print(f'Refined SPARQL: {sparql}')
+    #sparql = sparql_refinement(question_text, sparql, model_config)
+    #print(f'Refined SPARQL: {sparql}')
     
     # TODO: Implementation pending
     # Ask the LLM if we should consider further hops

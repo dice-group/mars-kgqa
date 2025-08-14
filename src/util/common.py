@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from src.const.misc import PREFIX_MAP
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -67,3 +68,20 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     if get_only_bindings:
         ret_val = data['results']['bindings']
     return ret_val, req_failed
+
+def get_prefixed_id(resource_uri):
+    longest_ns: str | None = None
+    longest_pfx: str | None = None
+
+    for ns, pfx in PREFIX_MAP.items():
+        if resource_uri.startswith(ns):
+            # Keep the longest namespace seen so far
+            if longest_ns is None or len(ns) > len(longest_ns):
+                longest_ns = ns
+                longest_pfx = pfx
+
+    if longest_ns is not None and longest_pfx is not None:
+        local = resource_uri[len(longest_ns):]   # strip the matched namespace
+        return f"{longest_pfx}:{local}"
+
+    return f'<{resource_uri}>' # for URIs that cannot be prefixed
