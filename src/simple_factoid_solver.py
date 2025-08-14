@@ -207,7 +207,7 @@ def save_answers_as_tsv(answers_dict, file_path):
         for question_id, answer in answers_dict.items():
             writer.writerow([question_id, answer])
             
-def generate_output_path(approach_name, input_file_path):
+def generate_output_path(approach_name, input_file_path, file_format='tsv'):
     # Ensure we work with absolute paths
     input_abs_path = os.path.abspath(input_file_path)
 
@@ -219,18 +219,18 @@ def generate_output_path(approach_name, input_file_path):
 
     # Build the directory hierarchy
     prediction_dir = os.path.join(parent_dir, "prediction")
-    file_dir = os.path.join(prediction_dir, input_file_name, "tsv")
+    file_dir = os.path.join(prediction_dir, input_file_name, file_format)
 
     # Ensure the directories exist (optional – caller can create if desired)
     # os.makedirs(file_dir, exist_ok=True)
 
     # Final output file path
-    output_file = f"{approach_name}.tsv"
+    output_file = f"{approach_name}.{file_format}"
     output_path = os.path.join(file_dir, output_file)
 
     return output_path
             
-def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep):
+def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config=DEFAULT_CHAT_LLM_CONFIG):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -274,7 +274,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep):
         rel_dict = question_item['found_rel']
          
         # send to process_input_query
-        cur_generated_output = process_fn(question_text, DEFAULT_CHAT_LLM_CONFIG, (aug_text, ent_dict, rel_dict), wd_ep)
+        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep)
         # Cache the generated SPARQL
         answers_cache[cache_id] = cur_generated_output
         # Save updated cache to disk

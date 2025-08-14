@@ -74,16 +74,39 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    check_prompt = f"""Given a question and extracted triple patterns from Wikidata with their entity IDs and augmented domain and range restrictions, generate a SPARQL to answer the question.
-    Pay attention to the triple pattern and the domain and range while constructing the SPARQL.
-    Strictly follow the provided "Answer Format", do not write anything else. 
+    check_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question.  Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question.
+    Strictly follow the provided "Answer Format", do not write anything else. Make sure the SPARQL makes sense syntactically and semantically.
 
     Question: {question_txt}
 
-    ### Triple patterns:
-    <subject> <predicate> <object>\t (subject constraints) (object constraints) \n
-    
+    ### Triple patterns table:
+    SUBJECT label, ID\tPROPERTY label, ID\tObject label, ID\t\t(property domain info), (property range info)\n
     {patterns_str}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    print(f'LLM Response: {llm_resp_text}')
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        
+    return answer_sparql
+
+def sparql_refinement(question_txt, sparql_str, model_config):
+    
+
+    check_prompt = f"""For the given question, FIX the provided SPARQL for Wikidata. Write it as it is, if the SPARQL requires no fix. Strictly follow the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    SPARQL: {sparql_str}
 
     ---
 

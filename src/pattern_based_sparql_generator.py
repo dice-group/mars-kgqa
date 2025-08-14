@@ -1,11 +1,13 @@
-# Sample usage: python -m src.simple_sparql_generator
+# Sample usage: python -m src.pattern_based_sparql_generator
 from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
-from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql
+from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
+from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment
 import heapq
+from src.util.qald_io import convert_basic_output
 
 from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
@@ -58,18 +60,18 @@ class NodeEdge:
 
         # Build the node representation, optionally prefixing the node_id
         node_repr = (
-            f"<{self.node_label}, ID: {node_id}> " if include_id else f"<{self.node_label}>"
+            f"{self.node_label}, ID: {node_id}" if include_id else f"{self.node_label}"
         )
 
         # Build the property representation, optionally prefixing the property_id
         prop_repr = (
-            f"<{prop_label}, ID: {prop_id}> " if include_id else f"<{prop_label}>"
+            f"{prop_label}, ID: {prop_id}" if include_id else f"{prop_label}"
         )
 
         if self.direction == EdgeDirection.OUTGOING:
-            verbalized_str = f"{node_repr} {prop_repr} <_object_>\t{class_info}"
+            verbalized_str = f"{node_repr}\t{prop_repr}\t?some_object\t\t{class_info}"
         else:
-            verbalized_str = f"<_subject_> {prop_repr} {node_repr}\t{class_info}"
+            verbalized_str = f"?some_subject\t{prop_repr}\t{node_repr}\t\t{class_info}"
 
         return verbalized_str
 
@@ -157,6 +159,10 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
     
     sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
+    print(f'First SPARQL: {sparql}')
+    ## refine this SPARQL (extra step that is needed for certain models)
+    sparql = sparql_refinement(question_text, sparql, model_config)
+    print(f'Refined SPARQL: {sparql}')
     
     # TODO: Implementation pending
     # Ask the LLM if we should consider further hops
@@ -167,8 +173,6 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     
     # Choose top F triples from each chosen path
     # Ask LLM to generate a SPARQL based on this context
-    
-    print(f'Generated SPARQL: {sparql}')
         
     return sparql
 
@@ -178,15 +182,24 @@ if __name__ == "__main__":
     
     approach_name = 'pbsg'
     
+    llm_config = ChatModel.GEMMA3.value
+    
+    run_name = f'{approach_name}__{llm_config.model_id}'
+    
     kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED.value
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
     qald_file_path = kgqa_ds.split_dict[DatasetSplit.TEST]
     
-    output_path = generate_output_path(approach_name, qald_file_path)
+    tsv_output_path = generate_output_path(run_name, qald_file_path, 'tsv')
     
     # Load the cached property info map
     load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
     
-    process_dataset(approach_name, qald_file_path, output_path, process_input_query, wd_ep)
+    # Generates TSV (for readability)
+    process_dataset(run_name, qald_file_path, tsv_output_path, process_input_query, wd_ep, llm_config)
+    
+    json_output_path = generate_output_path(run_name, qald_file_path, 'json')
+    # Converts TSV to JSON (for evaluation)
+    convert_basic_output(tsv_output_path, qald_file_path, json_output_path, has_tuples=False)
