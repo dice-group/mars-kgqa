@@ -63,27 +63,27 @@ def extract_triples_data(triples_dict):
     return triple_data_list
 
 
-def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 512):
+def get_verbalization_similarity(query_text, data_list, verbalizer, batch_size = 512):
     
-    print(f'Computing similarity of {len(triple_data_list)} triples with batch size of {batch_size}..')
+    print(f'Computing similarity of {len(data_list)} data item(s) with batch size of {batch_size}..')
     
     batched_triple_data = []
 
     # Split triple_data_list into batches
-    for i in range(0, len(triple_data_list), batch_size):
-        batch = triple_data_list[i:i + batch_size]
+    for i in range(0, len(data_list), batch_size):
+        batch = data_list[i:i + batch_size]
         batched_triple_data.append(batch)
 
     # Fetch embeddings
     triple_data_embd_list = []
-    for triple_data_batch in tqdm(batched_triple_data, desc='Processing triple batches'):
+    for triple_data_batch in tqdm(batched_triple_data, desc='Processing data batches'):
         # Build text list
-        cur_text_batch = [trip_data.get_verbalization() for trip_data in triple_data_batch]
+        cur_text_batch = [verbalizer(trip_data) for trip_data in triple_data_batch]
         # llm request tool
         cur_embd_batch = get_embeddings(cur_text_batch, DEFAULT_EMBED_LLM_CONFIG)
         triple_data_embd_list.extend(cur_embd_batch)
 
-    query_text = aug_qtxt[:TRIPLE_VERBALIZATION_LENGTH_LIMIT] # Truncating the input text to limit to avoid exception during embedding
+    query_text = query_text[:TRIPLE_VERBALIZATION_LENGTH_LIMIT] # Truncating the input text to limit to avoid exception during embedding
     # Compute cosine similarity of the verbalized triples to the augmented input
     query_embedding = get_embeddings([query_text], DEFAULT_EMBED_LLM_CONFIG)[0]
     triple_similarity_list = []
@@ -91,7 +91,7 @@ def get_triples_similarity(aug_qtxt, triple_data_list, batch_size = 512):
         triple_similarity_list.append(dot(query_embedding, triple_embd)) # as mentioned in https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 
     # heapq uses min-heap by default, so we multiply the similarity score by -1
-    triple_cossim_list = [(-similarity, triple_data) for similarity, triple_data in zip(triple_similarity_list, triple_data_list)]
+    triple_cossim_list = [(-similarity, triple_data) for similarity, triple_data in zip(triple_similarity_list, data_list)]
     return triple_cossim_list
 
 def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None):
@@ -123,7 +123,9 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     
     print(f'Total triples to process: {len(triple_data_list)}')
     
-    priority_queue = get_triples_similarity(aug_qtxt, triple_data_list)
+    verbalizer=lambda obj: obj.get_verbalization()
+    
+    priority_queue = get_verbalization_similarity(aug_qtxt, triple_data_list, verbalizer)
     
     
     # Test the if the answer is in top triples (context window), if not, expand it, compute similarity and add to the queue
@@ -190,7 +192,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
             expand_count+=1
             new_triples = find_1_hop_triples(next_node_uri, wd_ep)
             new_trip_data_list = extract_triples_data(new_triples)
-            new_trip_sim_list = get_triples_similarity(aug_qtxt, new_trip_data_list)
+            new_trip_sim_list = get_verbalization_similarity(aug_qtxt, new_trip_data_list, verbalizer)
             priority_queue.extend(new_trip_sim_list)
         
     return answer_tuples

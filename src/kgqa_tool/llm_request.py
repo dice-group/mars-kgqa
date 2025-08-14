@@ -69,6 +69,38 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
         
     return answer_sparql
 
+
+def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_config):
+    
+    patterns_str = '\n'.join(top_verbalized_patterns)
+
+    check_prompt = f"""Given a question and extracted triple patterns from Wikidata with their entity IDs and augmented domain and range restrictions, generate a SPARQL to answer the question.
+    Pay attention to the triple pattern and the domain and range while constructing the SPARQL.
+    Strictly follow the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    ### Triple patterns:
+    <subject> <predicate> <object>\t (subject constraints) (object constraints) \n
+    
+    {patterns_str}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    print(f'LLM Response: {llm_resp_text}')
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        
+    return answer_sparql
+
 def check_if_answer(question_txt, top_triples, context_list, model_config):
     # Check if the triple contains the answer to the question
 

@@ -1,8 +1,8 @@
 # Sample usage: python -m src.simple_sparql_generator
-from src.simple_factoid_solver import extract_triples_data, get_triples_similarity, process_dataset, generate_output_path
+from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
-from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes
+from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
 from src.util.common import read_json_file, get_last_uri_fragment
 import heapq
@@ -38,8 +38,12 @@ class NodeEdge:
         else:
             self.direction = EdgeDirection[direction.lower()]
             
-    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP):
+    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False):
         prop_ent_uri = prop_id_map[self.relation_id]
+        
+        prop_id = self.relation_id
+        node_id = get_last_uri_fragment(self.node_uri)
+        
         # get the property label
         prop_label = prop_info_map[prop_ent_uri]['label']
         # get the domain label(s)
@@ -47,10 +51,25 @@ class NodeEdge:
         # get the range label(s)
         range_label_list = [range_item['label'] for range_item in prop_info_map[prop_ent_uri]['ranges']]
         
+        class_info = (
+            f"(possible subject classes: {','.join(dom_label_list)}), "
+            f"(possible object classes: {','.join(range_label_list)})"
+        )
+
+        # Build the node representation, optionally prefixing the node_id
+        node_repr = (
+            f"<{self.node_label}, ID: {node_id}> " if include_id else f"<{self.node_label}>"
+        )
+
+        # Build the property representation, optionally prefixing the property_id
+        prop_repr = (
+            f"<{prop_label}, ID: {prop_id}> " if include_id else f"<{prop_label}>"
+        )
+
         if self.direction == EdgeDirection.OUTGOING:
-            verbalized_str = f'{self.node_label} {prop_label} _object_ \t (possible subject classes: {','.join(dom_label_list)}), (possible object classes: {','.join(range_label_list)}) '
+            verbalized_str = f"{node_repr} {prop_repr} <_object_>\t{class_info}"
         else:
-            verbalized_str = f'_subject_ {prop_label} {self.node_label} \t (possible subject classes: {','.join(dom_label_list)}), (possible object classes: {','.join(range_label_list)}) '
+            verbalized_str = f"<_subject_> {prop_repr} {node_repr}\t{class_info}"
 
         return verbalized_str
 
@@ -125,16 +144,21 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
         all_rejected_patterns.extend(rejected_patterns)
         print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
-    # TODO: Check which ones are getting rejected and find why were they not cached
     # TODO: Implement
-    print(PROPERTY_INFO_MAP)
-    # Extract domain and range for each relation to use as augmented information
-    
-    # Compute similarity of the patterns to the query
-    
+    # Compute similarity of the patterns to the (augmented) query
+    verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP)
     # Sort the patterns
-    
+    priority_queue = get_verbalization_similarity(aug_qtxt, patterns_data_list, verbalizer)
     # For top N patterns
+    n_value = 10
+    top_triples = heapq.nsmallest(n_value, priority_queue, key=lambda x: x[0])
+    
+    id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
+    top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
+    
+    sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
+    
+    # TODO: Implementation pending
     # Ask the LLM if we should consider further hops
     # If yes, then expand the chosen triples and add them to the new list
         # compute similarity
@@ -143,8 +167,6 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     
     # Choose top F triples from each chosen path
     # Ask LLM to generate a SPARQL based on this context
-    
-    sparql = None
     
     print(f'Generated SPARQL: {sparql}')
         
