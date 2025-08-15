@@ -178,11 +178,12 @@ if __name__ == "__main__":
     
     approach_name = 'pbsg'
     
-    llm_config = ChatModel.GPTOSS120B.value
+    llm_config = ChatModel.QWEN3_CODER.value
     
     run_name = f'{approach_name}__{llm_config.model_id}'
     
     kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED.value
+    #kgqa_ds = KgqaDataset.QALD10.value
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     

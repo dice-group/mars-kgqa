@@ -1,5 +1,6 @@
 from openai import OpenAI
 import requests
+import re
 
 def get_opai_client(endpoint=None, api_key=None):
     opai_client = OpenAI(base_url=endpoint, api_key=api_key)
@@ -28,5 +29,11 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id):
 def get_embeddings(input_texts, embed_config=None):
     # Compute input embeddings
     embed_endpoint = embed_config.endpoint
-    resp = requests.post(embed_endpoint + '/embeddings', json={'input': input_texts}).json()
+    resp = requests.post(embed_endpoint + '/embeddings', json={'input': input_texts, 'model': embed_config.model_id}).json()
     return [d['embedding'] for d in resp['data']]
+
+def remove_think_context(llm_response_text):
+    # Remove the parts between <think> </think> if its there, other return as is
+    # Use a non‑greedy regex with DOTALL so it matches across newlines.
+    cleaned_text = re.sub(r'<think\b[^>]*?>.*?</think>', '', llm_response_text, flags=re.DOTALL)
+    return cleaned_text

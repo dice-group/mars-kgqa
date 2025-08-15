@@ -1,5 +1,5 @@
 
-from src.util.llm import prompt_chat_llm
+from src.util.llm import prompt_chat_llm, remove_think_context
 
 
 def generate_baseline_sparql(question_txt, model_config):
@@ -16,6 +16,8 @@ def generate_baseline_sparql(question_txt, model_config):
 
     """
     llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -61,6 +63,8 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
 
     """
     llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -90,6 +94,8 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
 
     """
     llm_resp_text = prompt_chat_llm(gen_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -115,6 +121,8 @@ def sparql_refinement(question_txt, sparql_str, model_config):
 
     """
     llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -155,6 +163,8 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
 
     """
     llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
 
     # Parse the LLM response
     if "Answer:" in llm_resp_text:
@@ -183,6 +193,8 @@ def recognize_entities_and_relations(question_txt, model_config):
     Question: \\textbf{{{question_txt}}}
     """
     llm_resp_text = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     return llm_resp_text
 
 def filter_common_nodes(question_txt, entity_dict, model_config):
@@ -194,6 +206,8 @@ def filter_common_nodes(question_txt, entity_dict, model_config):
     Entity Dict: {entity_dict}
     """
     llm_resp_text = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
     
     qid_set = set([item.strip() for item in llm_resp_text.split(',')])
     filtered_dict = dict()

@@ -67,6 +67,62 @@ models:
       --top-p 0.95
       --min-p 0.01
     ttl: 300
+  qwen3-32b:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/Qwen3-32B-GGUF:Q8_0
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0.00
+    ttl: 300
+  mistral-small-3.2-24b:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q8_0
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 0.15
+      --top-k -1
+      --top-p 1.00
+      --min-p 0.0
+    ttl: 300
+  # https://docs.unsloth.ai/basics/qwen3-coder-how-to-run-locally#recommended-settings
+  qwen3-coder-30b-a3b:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 0.7
+      --top-k 20
+      --top-p 0.8
+      --min-p 0.0
+    ttl: 300
+  deepseek-r1-0528-qwen3-8b:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF
+      --jinja
+      --ctx-size 16384
+      --n-predict 16384
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 0.6
+      --top-p 0.95
+      --min-p 0.01
+    ttl: 300
 groups:
   nomic-embed-text-v2-moe:
     persistent: true

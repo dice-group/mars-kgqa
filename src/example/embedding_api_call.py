@@ -5,7 +5,8 @@ from src.const.llm import DEFAULT_EMBED_LLM_CONFIG
 from src.util.common import dot
 
 def embed(texts):
-    resp = requests.post(DEFAULT_EMBED_LLM_CONFIG.endpoint + '/embeddings', json={'input': texts}).json()
+    resp = requests.post(DEFAULT_EMBED_LLM_CONFIG.endpoint + '/embeddings', json={'input': texts, 'model': DEFAULT_EMBED_LLM_CONFIG.model_id})
+    resp = resp.json()
     return [d['embedding'] for d in resp['data']]
 
 

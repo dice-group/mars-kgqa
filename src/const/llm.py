@@ -14,19 +14,24 @@ class ModelAPIConfig:
         return self.static_instance
     
     def get_new_instance(self):
-        return get_opai_client(self.endpoint, self.api_key)    
+        return get_opai_client(self.endpoint, self.api_key)
+    
 
+LLM_ENDPOINT = os.environ.get("LLAMA_SWAP_OPENAI_ENDPOINT")
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        
 class ChatModel(Enum):
     # All models are using Q8
-    GEMMA3 = ModelAPIConfig("gemma-3-27b-it", os.environ.get("GEMMA3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
-    QWEN3 = ModelAPIConfig("Qwen3-32B", os.environ.get("QWEN3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
-    MISTRAL3 = ModelAPIConfig("Mistral-Small-3.2-24B-Instruct-2506", os.environ.get("MISTRAL3_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
-    GPTOSS120B = ModelAPIConfig("gpt-oss-120b", os.environ.get("GPTOSS120B_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
+    GEMMA3 = ModelAPIConfig("gemma-3-27b-it", LLM_ENDPOINT, os.environ.get("OWUI"))
+    QWEN3 = ModelAPIConfig("qwen3-32b", LLM_ENDPOINT, os.environ.get("OWUI"))
+    MISTRAL3 = ModelAPIConfig("mistral-small-3.2-24b", LLM_ENDPOINT, os.environ.get("OWUI"))
+    GPTOSS120B = ModelAPIConfig("gpt-oss-120b", LLM_ENDPOINT, os.environ.get("OWUI"))
+    GLM4dt5AIR = ModelAPIConfig("glm-4.5-air", LLM_ENDPOINT, os.environ.get("OWUI")) # Takes too long thinking
+    QWEN3_CODER = ModelAPIConfig("qwen3-coder-30b-a3b", LLM_ENDPOINT, os.environ.get("OWUI"))
+    DEEPSEEK_R1_QWEN3_8B = ModelAPIConfig("deepseek-r1-0528-qwen3-8b", LLM_ENDPOINT, os.environ.get("OWUI"))
 
 # Embedding model
 class EmbeddingModel(Enum):
-    NOMICV2_CONFIG = ModelAPIConfig("nomic-embed-text-v2-moe", os.environ.get("NOMICV2_OPENAI_ENDPOINT"), os.environ.get("OWUI"))
+    NOMICV2_CONFIG = ModelAPIConfig("nomic-embed-text-v2-moe", LLM_ENDPOINT, os.environ.get("OWUI"))
 
 DEFAULT_CHAT_LLM_CONFIG = ChatModel.GEMMA3.value # can be changed later
 DEFAULT_EMBED_LLM_CONFIG = EmbeddingModel.NOMICV2_CONFIG.value
