@@ -68,9 +68,9 @@ models:
       --min-p 0.01
     ttl: 300
 groups:
-  nomic-embed-text:
+  nomic-embed-text-v2-moe:
     persistent: true
     swap: false
     exclusive: false
     members:
-      - nomic-embed-text
+      - nomic-embed-text-v2-moe
