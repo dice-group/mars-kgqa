@@ -1,0 +1,76 @@
+logLevel: warning
+
+healthCheckTimeout: 600
+
+macros:
+  server_base: >
+    /app/llama-server
+    --port ${PORT}
+    --no-webui
+    --no-mmap
+    --no-warmup
+    --prio 3
+    --poll 100
+  # --offline
+
+models:
+  nomic-embed-text-v2-moe:
+    cmd: |
+      ${server_base}
+      --hf-repo nomic-ai/nomic-embed-text-v2-moe-GGUF:F16
+      --embedding
+      --ctx-size 512
+      --batch-size 8192
+      --ubatch-size 8192
+      --n-gpu-layers 99
+    ttl: 300
+  gemma-3-27b-it:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/gemma-3-27b-it-GGUF:Q8_0
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 1.0
+      --top-k 64
+      --top-p 0.95
+      --min-p 0.01
+    ttl: 300
+  gpt-oss-120b:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/gpt-oss-120b-GGUF:Q8_0
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 1.0
+      --top-k 0
+      --top-p 1.0
+      --min-p 0.0
+    # Note: Flash Attention not supported yet, causes segfault
+    ttl: 300
+  glm-4.5-air:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/GLM-4.5-Air-GGUF:Q8_0
+      --jinja
+      --ctx-size 32768
+      --n-predict 32768
+      --n-gpu-layers 99
+      --flash-attn
+      --temp 0.7
+      --top-k 64
+      --top-p 0.95
+      --min-p 0.01
+    ttl: 300
+groups:
+  nomic-embed-text:
+    persistent: true
+    swap: false
+    exclusive: false
+    members:
+      - nomic-embed-text
