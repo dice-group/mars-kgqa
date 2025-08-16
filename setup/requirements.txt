@@ -2,3 +2,5 @@ openai
 debugpy
 requests
 ipykernel
+pandas
+lxml

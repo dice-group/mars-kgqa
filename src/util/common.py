@@ -2,6 +2,7 @@ import json
 import os
 import requests
 from src.const.misc import PREFIX_MAP
+import csv
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -85,3 +86,11 @@ def get_prefixed_id(resource_uri):
         return f"{longest_pfx}:{local}"
 
     return f'<{resource_uri}>' # for URIs that cannot be prefixed
+
+def export_csv(output_file, dataset):
+    create_directory_if_not_exists(output_file)
+    with open(output_file, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(dataset)
+    f.close()
+    print("csv file is exported to ", output_file)

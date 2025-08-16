@@ -17,7 +17,7 @@ LITERAL_VAL_PREFIX = 'literal_val:'
 
 WIKIDATA_PROP_INFO_CACHE_FILEPATH = "data_dir/cache/wikidata_relations.json"
 
-
+GERBIL_EXPERIMENT_URI_STORE_FILEPATH = "data_dir/gerbil_results.tsv"
 
 PREFIX_BLOCK = """
 PREFIX bd: <http://www.bigdata.com/rdf#>

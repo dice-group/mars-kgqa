@@ -207,8 +207,10 @@ def save_answers_as_tsv(answers_dict, file_path):
         for question_id, answer in answers_dict.items():
             writer.writerow([question_id, answer])
             
-def generate_output_path(approach_name, input_file_path, file_format='tsv'):
-    # Ensure we work with absolute paths
+def _build_output_path(approach_name: str, input_file_path: str,
+                       leaf_dir: str, file_ext: str) -> str:
+
+    # Absolute path of the input file
     input_abs_path = os.path.abspath(input_file_path)
 
     # Parent directory of the input file
@@ -217,18 +219,27 @@ def generate_output_path(approach_name, input_file_path, file_format='tsv'):
     # Base name of the input file (without extension)
     input_file_name = os.path.splitext(os.path.basename(input_abs_path))[0]
 
-    # Build the directory hierarchy
+    # Build the directory hierarchy:
+    #   <parent>/prediction/<input‑file‑name>/<leaf_dir>
     prediction_dir = os.path.join(parent_dir, "prediction")
-    file_dir = os.path.join(prediction_dir, input_file_name, file_format)
+    file_dir = os.path.join(prediction_dir, input_file_name, leaf_dir)
 
-    # Ensure the directories exist (optional – caller can create if desired)
+    # Caller can create the directories if needed:
     # os.makedirs(file_dir, exist_ok=True)
 
     # Final output file path
-    output_file = f"{approach_name}.{file_format}"
-    output_path = os.path.join(file_dir, output_file)
+    output_file = f"{approach_name}.{file_ext}"
+    return os.path.join(file_dir, output_file)
 
-    return output_path
+
+def generate_output_path(approach_name, input_file_path, file_format='tsv'):
+    return _build_output_path(approach_name, input_file_path,
+                              leaf_dir=file_format, file_ext=file_format)
+
+
+def generate_gerbil_export_path(approach_name, input_file_path):
+    return _build_output_path(approach_name, input_file_path,
+                              leaf_dir='gerbil', file_ext='csv')
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config=DEFAULT_CHAT_LLM_CONFIG):
     # Output directory

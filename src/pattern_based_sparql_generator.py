@@ -1,9 +1,9 @@
 # Sample usage: python -m src.pattern_based_sparql_generator
-from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path
+from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement
-from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
@@ -11,6 +11,7 @@ from src.util.qald_io import convert_basic_output
 
 from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
+from src.util.gerbil import create_export_gerbil_experiment
 
 PROPERTY_INFO_MAP = None
 PROPERTY_ID_MAP = None
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     
     approach_name = 'pbsg'
     
-    llm_config = ChatModel.QWEN3_CODER.value
+    llm_config = ChatModel.DEEPSEEK_R1_QWEN3_8B.value
     
     run_name = f'{approach_name}__{llm_config.model_id}'
     
@@ -187,7 +188,9 @@ if __name__ == "__main__":
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
-    qald_file_path = kgqa_ds.split_dict[DatasetSplit.TEST]
+    split_conf = DatasetSplit.TEST
+    
+    qald_file_path = kgqa_ds.split_dict[split_conf]
     
     tsv_output_path = generate_output_path(run_name, qald_file_path, 'tsv')
     
@@ -200,3 +203,10 @@ if __name__ == "__main__":
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
     convert_basic_output(tsv_output_path, qald_file_path, json_output_path, has_tuples=False)
+    
+    # Evaluating results on GERBIL
+    gold_dataset_label = f'{kgqa_ds.dataset_id}_{split_conf.name.lower()}'
+    system_label = f'{run_name}'
+    gerbil_result_path = generate_gerbil_export_path(run_name, qald_file_path)
+    
+    create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
