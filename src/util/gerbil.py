@@ -1,4 +1,4 @@
-# Based on: https://github.com/dice-group/MST5/blob/master/code/utils/data_io.py
+# Based on: https://github.com/dice-group/MST5/blob/master/code/components/Gerbil.py
 import requests
 import io
 import json
