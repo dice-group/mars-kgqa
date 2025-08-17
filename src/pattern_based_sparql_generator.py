@@ -177,18 +177,24 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
 # Example usage
 if __name__ == "__main__":
     
+    # Configurable variables
+    use_goldentrel = True
     approach_name = 'pbsg'
-    
     llm_config = ChatModel.GPTOSS120B.value
-    
-    run_name = f'{approach_name}__{llm_config.model_id}'
     
     kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value
     #kgqa_ds = KgqaDataset.QALD10.value
     
-    wd_ep = kgqa_ds.preferred_wd_endpoint
-    
     split_conf = DatasetSplit.TEST
+    
+    if use_goldentrel:
+        approach_name+='_gold-entrel'
+    
+    # Rest of the logic
+    
+    run_name = f'{approach_name}__{llm_config.model_id}'
+    
+    wd_ep = kgqa_ds.preferred_wd_endpoint
     
     qald_file_path = kgqa_ds.split_dict[split_conf]
     
@@ -198,7 +204,7 @@ if __name__ == "__main__":
     load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, process_input_query, wd_ep, llm_config)
+    process_dataset(run_name, qald_file_path, tsv_output_path, process_input_query, wd_ep, llm_config, use_goldentrel)
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)

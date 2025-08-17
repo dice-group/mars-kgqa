@@ -241,7 +241,7 @@ def generate_gerbil_export_path(approach_name, input_file_path):
     return _build_output_path(approach_name, input_file_path,
                               leaf_dir='gerbil', file_ext='csv')
             
-def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config=DEFAULT_CHAT_LLM_CONFIG):
+def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config=DEFAULT_CHAT_LLM_CONFIG, use_gold_entrel=False):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -277,13 +277,18 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, l
 
         # extract aug_text, extracted_ents, extracted_rels
         
-        if not all(key in question_item for key in ['augmented_seq', 'found_ent', 'found_rel']):
+        if not use_gold_entrel and not all(key in question_item for key in ['augmented_seq', 'found_ent', 'found_rel']):
             continue # skip if augmented data is missing
         
         aug_text = question_item['augmented_seq']
-        ent_dict = question_item['found_ent']
-        rel_dict = question_item['found_rel']
-         
+        
+        if use_gold_entrel:
+            ent_dict = {entry['label']: entry['uri'] for entry in question_item['gold_ent']}
+            rel_dict = {entry['label']: entry['uri'] for entry in question_item['gold_rel']}
+        else:
+            ent_dict = question_item['found_ent']
+            rel_dict = question_item['found_rel']
+        
         # send to process_input_query
         cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep)
         # Cache the generated SPARQL
