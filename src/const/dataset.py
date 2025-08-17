@@ -19,10 +19,15 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     }, None)
     
-    QALD9PLUS_UPDATED =  KgqaDatasetInfo("qald9plus_updt", "QALD-9-plus (Updated)", {
+    QALD9PLUS_UPDATED_TENTRIS =  KgqaDatasetInfo("qald9plus_updt_tentris", "QALD-9-plus (Updated on Tentris)", {
         # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/updt_aug_gold.json"
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentris_updt_aug_gold.json"
     }, TENTRIS_WIKIDATA_EP)
+    
+    QALD9PLUS_UPDATED_CURWD =  KgqaDatasetInfo("qald9plus_updt_curwd", "QALD-9-plus (Updated on Current Wikidata)", {
+        # DatasetSplit.TRAIN: "",
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/cur_wd_updt_aug_gold.json"
+    }, CURRENT_WIKIDATA_EP)
     
     QALD10 =  KgqaDatasetInfo("qald10", "QALD-10", {
         # DatasetSplit.TRAIN: "",

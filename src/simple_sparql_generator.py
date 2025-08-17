@@ -55,7 +55,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
 if __name__ == "__main__":
     approach_name = 'ssg'
     
-    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED.value
+    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_TENTRIS.value
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     

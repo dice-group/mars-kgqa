@@ -301,7 +301,7 @@ if __name__ == "__main__":
     
     approach_name = 'sfs'
     
-    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED.value
+    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_TENTRIS.value
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
