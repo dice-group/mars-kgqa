@@ -180,7 +180,7 @@ if __name__ == "__main__":
     # Configurable variables
     use_goldentrel = True
     approach_name = 'pbsg'
-    llm_config = ChatModel.GPTOSS120B.value
+    llm_config = ChatModel.GLM4dt5AIR.value
     
     kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value
     #kgqa_ds = KgqaDataset.QALD10.value

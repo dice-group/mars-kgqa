@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -eu
 ## Sample usage:
 # To start: bash setup/llama_swap_control.sh start
 # to stop: bash setup/llama_swap_control.sh stop
