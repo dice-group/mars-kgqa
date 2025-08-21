@@ -178,7 +178,7 @@ def load_tsv_answers_dict(file_path, has_tuples=False):
     return answers_dict
 
 # Function to convert the output from basic factiod solver to qald format with answers
-def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples):
+def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples, wd_ep=DEFAULT_WIKIDATA_ENDPOINT_URL):
         
     tsv_dict = load_tsv_answers_dict(tsv_file_path, has_tuples)
     qald_obj = read_json_file(qald_file_path)
@@ -194,11 +194,13 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
             answer_obj = get_qald_answer_obj(answer_item)
             question_item['query'] = {}
         else:
-            formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, DEFAULT_WIKIDATA_ENDPOINT_URL)
+            formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, wd_ep)
             answer_obj = [qald_answer]
             question_item['query'] = { 'sparql': formatted_sparql}
 
-        question_item['answers'] = answer_obj    
+        question_item['answers'] = answer_obj
+        # wait 3 seconds between requests
+        time.sleep(3)    
     
     save_json_file(qald_obj, output_file_path)
     

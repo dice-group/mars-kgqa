@@ -122,6 +122,8 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     else:
         aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
         
+    print(f'Identified entities: {entity_dict}')
+        
     # Filter entity dictionary to remove entities that will lead to too many child nodes
     filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
     print(f'Entities to visit: {filter_entity_dict}')
@@ -178,7 +180,7 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
 if __name__ == "__main__":
     
     # Configurable variables
-    use_goldentrel = False
+    use_goldentrel = True
     approach_name = 'pbsg'
     llm_config = ChatModel.GPTOSS120B.value
     
@@ -208,7 +210,7 @@ if __name__ == "__main__":
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
-    convert_basic_output(tsv_output_path, qald_file_path, json_output_path, has_tuples=False)
+    convert_basic_output(tsv_output_path, qald_file_path, json_output_path, False, wd_ep)
     
     # Evaluating results on GERBIL
     gold_dataset_label = f'{kgqa_ds.dataset_id}_{split_conf.name.lower()}'
