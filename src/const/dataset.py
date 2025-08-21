@@ -31,7 +31,7 @@ class KgqaDataset(Enum):
     
     QALD10 =  KgqaDatasetInfo("qald10", "QALD-10", {
         # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/aug_gold.json"
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/filtered_gold_ent.json"
     }, QALD10_WIKIDATA_EP)
     
     QALD10_UPDATED =  KgqaDatasetInfo("qald10_updt", "QALD-10 (Updated)", {
