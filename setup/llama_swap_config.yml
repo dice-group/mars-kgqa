@@ -70,7 +70,7 @@ models:
   qwen3-32b:
     cmd: |
       ${server_base}
-      --hf-repo unsloth/Qwen3-32B-GGUF:Q8_0
+      --model /models/Qwen3-32B-Q8_0.gguf
       --jinja
       --ctx-size 131072
       --n-predict 131072

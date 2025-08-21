@@ -25,8 +25,8 @@ class KgqaDataset(Enum):
     }, TENTRIS_WIKIDATA_EP)
     
     QALD9PLUS_UPDATED_CURWD =  KgqaDatasetInfo("qald9plus_updt_curwd", "QALD-9-plus (Updated on Current Wikidata)", {
-        # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/cur_wd_updt_aug_gold.json"
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/curwd_updt_aug_gold.json",
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/curwd_updt_aug_gold.json"
     }, CURRENT_WIKIDATA_EP)
     
     QALD10 =  KgqaDatasetInfo("qald10", "QALD-10", {

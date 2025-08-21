@@ -178,19 +178,19 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
 if __name__ == "__main__":
     
     # Configurable variables
-    use_goldentrel = True
+    use_goldentrel = False
     approach_name = 'pbsg'
-    llm_config = ChatModel.GLM4dt5AIR.value
+    llm_config = ChatModel.GPTOSS120B.value
     
     kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value
     #kgqa_ds = KgqaDataset.QALD10.value
     
     split_conf = DatasetSplit.TEST
     
+    # Rest of the logic
+    
     if use_goldentrel:
         approach_name+='_gold-entrel'
-    
-    # Rest of the logic
     
     run_name = f'{approach_name}__{llm_config.model_id}'
     
