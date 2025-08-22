@@ -125,10 +125,13 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     print(f'Identified entities: {entity_dict}')
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
-    if using_gold_entrel:
-        filter_entity_dict = entity_dict
-    else:
-        filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
+    # if using_gold_entrel:
+    #     filter_entity_dict = entity_dict
+    # else:
+    #     filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
+    
+    ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
+    filter_entity_dict = entity_dict
     
     print(f'Entities to visit: {filter_entity_dict}')
     
