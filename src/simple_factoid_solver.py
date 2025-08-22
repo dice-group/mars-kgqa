@@ -292,7 +292,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, l
             rel_dict = {entry['label']: entry['uri'] for entry in question_item['filtered_rel']}
         
         # send to process_input_query
-        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep)
+        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep, use_gold_entrel)
         # Cache the generated SPARQL
         answers_cache[cache_id] = cur_generated_output
         # Save updated cache to disk

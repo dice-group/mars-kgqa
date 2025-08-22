@@ -112,7 +112,7 @@ def load_property_info(cached_file_path):
         PROPERTY_ID_MAP[prop_id] = key
 
 
-def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None):
+def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
     print(f'Processing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
@@ -125,7 +125,11 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
     print(f'Identified entities: {entity_dict}')
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
-    filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
+    if using_gold_entrel:
+        filter_entity_dict = entity_dict
+    else:
+        filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
+    
     print(f'Entities to visit: {filter_entity_dict}')
     
     patterns_data_list = []
