@@ -93,7 +93,7 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(gen_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')

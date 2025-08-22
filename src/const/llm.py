@@ -3,10 +3,12 @@ from enum import Enum
 from src.util.llm import get_opai_client
 
 class ModelAPIConfig:
-    def __init__(self, model_id, endpoint, api_key):
+    
+    def __init__(self, model_id, endpoint, api_key, sysprompt=None):
         self.model_id = model_id
         self.endpoint = endpoint
         self.api_key = api_key
+        self.sysprompt = sysprompt
         
     def get_static_instance(self):
         if not hasattr(self, 'static_instance'):
@@ -28,7 +30,7 @@ class ChatModel(Enum):
     GLM4dt5AIR = ModelAPIConfig("glm-4.5-air", LLM_ENDPOINT, os.environ.get("OWUI")) # Takes too long thinking
     QWEN3_CODER = ModelAPIConfig("qwen3-coder-30b-a3b", LLM_ENDPOINT, os.environ.get("OWUI"))
     DEEPSEEK_R1_QWEN3_8B = ModelAPIConfig("deepseek-r1-0528-qwen3-8b", LLM_ENDPOINT, os.environ.get("OWUI"))
-    LLAMA_NEMOTRON_SUPER_49B = ModelAPIConfig("llama-3_3-nemotron-super-49b-v1_5", LLM_ENDPOINT, os.environ.get("OWUI"))
+    LLAMA_NEMOTRON_SUPER_49B = ModelAPIConfig("llama-3_3-nemotron-super-49b-v1_5", LLM_ENDPOINT, os.environ.get("OWUI"), "/no_think") # Thinking model is taking too long, almost stuck at every request
     
 
 # Embedding model
