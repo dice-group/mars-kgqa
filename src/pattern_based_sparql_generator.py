@@ -184,7 +184,7 @@ if __name__ == "__main__":
     approach_name = 'pbsg'
     llm_config = ChatModel.GPTOSS120B.value
     
-    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value
+    kgqa_ds = KgqaDataset.QALD10.value
     #kgqa_ds = KgqaDataset.QALD10.value
     
     split_conf = DatasetSplit.TEST
