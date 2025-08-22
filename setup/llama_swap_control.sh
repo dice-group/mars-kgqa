@@ -2,7 +2,8 @@
 set -eu
 ## Sample usage:
 # To start: bash setup/llama_swap_control.sh start
-# to stop: bash setup/llama_swap_control.sh stop
+# To stop: bash setup/llama_swap_control.sh stop
+# To restart: bash setup/llama_swap_control.sh restart
 
 # NOTE: To stop the server: docker stop llama-swap
 
@@ -12,6 +13,15 @@ CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Determine action: start by default, or based on the first argument
 ACTION="${1:-start}"
+
+# To trigger restart
+if [[ "$ACTION" == "restart" ]]; then
+  echo "Restarting llama-swap container..."
+  # Stop the container if it exists; ignore errors if it isn’t running
+  docker stop llama-swap 2>/dev/null || true
+  # Continue to start the container (fall‑through to the start logic)
+  ACTION="start"
+fi
 
 if [[ "$ACTION" == "stop" ]]; then
   echo "Stopping llama-swap container..."

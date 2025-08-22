@@ -179,17 +179,16 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
 # Example usage
 if __name__ == "__main__":
     
-    # Configurable variables
-    use_goldentrel = True
-    approach_name = 'pbsg'
-    llm_config = ChatModel.GPTOSS120B.value
+    ## Configurable variables
+    use_goldentrel = False # Whether to use gold entities and relations
+    approach_name = 'pbsg' # identifier of the approach
+    llm_config = ChatModel.QWEN3.value # LLM to use
     
-    kgqa_ds = KgqaDataset.QALD10.value
-    #kgqa_ds = KgqaDataset.QALD10.value
+    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
-    split_conf = DatasetSplit.TEST
+    split_conf = DatasetSplit.TEST # Dataset split to use
     
-    # Rest of the logic
+    ## Rest of the logic
     
     if use_goldentrel:
         approach_name+='_gold-entrel'
