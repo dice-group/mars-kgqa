@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eu
+
 ## Sample usage:
 # To start: bash setup/llama_swap_control.sh start
 # To stop: bash setup/llama_swap_control.sh stop
@@ -30,8 +31,9 @@ if [[ "$ACTION" == "stop" ]]; then
 fi
 
 # If we reach here, we are starting the container
+# TODO: Allow variable based config for GPU assignment
 echo "Starting llama-swap container..."
-docker run -d -it --rm --runtime nvidia -p 9292:8080 \
+docker run --gpus '"device=1"' -d -it --rm --runtime nvidia -p 9292:8080 \
   -v $LLAMA_CACHE:/models \
   -v $CUR_SCRIPT_DIR/llama_swap_config.yml:/app/config.yaml \
   --env LLAMA_CACHE=/models \
