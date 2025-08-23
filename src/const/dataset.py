@@ -33,13 +33,8 @@ class KgqaDataset(Enum):
         # DatasetSplit.TRAIN: "",
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/filtered_gold_ent.json"
     }, QALD10_WIKIDATA_EP)
-    
-    QALD10_UPDATED =  KgqaDatasetInfo("qald10_updt", "QALD-10 (Updated)", {
+
+    LCQUAD2_UPDATED_CURWD =  KgqaDatasetInfo("lcquad2_updt", "LC-QuAD2.0 (Updated on Current Wikidata)", {
         # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/updt_aug_gold.json"
-    }, TENTRIS_WIKIDATA_EP)
-    
-    LCQUAD2_UPDATED =  KgqaDatasetInfo("lcquad2_updt", "LC-QuAD2.0 (Updated)", {
-        # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/updt_qald_aug_gold.json"
-    }, TENTRIS_WIKIDATA_EP)
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/updt_curwd_qald_aug_gold.json"
+    }, CURRENT_WIKIDATA_EP)
