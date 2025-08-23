@@ -112,7 +112,66 @@ def load_property_info(cached_file_path):
         PROPERTY_ID_MAP[prop_id] = key
 
 
-def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
+def process_input_query_1hop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
+    print(f'Processing question: {question_text}')
+    
+    wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
+    # Retrieve entities and relations for the input question
+    if preprocessed_input:
+        aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
+    else:
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
+        
+    print(f'Identified entities: {entity_dict}')
+        
+    # Filter entity dictionary to remove entities that will lead to too many child nodes
+    # if using_gold_entrel:
+    #     filter_entity_dict = entity_dict
+    # else:
+    #     filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
+    
+    ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
+    filter_entity_dict = entity_dict
+    
+    print(f'Entities to visit: {filter_entity_dict}')
+    
+    patterns_data_list = []
+    visited_nodes = set()
+    
+    all_rejected_patterns = [] # Mostly for debugging
+    # For each entity, find all the triple patterns that exist
+    for entity_qid in filter_entity_dict.values():
+        print(f'Traversing: {entity_qid}')
+        entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
+        visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
+        entity_label = get_node_label(entity_uri, wd_ep)
+        patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
+        print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
+        extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
+        patterns_data_list.extend(extracted_patterns)
+        all_rejected_patterns.extend(rejected_patterns)
+        print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
+    
+    # Compute similarity of the patterns to the (augmented) query
+    verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP)
+    # Sort the patterns
+    priority_queue = get_verbalization_similarity(aug_qtxt, patterns_data_list, verbalizer)
+    # For top N patterns
+    n_value = 10
+    top_triples = heapq.nsmallest(n_value, priority_queue, key=lambda x: x[0])
+    
+    id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
+    top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
+    
+    sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
+    print(f'First SPARQL: {sparql}')
+    ## refine this SPARQL (extra step that is needed for certain models)
+    #sparql = sparql_refinement(question_text, sparql, model_config)
+    #print(f'Refined SPARQL: {sparql}')
+        
+    return sparql
+
+def process_input_query_mhop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
     print(f'Processing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
@@ -182,21 +241,27 @@ def process_input_query(question_text, model_config, preprocessed_input=None, wd
         
     return sparql
 
-
 # Example usage
 if __name__ == "__main__":
     
+    ## Constants
+    pbsg_variants = {
+        'pbsg': process_input_query_1hop,
+        'pbsg_mhop': process_input_query_mhop
+    }
+    
     ## Configurable variables
     use_goldentrel = False # Whether to use gold entities and relations
-    approach_name = 'pbsg' # identifier of the approach
-    llm_config = ChatModel.QWEN3.value # LLM to use
+    approach_id = 'pbsg' # identifier of the approach
+
+    llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
-    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
+    kgqa_ds = KgqaDataset.LCQUAD2_UPDATED_CURWD.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
     split_conf = DatasetSplit.TEST # Dataset split to use
     
     ## Rest of the logic
-    
+    approach_name = approach_id # copying id for modification if needed
     if use_goldentrel:
         approach_name+='_gold-entrel'
     
@@ -212,7 +277,7 @@ if __name__ == "__main__":
     load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, process_input_query, wd_ep, llm_config, use_goldentrel)
+    process_dataset(run_name, qald_file_path, tsv_output_path, pbsg_variants[approach_id], wd_ep, llm_config, use_goldentrel)
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
