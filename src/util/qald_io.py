@@ -81,7 +81,7 @@ def get_qald_answer_sparql(sparql, endpoint):
     {sparql}
     """
     
-    if "limit" not in formatted_sparql.lower():
+    if ("ask " not in formatted_sparql.lower()) and ("limit" not in formatted_sparql.lower()):
         # Adding hard limit for the results
         formatted_sparql += "\nLIMIT 1000"
     
