@@ -98,6 +98,41 @@ def find_1_hop_patterns(node_uri, endpoint_url):
         })
     return patterns
 
+def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
+    
+    query = f"""
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+    SELECT DISTINCT ?direction ?property
+    WHERE {{
+        
+        {triple_constraint}
+        
+        {{   # outgoing statements
+            BIND ("out" AS ?direction)
+            {var_name} ?property ?object .
+        }}
+        UNION
+        {{   # incoming statements
+            BIND ("in" AS ?direction)
+            ?subject ?property {var_name} .
+        }}
+    }}
+    """
+    
+    bindings, _ = execute_sparql_query(query, endpoint_url)
+
+    patterns = []
+    for b in bindings:
+        patterns.append({
+            "direction": b.get("direction", {}).get("value", ""),
+            "property":  b.get("property",  {}).get("value", "")
+        })
+    return patterns
+
 
 def get_node_label(node_uri, endpoint_url, lang = "en"):
     # A query that prefers the requested language, falling back to any label.

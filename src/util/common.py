@@ -61,6 +61,8 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
         data = response.json()
     except requests.exceptions.RequestException as e:
         # TODO: Try again for Service Unavailable Errors: "HTTP Request failed: 503 Server Error: Service Unavailable for url:"
+        # When a query is malformed, its usually this error: "HTTP Request failed: 400 Client Error: Bad Request for url:"
+        # Or "HTTP Request failed: 500 Server Error: Server Error for url:"
         print(f"Failed SPARQL: {query}")
         print(f"HTTP Request failed: {e}")
         req_failed = True

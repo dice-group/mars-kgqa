@@ -104,6 +104,46 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
         
     return answer_sparql
 
+def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_config):
+    
+    patterns_str = '\n'.join(top_verbalized_patterns)
+
+    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
+    Strictly follow one of the provided "Answer Format" depending upon your response, do not write anything else.
+
+    Question: {question_txt}
+
+    ### Triple patterns:
+    {patterns_str}
+
+    ---
+
+    Answer Format (SPARQL Generation):
+
+    SPARQL: <place the generated SPARQL here in a single line>
+    
+    ---
+
+    Answer Format (Path Expansion Selection):
+
+    Indices: <place the comma-separated 0-index values of the paths to expand further for the answers>
+
+    """
+    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id)
+    # removing thinking context if any
+    llm_resp_text = remove_think_context(llm_resp_text)
+    print(f'LLM Response: {llm_resp_text}')
+    sparql = None
+    indices = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        sparql = llm_resp_text.split("SPARQL:")[1].strip()
+    if "Indices:" in llm_resp_text:
+        indices = llm_resp_text.split("Indices:")[1].strip()
+        indices = [item.strip() for item in indices.split(',')]
+        
+    return sparql, indices
+
 def sparql_refinement(question_txt, sparql_str, model_config):
     
 

@@ -1,8 +1,8 @@
 # Sample usage: python -m src.pattern_based_sparql_generator
 from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
-from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label
-from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement
+from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label, find_next_hop_patterns
+from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement, generate_mhop_pattern_sparql
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
@@ -30,6 +30,7 @@ class NodeEdge:
         relation_uri: str,
         relation_id: str,
         direction: EdgeDirection | str,
+        var_id: str = None
     ) -> None:
         self.node_uri = node_uri
         self.node_label = node_label
@@ -40,8 +41,29 @@ class NodeEdge:
             self.direction = direction
         else:
             self.direction = EdgeDirection[direction.lower()]
+        
+        self.assign_variable_id(self.var_id)
+    
+    def assign_variable_id(self, var_id):
+        self.var_id = var_id
+        
+        # Logic for variable name assignment
+        subject_term = '?subject'
+        object_term = '?object'
+                
+        if self.var_id:
+            subject_term += f'_{self.var_id}'
+            object_term += f'_{self.var_id}'
+        
+        self.variable_name = None
+        
+        if self.direction == EdgeDirection.OUTGOING:
+            self.variable_name = object_term
+        else:  # EdgeDirection.INCOMING
+            self.variable_name = subject_term
             
     def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False):
+        
         prop_ent_uri = prop_id_map[self.relation_id]
 
         # get the property label
@@ -58,14 +80,14 @@ class NodeEdge:
         
         if self.direction == EdgeDirection.OUTGOING:
             # verbal part: "<node_label> <property_label> ?object"
-            verbal_part = f"'{self.node_label}' '{prop_label}' ?object"
+            verbal_part = f"'{self.node_label}' '{prop_label}' {self.variable_name}"
             # ID part (only if requested)
-            id_part = f"\t{get_prefixed_id(self.node_uri)} {get_prefixed_id(self.relation_uri)} ?object" if include_id else ""
+            id_part = f"\t{get_prefixed_id(self.node_uri)} {get_prefixed_id(self.relation_uri)} {self.variable_name}" if include_id else ""
         else:  # EdgeDirection.INCOMING
             # verbal part: "?subject <property_label> <node_label>"
-            verbal_part = f"?subject '{prop_label}' '{self.node_label}'"
+            verbal_part = f"{self.variable_name} '{prop_label}' '{self.node_label}'"
             # ID part (only if requested)
-            id_part = f"\t?subject {get_prefixed_id(self.relation_uri)} {get_prefixed_id(self.node_uri)}" if include_id else ""
+            id_part = f"\t{self.variable_name} {get_prefixed_id(self.relation_uri)} {get_prefixed_id(self.node_uri)}" if include_id else ""
 
         # combine verbalization, optional ID triple, and class info
         verbalized_str = f"{verbal_part}{id_part}\t {class_info}"
@@ -223,22 +245,24 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
     
-    sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
+    sparql, indices = generate_mhop_pattern_sparql(question_text, top_id_verbalizations, model_config)
     print(f'First SPARQL: {sparql}')
-    ## refine this SPARQL (extra step that is needed for certain models)
-    #sparql = sparql_refinement(question_text, sparql, model_config)
-    #print(f'Refined SPARQL: {sparql}')
     
-    # TODO: Implementation pending
-    # Ask the LLM if we should consider further hops
-    # If yes, then expand the chosen triples and add them to the new list
-        # compute similarity
-        # Show the next top patterns and repeat
-    # If not, then retrieve the triples for the chosen patterns and rank them
-    
-    # Choose top F triples from each chosen path
-    # Ask LLM to generate a SPARQL based on this context
-        
+    # If indices are returned 
+    if indices and not sparql:
+        # For each triple to explore further
+        i = 1
+        expanded_triple_tuples = []
+        for index_item in indices:
+            cur_triple_tuple = top_triples[index_item]
+            expanded_triple_tuples.append(cur_triple_tuple)
+            cur_id = i
+            cur_edge = cur_triple_tuple[1]
+            cur_edge.assign_variable_id(cur_id)
+            # TODO: find the next patterns for this triple and assign them the same IDs
+            # increment i
+            i += 1
+        # TODO: Generate SPARQL from the extracted context
     return sparql
 
 # Example usage
@@ -252,11 +276,11 @@ if __name__ == "__main__":
     
     ## Configurable variables
     use_goldentrel = False # Whether to use gold entities and relations
-    approach_id = 'pbsg' # identifier of the approach
+    approach_id = 'pbsg_mhop' # identifier of the approach
 
-    llm_config = ChatModel.GPTOSS120B.value # LLM to use
+    llm_config = ChatModel.GEMMA3.value # LLM to use
     
-    kgqa_ds = KgqaDataset.LCQUAD2_UPDATED_CURWD.value # Dataset to use (includes filepaths and wikidata endpoint information)
+    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
     split_conf = DatasetSplit.TEST # Dataset split to use
     
