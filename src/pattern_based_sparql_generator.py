@@ -25,24 +25,26 @@ class EdgeDirection(Enum):
 class NodeEdge:
     def __init__(
         self,
-        node_uri: str,
+        node_id: str,
         node_label: str,
         relation_uri: str,
         relation_id: str,
         direction: EdgeDirection | str,
         var_id: str = None
     ) -> None:
-        self.node_uri = node_uri
+        self.node_id = node_id
         self.node_label = node_label
         self.relation_uri = relation_uri
         self.relation_id = relation_id
+        # track if node_uri is already a SPARQL variable (e.g., "?subject1")
+        self.node_is_var = isinstance(node_id, str) and node_id.startswith("?")
         # Allow passing either the enum member or its name as a string
         if isinstance(direction, EdgeDirection):
             self.direction = direction
         else:
             self.direction = EdgeDirection[direction.lower()]
         
-        self.assign_variable_id(self.var_id)
+        self.assign_variable_id(var_id)
     
     def assign_variable_id(self, var_id):
         self.var_id = var_id
@@ -62,6 +64,15 @@ class NodeEdge:
         else:  # EdgeDirection.INCOMING
             self.variable_name = subject_term
             
+    def get_triple_pattern(self):
+        triple_pattern_str = None
+        node_repr = self.node_id if self.node_is_var else f'<{self.node_id}>' 
+        if self.direction == EdgeDirection.OUTGOING:
+            triple_pattern_str = f'{node_repr} <{self.relation_uri}> {self.variable_name} . '
+        else:  # EdgeDirection.INCOMING
+            triple_pattern_str = f'{self.variable_name} <{self.relation_uri}> {node_repr} . '
+        return triple_pattern_str
+            
     def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False):
         
         prop_ent_uri = prop_id_map[self.relation_id]
@@ -78,16 +89,18 @@ class NodeEdge:
             f"(possible object classes: {','.join(range_label_list)})"
         )
         
+        node_prefixed_repr = self.node_id if self.node_is_var else get_prefixed_id(self.node_id)
+        
         if self.direction == EdgeDirection.OUTGOING:
             # verbal part: "<node_label> <property_label> ?object"
             verbal_part = f"'{self.node_label}' '{prop_label}' {self.variable_name}"
             # ID part (only if requested)
-            id_part = f"\t{get_prefixed_id(self.node_uri)} {get_prefixed_id(self.relation_uri)} {self.variable_name}" if include_id else ""
+            id_part = f"\t{node_prefixed_repr} {get_prefixed_id(self.relation_uri)} {self.variable_name}" if include_id else ""
         else:  # EdgeDirection.INCOMING
             # verbal part: "?subject <property_label> <node_label>"
             verbal_part = f"{self.variable_name} '{prop_label}' '{self.node_label}'"
             # ID part (only if requested)
-            id_part = f"\t{self.variable_name} {get_prefixed_id(self.relation_uri)} {get_prefixed_id(self.node_uri)}" if include_id else ""
+            id_part = f"\t{self.variable_name} {get_prefixed_id(self.relation_uri)} {node_prefixed_repr}" if include_id else ""
 
         # combine verbalization, optional ID triple, and class info
         verbalized_str = f"{verbal_part}{id_part}\t {class_info}"
@@ -96,7 +109,7 @@ class NodeEdge:
 
     def __repr__(self) -> str:
         return (
-            f"GraphElement(node_uri={self.node_uri!r}, label={self.node_label!r}, "
+            f"GraphElement(node_uri={self.node_id!r}, label={self.node_label!r}, "
             f"relation_uri={self.relation_uri!r}, direction={self.direction.name})"
         )
         
@@ -246,23 +259,49 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
     
     sparql, indices = generate_mhop_pattern_sparql(question_text, top_id_verbalizations, model_config)
-    print(f'First SPARQL: {sparql}')
+    
     
     # If indices are returned 
     if indices and not sparql:
+        print(f'Requested expansion for: {indices}')
         # For each triple to explore further
         i = 1
+        next_hop_patterns_data_list = []
+        next_hop_reject_patterns = []
         expanded_triple_tuples = []
+        
         for index_item in indices:
-            cur_triple_tuple = top_triples[index_item]
+            cur_triple_tuple = top_triples[int(index_item)]
             expanded_triple_tuples.append(cur_triple_tuple)
             cur_id = i
             cur_edge = cur_triple_tuple[1]
             cur_edge.assign_variable_id(cur_id)
-            # TODO: find the next patterns for this triple and assign them the same IDs
+            
+            print(f'Expanding edge: {id_verbalizer(cur_edge)}')
+            
+            cur_var_name = cur_edge.variable_name
+            # Find the next patterns for this triple and assign them the same IDs
+            cur_constraint_tp = cur_edge.get_triple_pattern()
+            cur_patterns_list = find_next_hop_patterns(cur_constraint_tp, cur_var_name, wd_ep)
+            print(f'Triple patterns found for {cur_var_name}: {len(cur_patterns_list)}')
+            extracted_patterns, rejected_patterns = extract_patterns_data(cur_var_name, cur_var_name, cur_patterns_list, PROPERTY_ID_MAP)
+            next_hop_patterns_data_list.extend(extracted_patterns)
+            next_hop_reject_patterns.extend(rejected_patterns)
+            print(f'Filtered triple patterns for {cur_var_name}: {len(extracted_patterns)}')
             # increment i
             i += 1
-        # TODO: Generate SPARQL from the extracted context
+        # Find next top triples
+        # Sort the patterns
+        next_priority_queue = get_verbalization_similarity(aug_qtxt, next_hop_patterns_data_list, verbalizer)
+        next_top_triples = heapq.nsmallest(n_value, next_priority_queue, key=lambda x: x[0])
+        top_id_verbalizations = [id_verbalizer(item[1]) for item in next_top_triples]
+        
+        final_verbalizations = [id_verbalizer(top_triples[int(index_item)][1]) for index_item in indices]
+        
+        final_verbalizations.extend(top_id_verbalizations)
+        # Generate SPARQL from the extracted context
+        sparql = generate_1hop_pattern_sparql(question_text, final_verbalizations, model_config)
+    print(f'SPARQL: {sparql}')
     return sparql
 
 # Example usage
@@ -278,9 +317,9 @@ if __name__ == "__main__":
     use_goldentrel = False # Whether to use gold entities and relations
     approach_id = 'pbsg_mhop' # identifier of the approach
 
-    llm_config = ChatModel.GEMMA3.value # LLM to use
+    llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
-    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
+    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
     split_conf = DatasetSplit.TEST # Dataset split to use
     
