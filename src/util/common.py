@@ -60,6 +60,7 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
         response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
     except requests.exceptions.RequestException as e:
+        # TODO: Try again for Service Unavailable Errors: "HTTP Request failed: 503 Server Error: Service Unavailable for url:"
         print(f"Failed SPARQL: {query}")
         print(f"HTTP Request failed: {e}")
         req_failed = True
