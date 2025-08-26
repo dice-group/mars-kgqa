@@ -148,7 +148,7 @@ def load_property_info(cached_file_path):
 
 
 def process_input_query_1hop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
-    print(f'Processing question: {question_text}')
+    print(f'\nProcessing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
     # Retrieve entities and relations for the input question
@@ -157,7 +157,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
     else:
         aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
         
-    print(f'Identified entities: {entity_dict}')
+    print(f'\nIdentified entities: {entity_dict}')
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
     # if using_gold_entrel:
@@ -168,7 +168,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
     
-    print(f'Entities to visit: {filter_entity_dict}')
+    print(f'\nEntities to visit: {filter_entity_dict}')
     
     patterns_data_list = []
     visited_nodes = set()
@@ -176,16 +176,16 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
     all_rejected_patterns = [] # Mostly for debugging
     # For each entity, find all the triple patterns that exist
     for entity_qid in filter_entity_dict.values():
-        print(f'Traversing: {entity_qid}')
+        print(f'\nTraversing: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
         entity_label = get_node_label(entity_uri, wd_ep)
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
-        print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
+        print(f'\nTriple patterns found for {entity_uri}: {len(patterns_list)}')
         extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
         patterns_data_list.extend(extracted_patterns)
         all_rejected_patterns.extend(rejected_patterns)
-        print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
+        print(f'\nFiltered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
     # Compute similarity of the patterns to the (augmented) query
     verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP)
@@ -199,7 +199,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
     
     sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
-    print(f'First SPARQL: {sparql}')
+    print(f'\nFirst SPARQL: {sparql}')
     ## refine this SPARQL (extra step that is needed for certain models)
     #sparql = sparql_refinement(question_text, sparql, model_config)
     #print(f'Refined SPARQL: {sparql}')
@@ -207,7 +207,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
     return sparql
 
 def process_input_query_mhop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
-    print(f'Processing question: {question_text}')
+    print(f'\nProcessing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
     # Retrieve entities and relations for the input question
@@ -216,7 +216,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     else:
         aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
         
-    print(f'Identified entities: {entity_dict}')
+    print(f'\nIdentified entities: {entity_dict}')
         
     # Filter entity dictionary to remove entities that will lead to too many child nodes
     # if using_gold_entrel:
@@ -227,7 +227,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
     
-    print(f'Entities to visit: {filter_entity_dict}')
+    print(f'\nEntities to visit: {filter_entity_dict}')
     
     patterns_data_list = []
     visited_nodes = set()
@@ -235,16 +235,16 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     all_rejected_patterns = [] # Mostly for debugging
     # For each entity, find all the triple patterns that exist
     for entity_qid in filter_entity_dict.values():
-        print(f'Traversing: {entity_qid}')
+        print(f'\nTraversing: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
         visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
         entity_label = get_node_label(entity_uri, wd_ep)
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
-        print(f'Triple patterns found for {entity_uri}: {len(patterns_list)}')
+        print(f'\nTriple patterns found for {entity_uri}: {len(patterns_list)}')
         extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
         patterns_data_list.extend(extracted_patterns)
         all_rejected_patterns.extend(rejected_patterns)
-        print(f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}')
+        print(f'\nFiltered triple patterns for {entity_uri}: {len(extracted_patterns)}')
     
     # TODO: Implement
     # Compute similarity of the patterns to the (augmented) query
@@ -263,7 +263,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     
     # If indices are returned 
     if indices and not sparql:
-        print(f'Requested expansion for: {indices}')
+        print(f'\nRequested expansion for: {indices}')
         # For each triple to explore further
         i = 1
         next_hop_patterns_data_list = []
@@ -277,17 +277,17 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
             cur_edge = cur_triple_tuple[1]
             cur_edge.assign_variable_id(cur_id)
             
-            print(f'Expanding edge: {id_verbalizer(cur_edge)}')
+            print(f'\nExpanding edge: {id_verbalizer(cur_edge)}')
             
             cur_var_name = cur_edge.variable_name
             # Find the next patterns for this triple and assign them the same IDs
             cur_constraint_tp = cur_edge.get_triple_pattern()
             cur_patterns_list = find_next_hop_patterns(cur_constraint_tp, cur_var_name, wd_ep)
-            print(f'Triple patterns found for {cur_var_name}: {len(cur_patterns_list)}')
+            print(f'\nTriple patterns found for {cur_var_name}: {len(cur_patterns_list)}')
             extracted_patterns, rejected_patterns = extract_patterns_data(cur_var_name, cur_var_name, cur_patterns_list, PROPERTY_ID_MAP)
             next_hop_patterns_data_list.extend(extracted_patterns)
             next_hop_reject_patterns.extend(rejected_patterns)
-            print(f'Filtered triple patterns for {cur_var_name}: {len(extracted_patterns)}')
+            print(f'\nFiltered triple patterns for {cur_var_name}: {len(extracted_patterns)}')
             # increment i
             i += 1
         # Find next top triples

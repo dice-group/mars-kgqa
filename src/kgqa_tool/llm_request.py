@@ -109,7 +109,7 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     patterns_str = '\n'.join(top_verbalized_patterns)
 
     gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
-    Strictly follow one of the provided "Answer Format" depending upon your response, do not write anything else.
+    Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
 
     Question: {question_txt}
 
@@ -126,7 +126,7 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
 
     Answer Format (Path Expansion Selection):
 
-    Indices: <place the comma-separated 0-index values of the paths to expand further for the answers>
+    Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value>
 
     """
     llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id)
