@@ -271,7 +271,10 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
         expanded_triple_tuples = []
         
         for index_item in indices:
-            cur_triple_tuple = top_triples[int(index_item)]
+            index_item = int(index_item)
+            if index_item < 0 or index_item >= len(top_triples):
+                continue
+            cur_triple_tuple = top_triples[index_item]
             expanded_triple_tuples.append(cur_triple_tuple)
             cur_id = i
             cur_edge = cur_triple_tuple[1]
@@ -296,7 +299,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
         next_top_triples = heapq.nsmallest(n_value, next_priority_queue, key=lambda x: x[0])
         top_id_verbalizations = [id_verbalizer(item[1]) for item in next_top_triples]
         
-        final_verbalizations = [id_verbalizer(top_triples[int(index_item)][1]) for index_item in indices]
+        final_verbalizations = [id_verbalizer(item[1]) for item in expanded_triple_tuples]
         
         final_verbalizations.extend(top_id_verbalizations)
         # Generate SPARQL from the extracted context
@@ -319,7 +322,7 @@ if __name__ == "__main__":
 
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
-    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value # Dataset to use (includes filepaths and wikidata endpoint information)
+    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
     split_conf = DatasetSplit.TEST # Dataset split to use
     
