@@ -7,11 +7,11 @@ def get_opai_client(endpoint=None, api_key=None):
     return opai_client
 
 # Function to send batches to OpenAI API
-def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id):
+def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=None):
     message_list = []
     if sys_prompt:
         message_list.append({"role": "system", "content": sys_prompt})
-    message_list.append({"role": "user", "content": user_prompt})
+    message_list.append({"role": "user", "content": f'{user_prompt} {postfix}' if postfix else user_prompt})
     try:
         # Call the OpenAI API
         completion = client_instance.chat.completions.create(

@@ -320,7 +320,7 @@ if __name__ == "__main__":
     use_goldentrel = False # Whether to use gold entities and relations
     approach_id = 'pbsg_mhop' # identifier of the approach
 
-    llm_config = ChatModel.GPTOSS120B.value # LLM to use
+    llm_config = ChatModel.GLM4dt5AIR_Nothink.value # LLM to use
     
     kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
     

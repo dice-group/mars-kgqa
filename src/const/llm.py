@@ -4,11 +4,12 @@ from src.util.llm import get_opai_client
 
 class ModelAPIConfig:
     
-    def __init__(self, model_id, endpoint, api_key, sysprompt=None):
+    def __init__(self, model_id, endpoint, api_key, sysprompt=None, postfix=None):
         self.model_id = model_id
         self.endpoint = endpoint
         self.api_key = api_key
         self.sysprompt = sysprompt
+        self.postfix = postfix
         
     def get_static_instance(self):
         if not hasattr(self, 'static_instance'):
@@ -27,7 +28,8 @@ class ChatModel(Enum):
     QWEN3 = ModelAPIConfig("qwen3-32b", LLM_ENDPOINT, os.environ.get("OWUI"))
     MISTRAL3 = ModelAPIConfig("mistral-small-3.2-24b", LLM_ENDPOINT, os.environ.get("OWUI"))
     GPTOSS120B = ModelAPIConfig("gpt-oss-120b", LLM_ENDPOINT, os.environ.get("OWUI"))
-    GLM4dt5AIR = ModelAPIConfig("glm-4.5-air", LLM_ENDPOINT, os.environ.get("OWUI")) # Takes too long thinking
+    # GLM4dt5AIR = ModelAPIConfig("glm-4.5-air", LLM_ENDPOINT, os.environ.get("OWUI")) # Takes too long thinking
+    GLM4dt5AIR_Nothink = ModelAPIConfig("glm-4.5-air", LLM_ENDPOINT, os.environ.get("OWUI"), None, "/no_think") # Does not think
     QWEN3_CODER = ModelAPIConfig("qwen3-coder-30b-a3b", LLM_ENDPOINT, os.environ.get("OWUI"))
     DEEPSEEK_R1_QWEN3_8B = ModelAPIConfig("deepseek-r1-0528-qwen3-8b", LLM_ENDPOINT, os.environ.get("OWUI"))
     LLAMA_NEMOTRON_SUPER_49B = ModelAPIConfig("llama-3_3-nemotron-super-49b-v1_5", LLM_ENDPOINT, os.environ.get("OWUI"), "/no_think") # Thinking model is taking too long, almost stuck at every request

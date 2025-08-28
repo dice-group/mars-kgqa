@@ -15,7 +15,7 @@ def generate_baseline_sparql(question_txt, model_config):
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
@@ -62,7 +62,7 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
@@ -93,7 +93,7 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
@@ -129,7 +129,7 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value>
 
     """
-    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
@@ -160,7 +160,7 @@ def sparql_refinement(question_txt, sparql_str, model_config):
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     print(f'LLM Response: {llm_resp_text}')
@@ -202,7 +202,7 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
     New Important Context: <if there are triples that might be very helpful for future context, write them in a comma separated manner here. Be mindful of only choosing triples that are really important.>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
 
@@ -232,7 +232,7 @@ def recognize_entities_and_relations(question_txt, model_config):
     Please generate one list with all entities. Do not format the json output.
     Question: \\textbf{{{question_txt}}}
     """
-    llm_resp_text = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     return llm_resp_text
@@ -245,7 +245,7 @@ def filter_common_nodes(question_txt, entity_dict, model_config):
 
     Entity Dict: {entity_dict}
     """
-    llm_resp_text = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id)
+    llm_resp_text = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     # removing thinking context if any
     llm_resp_text = remove_think_context(llm_resp_text)
     
