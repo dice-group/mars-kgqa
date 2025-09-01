@@ -240,13 +240,42 @@ def generate_output_path(approach_name, input_file_path, file_format='tsv'):
 def generate_gerbil_export_path(approach_name, input_file_path):
     return _build_output_path(approach_name, input_file_path,
                               leaf_dir='gerbil', file_ext='csv')
+    
+def _build_log_dir(input_file_path: str, leaf_dir: str = "logs") -> str:
+
+    # Absolute path of the input file
+    input_abs_path = os.path.abspath(input_file_path)
+
+    # Parent directory of the input file
+    parent_dir = os.path.dirname(input_abs_path)
+
+    # Base name of the input file (without extension)
+    input_file_name = os.path.splitext(os.path.basename(input_abs_path))[0]
+
+    # Build the directory hierarchy:
+    #   <parent>/prediction/<input‑file‑name>/<leaf_dir>
+    prediction_dir = os.path.join(parent_dir, "prediction")
+    log_dir = os.path.join(prediction_dir, input_file_name, leaf_dir)
+
+    return log_dir
+
+# Example convenience wrapper (optional)
+def get_log_dir(approach_name: str, input_file_path: str) -> str:
+    """
+    Return a log directory that includes the approach name for extra
+    organization, e.g. <...>/prediction/<input‑file>/logs/<approach_name>.
+    """
+    base_log_dir = _build_log_dir(input_file_path)
+    return os.path.join(base_log_dir, approach_name)
             
-def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config=DEFAULT_CHAT_LLM_CONFIG, use_gold_entrel=False):
+def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config, use_gold_entrel, log_dir):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
     create_directory_if_not_exists(out_dir)
     
+    # Log directory
+    create_directory_if_not_exists(log_dir)
     # Handle cache file
     cache_file = os.path.join(out_dir, f'{proc_name}_cache.json')
     
@@ -264,11 +293,14 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, l
     # For each question
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
+        # TODO: Create ProcessLog
+        proc_logger = None
         # Extract the English question text
         question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
         # print(question_id, question_text)
         cache_id = str(question_id) + '_' + question_text
         
+        # TODO: Log cache action
         # Check if cached
         if cache_id in answers_cache:
             print(f'Using cached answer for cache ID: {cache_id}')
@@ -291,8 +323,9 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, l
             ent_dict = {entry['label']: entry['uri'] for entry in question_item['filtered_ent']}
             rel_dict = {entry['label']: entry['uri'] for entry in question_item['filtered_rel']}
         
+        # TODO: Log process question action
         # send to process_input_query
-        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep, use_gold_entrel)
+        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep, use_gold_entrel, proc_logger)
         # Cache the generated SPARQL
         answers_cache[cache_id] = cur_generated_output
         # Save updated cache to disk
@@ -316,5 +349,6 @@ if __name__ == "__main__":
     
     output_path = generate_output_path(approach_name, qald_file_path)
     
-    process_dataset(approach_name, qald_file_path, output_path, process_input_query, wd_ep)
+    # TODO: This call needs to be updated
+    # process_dataset(approach_name, qald_file_path, output_path, process_input_query, wd_ep)
     

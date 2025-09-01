@@ -63,6 +63,8 @@ if __name__ == "__main__":
     
     output_path = generate_output_path(approach_name, qald_file_path)
     
-    process_dataset('ssg', qald_file_path, output_path, process_input_query, wd_ep)
+    
+    # TODO: This call needs to be updated
+    # process_dataset('ssg', qald_file_path, output_path, process_input_query, wd_ep,)
     
     

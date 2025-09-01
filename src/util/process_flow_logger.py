@@ -1,14 +1,3 @@
-# Provide different functions to log specific steps during the process
-
-# Constructor to initiate the log with process name and directory to store output
-
-# Function to log process input info
-
-# Function to log action, its input, intermediate steps and its output
-
-# Log time required for an action and allow action logger object to be passed around to keep on adding logs until a complete function is called
-
-# Function to write the output log and compute the full run-time of the process
 import time
 import os
 import json

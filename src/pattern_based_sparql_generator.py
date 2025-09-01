@@ -1,5 +1,5 @@
 # Sample usage: python -m src.pattern_based_sparql_generator
-from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path
+from src.simple_factoid_solver import extract_triples_data, get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_triples, find_1_hop_patterns, get_node_label, find_next_hop_patterns
 from src.kgqa_tool.llm_request import generate_simple_sparql, filter_common_nodes, generate_1hop_pattern_sparql, sparql_refinement, generate_mhop_pattern_sparql
@@ -147,7 +147,7 @@ def load_property_info(cached_file_path):
         PROPERTY_ID_MAP[prop_id] = key
 
 
-def process_input_query_1hop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
+def process_input_query_1hop(question_text, model_config, preprocessed_input, wd_ep, using_gold_entrel, proc_logger):
     print(f'\nProcessing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
@@ -206,9 +206,10 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input=Non
         
     return sparql
 
-def process_input_query_mhop(question_text, model_config, preprocessed_input=None, wd_ep=None, using_gold_entrel=False):
+def process_input_query_mhop(question_text, model_config, preprocessed_input, wd_ep, using_gold_entrel, proc_logger):
     print(f'\nProcessing question: {question_text}')
     
+    # TODO: Log entity retrieval action
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
     # Retrieve entities and relations for the input question
     if preprocessed_input:
@@ -227,6 +228,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
     
+    # TODO: Log triple pattern extraction action
     print(f'\nEntities to visit: {filter_entity_dict}')
     
     patterns_data_list = []
@@ -253,16 +255,18 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
     priority_queue = get_verbalization_similarity(aug_qtxt, patterns_data_list, verbalizer)
     # For top N patterns
     n_value = 10
+    # TODO: Log top triple patterns
     top_triples = heapq.nsmallest(n_value, priority_queue, key=lambda x: x[0])
     
     id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
-    
+    # TODO: Log LLM call
     sparql, indices = generate_mhop_pattern_sparql(question_text, top_id_verbalizations, model_config)
     
     
     # If indices are returned 
     if indices and not sparql:
+        # TODO: Log response processing
         print(f'\nRequested expansion for: {indices}')
         # For each triple to explore further
         i = 1
@@ -304,6 +308,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input=Non
         final_verbalizations.extend(top_id_verbalizations)
         # Generate SPARQL from the extracted context
         sparql = generate_1hop_pattern_sparql(question_text, final_verbalizations, model_config)
+    # TODO: Log final sparql
     print(f'SPARQL: {sparql}')
     return sparql
 
@@ -339,11 +344,13 @@ if __name__ == "__main__":
     
     tsv_output_path = generate_output_path(run_name, qald_file_path, 'tsv')
     
+    # Generate a log directory path
+    log_dir = get_log_dir(run_name, qald_file_path)
     # Load the cached property info map
     load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, pbsg_variants[approach_id], wd_ep, llm_config, use_goldentrel)
+    process_dataset(run_name, qald_file_path, tsv_output_path, pbsg_variants[approach_id], wd_ep, llm_config, use_goldentrel, log_dir)
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
