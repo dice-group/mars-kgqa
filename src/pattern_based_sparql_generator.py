@@ -153,7 +153,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     One‑hop pattern‑based SPARQL generation
     """
     
-    # Log start of the action
+    # top‑level action 
     proc_logger.start_action(
         "process_input_query_1hop",
         {"question": question_text, "model_config": model_config.to_dict()}
@@ -162,7 +162,11 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
     
-    # Entity / relation extraction
+    # entity / relation extraction
+    proc_logger.start_action(
+        "entity_relation_extraction",
+        {"preprocessed_input_provided": bool(preprocessed_input)}
+    )
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input  # unpack
     else:
@@ -170,8 +174,11 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
             question_text
         )
     proc_logger.add_step(f'Identified entities: {entity_dict}')
-
+    proc_logger.complete_action()
     
+
+    # filtering
+    proc_logger.start_action("entity_filtering")
     # Filtering
     # if using_gold_entrel:
     #     filter_entity_dict = entity_dict
@@ -181,13 +188,16 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
     proc_logger.add_step(f'Entities to visit: {filter_entity_dict}')
+    proc_logger.complete_action()
+    
 
     patterns_data_list = []
     visited_nodes = set()
     all_rejected_patterns = []  # Mostly for debugging
 
     
-    # Walk each root entity and collect 1‑hop patterns
+    # root‑entity pattern collection
+    proc_logger.start_action("root_entity_pattern_collection")
     for entity_qid in filter_entity_dict.values():
         proc_logger.add_step(f'Traversing entity: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
@@ -208,9 +218,11 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
         proc_logger.add_step(
             f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}'
         )
-
+    proc_logger.complete_action()
     
-    # Compute verbalization similarity and pick top‑N
+
+    # similarity scoring & top‑N selection
+    proc_logger.start_action("similarity_scoring")
     verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP
     )
@@ -223,6 +235,8 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     top_triples = heapq.nsmallest(n_value, priority_queue,
                                   key=lambda x: x[0])
     proc_logger.add_step(f'Selected top {n_value} triple patterns')
+    proc_logger.complete_action()
+    
 
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
@@ -230,18 +244,21 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
 
     
-    # LLM call – generate SPARQL
+    # first LLM call --
+    proc_logger.start_action("first_llm_call")
     sparql = generate_1hop_pattern_sparql(question_text,
                                           top_id_verbalizations,
                                           model_config)
     proc_logger.add_step(f'Generated SPARQL (raw): {sparql}')
+    proc_logger.complete_action()
+    
 
     # ## refine this SPARQL (extra step that is needed for certain models)
     # sparql = sparql_refinement(question_text, sparql, model_config)
     # proc_logger.add_step(f'Refined SPARQL: {sparql}')
 
     
-    # Log final output and complete the action
+    # Log final output and close the top‑level action
     proc_logger.set_output({"sparql": sparql}).complete_action()
     return sparql
 
@@ -252,7 +269,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
     Multi‑hop pattern‑based SPARQL generation
     """
     
-    # Log start of the multi‑hop action
+    # Top‑level action for the whole multi‑hop process
     proc_logger.start_action(
         "process_input_query_mhop",
         {"question": question_text, "model_config": model_config.to_dict()}
@@ -260,8 +277,13 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
 
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
+    # Entity / relation extraction 
     
-    # Entity / relation extraction
+    proc_logger.start_action(
+        "entity_relation_extraction",
+        {"preprocessed_input_provided": bool(preprocessed_input)}
+    )
+    
     if preprocessed_input:
         aug_qtxt, entity_dict, relation_list = preprocessed_input  # unpack
     else:
@@ -269,7 +291,13 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
             question_text
         )
     proc_logger.add_step(f'Identified entities: {entity_dict}')
-
+    proc_logger.complete_action()
+    
+    
+    
+    # Filtering 
+    
+    proc_logger.start_action("entity_filtering")
     
     # Filtering
     # if using_gold_entrel:
@@ -280,13 +308,18 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
     proc_logger.add_step(f'Entities to visit: {filter_entity_dict}')
-
+    proc_logger.complete_action()
+    
+    
     patterns_data_list = []
     visited_nodes = set()
     all_rejected_patterns = []  # Mostly for debugging
 
     
-    # Walk each root entity and collect 1‑hop patterns
+    
+    # Pattern collection per root entity 
+    
+    proc_logger.start_action("root_entity_pattern_collection")
     for entity_qid in filter_entity_dict.values():
         proc_logger.add_step(f'Traversing entity: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
@@ -307,9 +340,13 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
         proc_logger.add_step(
             f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}'
         )
-
+    proc_logger.complete_action()
     
-    # Compute similarity and pick top‑N (same as 1‑hop)
+    
+    
+    # Similarity computation & top‑N selection 
+    
+    proc_logger.start_action("similarity_scoring")
     verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP
     )
@@ -322,24 +359,26 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
     top_triples = heapq.nsmallest(n_value, priority_queue,
                                   key=lambda x: x[0])
     proc_logger.add_step(f'Selected top {n_value} triple patterns')
-
+    proc_logger.complete_action()
+    
+    
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
     )
-    top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
-
     
-    # First LLM call – ask for expansion indices
+    top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
+    
+    # First LLM call 
     sparql, indices = generate_mhop_pattern_sparql(question_text,
                                                    top_id_verbalizations,
-                                                   model_config)
-    proc_logger.add_step(f'LLM returned SPARQL: {sparql}')
-    proc_logger.add_step(f'LLM requested expansion for indices: {indices}')
-
+                                                   model_config, proc_logger)
     
-    # If the model asks for further expansion, walk the requested edges
+    
+    
+    # Expansion loop  – only if needed
+    
     if indices and not sparql:
-        proc_logger.add_step('Entering expansion loop')
+        proc_logger.start_action("expansion_loop")
         next_hop_patterns_data_list = []
         next_hop_reject_patterns = []
         expanded_triple_tuples = []
@@ -381,7 +420,6 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
             )
             i += 1
 
-        
         # Rank next‑hop patterns and generate final SPARQL
         next_priority_queue = get_verbalization_similarity(
             aug_qtxt, next_hop_patterns_data_list, verbalizer
@@ -402,9 +440,10 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
                                              final_verbalizations,
                                              model_config)
         proc_logger.add_step(f'Generated final SPARQL after expansion: {sparql}')
-
+        proc_logger.complete_action()
     
-    # Log final output and complete the action
+    
+    # Log final output and close the top‑level action
     proc_logger.set_output({"sparql": sparql}).complete_action()
     return sparql
 

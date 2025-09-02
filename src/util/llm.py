@@ -23,8 +23,16 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
         print('Failed for message: {message_list}')
         raise e
     # Extract the analysis from theresponse
-    model_res_text = completion.choices[0].message.content
-    return model_res_text
+    
+    model_msg = completion.choices[0].message
+    
+    model_res_text = model_msg.content
+    
+    # Extract reasoning or thinking context separately
+    reasoning_content = model_msg.model_extra.get('reasoning_content')
+    if not reasoning_content:
+        model_res_text, reasoning_content = remove_think_context(model_res_text)
+    return model_res_text, reasoning_content
 
 def get_embeddings(input_texts, embed_config=None):
     # Compute input embeddings
@@ -33,7 +41,14 @@ def get_embeddings(input_texts, embed_config=None):
     return [d['embedding'] for d in resp['data']]
 
 def remove_think_context(llm_response_text):
-    # Remove the parts between <think> </think> if its there, other return as is
+    # Remove the parts between <think> </think> if it's there,
+    # and also return the extracted thinking content.
     # Use a non‑greedy regex with DOTALL so it matches across newlines.
+    think_parts = re.findall(r'(<think\b[^>]*?>.*?</think>)', llm_response_text, flags=re.DOTALL)
+
+    # Strip out the thinking blocks from the original response
     cleaned_text = re.sub(r'<think\b[^>]*?>.*?</think>', '', llm_response_text, flags=re.DOTALL)
-    return cleaned_text
+
+    # Return a tuple: (cleaned text, concatenated thinking content)
+    # If no <think> block was found, think_parts will be an empty list.
+    return cleaned_text, ''.join(think_parts)

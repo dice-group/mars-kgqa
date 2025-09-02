@@ -69,7 +69,7 @@ def analyze_dataset_batches(dataset_file_path, template_file_path, output_dir_pa
         cur_prompt = gen_batch_prompt(batch_str, markdown_content)
         
         # Send the batch to OpenAI and get the analysis
-        analysis = prompt_chat_llm(cur_prompt, None, client_instance, model_id)
+        analysis, _ = prompt_chat_llm(cur_prompt, None, client_instance, model_id)
         
         # Update the markdown document with the new analysis
         markdown_content = analysis
@@ -123,7 +123,7 @@ def merge_batch_analyses(doc_dir, merge_file_name, client_instance, model_id):
         """
 
         # Send the merge prompt to OpenAI and get the merged analysis
-        merged_content = prompt_chat_llm(merge_prompt, None, client_instance, model_id)
+        merged_content, _ = prompt_chat_llm(merge_prompt, None, client_instance, model_id)
 
         # Save the intermediate merge to a temporary file
         with open(os.path.join(temp_doc_dir, f'intermediate_merge_{batch_file}'), 'w', encoding='utf-8') as merge_file:

@@ -1,5 +1,5 @@
 
-from src.util.llm import prompt_chat_llm, remove_think_context
+from src.util.llm import prompt_chat_llm
 
 
 def generate_baseline_sparql(question_txt, model_config):
@@ -15,9 +15,8 @@ def generate_baseline_sparql(question_txt, model_config):
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -62,9 +61,8 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -93,9 +91,8 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -104,7 +101,13 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
         
     return answer_sparql
 
-def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_config):
+def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns,
+                                 model_config, proc_logger):
+    
+    proc_logger.start_action(
+        "generate_mhop_pattern_sparql",
+        {"question": question_txt, "num_patterns": len(top_verbalized_patterns)}
+    ).add_step("Building prompt for multi‑hop SPARQL generation")
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
@@ -129,19 +132,35 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value>
 
     """
-    llm_resp_text = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
-    print(f'LLM Response: {llm_resp_text}')
+    
+    # Log the prompt (full text) before sending it to the LLM
+    proc_logger.add_step("Prompt built – logging prompt")
+    proc_logger.add_step({"prompt": gen_prompt})
+    
+    proc_logger.add_step("Calling LLM")
+    
+    llm_resp_text, think_content = prompt_chat_llm(gen_prompt, model_config.sysprompt,
+                                    model_config.get_static_instance(),
+                                    model_config.model_id, model_config.postfix)
+    
+    # proc_logger.add_step("LLM response received")
+    if think_content:
+        proc_logger.add_step({"LLM Reasoning": think_content})
+        
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
     sparql = None
     indices = None
     # Extract the generated SPARQL
     if "SPARQL:" in llm_resp_text:
         sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted SPARQL from LLM output")
     if "Indices:" in llm_resp_text:
         indices = llm_resp_text.split("Indices:")[1].strip()
         indices = [item.strip() for item in indices.split(',')]
-        
+        proc_logger.add_step(f"Extracted expansion indices: {indices}")
+
+    proc_logger.set_output({"sparql": sparql, "indices": indices}).complete_action()
     return sparql, indices
 
 def sparql_refinement(question_txt, sparql_str, model_config):
@@ -160,9 +179,8 @@ def sparql_refinement(question_txt, sparql_str, model_config):
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     print(f'LLM Response: {llm_resp_text}')
     answer_sparql = None
     # Extract the generated SPARQL
@@ -202,9 +220,8 @@ def check_if_answer(question_txt, top_triples, context_list, model_config):
     New Important Context: <if there are triples that might be very helpful for future context, write them in a comma separated manner here. Be mindful of only choosing triples that are really important.>
 
     """
-    llm_resp_text = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
 
     # Parse the LLM response
     if "Answer:" in llm_resp_text:
@@ -232,9 +249,8 @@ def recognize_entities_and_relations(question_txt, model_config):
     Please generate one list with all entities. Do not format the json output.
     Question: \\textbf{{{question_txt}}}
     """
-    llm_resp_text = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(model_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     return llm_resp_text
 
 def filter_common_nodes(question_txt, entity_dict, model_config):
@@ -245,9 +261,8 @@ def filter_common_nodes(question_txt, entity_dict, model_config):
 
     Entity Dict: {entity_dict}
     """
-    llm_resp_text = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
-    # removing thinking context if any
-    llm_resp_text = remove_think_context(llm_resp_text)
+    llm_resp_text, _ = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
     
     qid_set = set([item.strip() for item in llm_resp_text.split(',')])
     filtered_dict = dict()

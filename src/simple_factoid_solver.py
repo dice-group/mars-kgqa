@@ -298,7 +298,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
 
         # Initialise a logger for this question
         proc_logger = ProcessFlowLogger(
-            process_name=f"{proc_name}_question_{question_id}",
+            process_name=f"question_{question_id}",
             output_dir=log_dir
         ).start_action(
             "process_question",
