@@ -2,6 +2,7 @@ import time
 import os
 import json
 import atexit
+from datetime import datetime
 
 class ProcessFlowLogger:
     def __init__(self, process_name, output_dir):
@@ -42,13 +43,14 @@ class ProcessFlowLogger:
         json.dump(entry, self._fh)
         self._fh.write("\n")
         self._fh.flush()          # optional – guarantees entry is on disk immediately
+        print(json.dumps(entry)) # printing to standard io as well
 
     def log_input_info(self, input_data):
         """Log process input information"""
         entry = {
             "type": "input",
             "data": input_data,
-            "timestamp": time.time()
+            "timestamp": datetime.now().isoformat()  
         }
         self.log_entries.append(entry)
         self._write_entry(entry)
@@ -56,10 +58,12 @@ class ProcessFlowLogger:
 
     def start_action(self, action_name, input_data):
         """Start a new action logging session"""
+        now = time.time()
         self.current_action = {
             "name": action_name,
             "input": input_data,
-            "start_time": time.time(),
+            "start_time": datetime.fromtimestamp(now).isoformat(),  # readable
+            "_start_ts": now,                                         # raw for duration
             "steps": [],
             "output": None
         }
@@ -70,7 +74,7 @@ class ProcessFlowLogger:
         if self.current_action:
             self.current_action["steps"].append({
                 "description": step_description,
-                "timestamp": time.time()
+                "timestamp": datetime.now().isoformat()  
             })
         return self
 
@@ -83,11 +87,13 @@ class ProcessFlowLogger:
     def complete_action(self):
         """Complete current action logging and calculate duration"""
         if self.current_action:
-            self.current_action["duration"] = time.time() - self.current_action["start_time"]
-            self.current_action["end_time"] = time.time()
+            end_ts = time.time()
+            self.current_action["duration"] = end_ts - self.current_action["_start_ts"]
+            self.current_action["end_time"] = datetime.fromtimestamp(end_ts).isoformat()
+            # remove internal raw timestamp before writing (optional)
             action_entry = {
                 "type": "action",
-                "action": self.current_action
+                "action": {k: v for k, v in self.current_action.items() if k != "_start_ts"}
             }
             self.log_entries.append(action_entry)
             self._write_entry(action_entry)
@@ -98,7 +104,7 @@ class ProcessFlowLogger:
         """Write final summary entry with total process duration"""
         summary_entry = {
             "type": "process_summary",
-            "end_time": time.time(),
+            "end_time": datetime.now().isoformat(),  
             "total_duration": time.time() - self.process_start_time
         }
         self._write_entry(summary_entry)

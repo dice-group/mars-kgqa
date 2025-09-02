@@ -12,6 +12,7 @@ from tqdm import tqdm
 import os
 import json
 from src.const.dataset import KgqaDataset, DatasetSplit
+from src.util.process_flow_logger import ProcessFlowLogger
 
 
 class TripleData:
@@ -268,71 +269,101 @@ def get_log_dir(approach_name: str, input_file_path: str) -> str:
     base_log_dir = _build_log_dir(input_file_path)
     return os.path.join(base_log_dir, approach_name)
             
-def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep, llm_config, use_gold_entrel, log_dir):
+def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
+                    llm_config, use_gold_entrel, log_dir):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
     create_directory_if_not_exists(out_dir)
-    
+
     # Log directory
     create_directory_if_not_exists(log_dir)
     # Handle cache file
     cache_file = os.path.join(out_dir, f'{proc_name}_cache.json')
-    
+
     # Read cache if it exists
     answers_cache = {}
     if os.path.exists(cache_file):
         with open(cache_file, 'r', encoding='utf-8') as f:
             answers_cache = json.load(f)
-    
+
     cur_answers_dict = {}
-    
+
     # Read the qald preprocessed file
     qald_json = read_json_file(qald_file_path)
-    
+
     # For each question
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
-        # TODO: Create ProcessLog
-        proc_logger = None
+
+        # Initialise a logger for this question
+        proc_logger = ProcessFlowLogger(
+            process_name=f"{proc_name}_question_{question_id}",
+            output_dir=log_dir
+        ).start_action(
+            "process_question",
+            {"question_id": question_id}
+        )
+
         # Extract the English question text
-        question_text = next((q['string'] for q in question_item['question'] if q['language'] == 'en'), None)
-        # print(question_id, question_text)
-        cache_id = str(question_id) + '_' + question_text
+        question_text = next(
+            (q['string'] for q in question_item['question'] if q['language'] == 'en'), None
+        )
+        cache_id = f"{question_id}_{question_text}"
+
         
-        # TODO: Log cache action
-        # Check if cached
+        # Cache lookup
         if cache_id in answers_cache:
-            print(f'Using cached answer for cache ID: {cache_id}')
+            proc_logger.add_step(f"Using cached answer for cache ID: {cache_id}")
             cur_answers_dict[question_id] = answers_cache[cache_id]
+            proc_logger.set_output({"cached_answer": answers_cache[cache_id]}).complete_action()
             continue
 
-        # extract aug_text, extracted_ents, extracted_rels
         
-        if not use_gold_entrel and not all(key in question_item for key in ['augmented_seq', 'filtered_ent', 'filtered_rel']):
-            continue # skip if augmented data is missing
+        # Verify required pre‑processed fields are present
+        if not use_gold_entrel and not all(
+            key in question_item for key in ['augmented_seq', 'filtered_ent', 'filtered_rel']
+        ):
+            proc_logger.add_step("Missing augmented data; skipping question").complete_action()
+            continue  # skip if augmented data is missing
+
         
+        # Load augmented text / entities / relations
         aug_text = question_item['augmented_seq']
-        
+
         if use_gold_entrel:
-            ent_dict = {entry['label']: entry['uri'] for entry in question_item['gold_ent']}
-            rel_dict = {entry['label']: entry['uri'] for entry in question_item['gold_rel']}
+            ent_dict = {e['label']: e['uri'] for e in question_item['gold_ent']}
+            rel_dict = {r['label']: r['uri'] for r in question_item['gold_rel']}
         else:
             # ent_dict = question_item['found_ent']
             # rel_dict = question_item['found_rel']
-            ent_dict = {entry['label']: entry['uri'] for entry in question_item['filtered_ent']}
-            rel_dict = {entry['label']: entry['uri'] for entry in question_item['filtered_rel']}
+            ent_dict = {e['label']: e['uri'] for e in question_item['filtered_ent']}
+            rel_dict = {r['label']: r['uri'] for r in question_item['filtered_rel']}
+
+        proc_logger.add_step(
+            f"Prepared input – aug_text length: {len(aug_text)}, "
+            f"entities: {len(ent_dict)}, relations: {len(rel_dict)}"
+        )
         
-        # TODO: Log process question action
-        # send to process_input_query
-        cur_generated_output = process_fn(question_text, llm_config, (aug_text, ent_dict, rel_dict), wd_ep, use_gold_entrel, proc_logger)
-        # Cache the generated SPARQL
+        # Call the actual query generation / solving function
+        cur_generated_output = process_fn(
+            question_text,
+            llm_config,
+            (aug_text, ent_dict, rel_dict),
+            wd_ep,
+            use_gold_entrel,
+            proc_logger
+        )
+        
+        # Cache the generated output
         answers_cache[cache_id] = cur_generated_output
-        # Save updated cache to disk
         save_json_file(answers_cache, cache_file)
-        # Update current answers dictionary
+
+        
+        # Store result & finish logging for this question
         cur_answers_dict[question_id] = cur_generated_output
-    
+        proc_logger.set_output({"generated_output": cur_generated_output}).complete_action()
+
     # Save answers dict as tsv
     save_answers_as_tsv(cur_answers_dict, output_path)
 

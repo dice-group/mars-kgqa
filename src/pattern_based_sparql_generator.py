@@ -147,169 +147,265 @@ def load_property_info(cached_file_path):
         PROPERTY_ID_MAP[prop_id] = key
 
 
-def process_input_query_1hop(question_text, model_config, preprocessed_input, wd_ep, using_gold_entrel, proc_logger):
-    print(f'\nProcessing question: {question_text}')
+def process_input_query_1hop(question_text, model_config, preprocessed_input,
+                            wd_ep, using_gold_entrel, proc_logger):
+    """
+    One‑hop pattern‑based SPARQL generation
+    """
     
+    # Log start of the action
+    proc_logger.start_action(
+        "process_input_query_1hop",
+        {"question": question_text, "model_config": model_config.to_dict()}
+    ).add_step(f'Processing question: {question_text}')
+
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
-    # Retrieve entities and relations for the input question
+
+    
+    # Entity / relation extraction
     if preprocessed_input:
-        aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
+        aug_qtxt, entity_dict, relation_list = preprocessed_input  # unpack
     else:
-        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
-        
-    print(f'\nIdentified entities: {entity_dict}')
-        
-    # Filter entity dictionary to remove entities that will lead to too many child nodes
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(
+            question_text
+        )
+    proc_logger.add_step(f'Identified entities: {entity_dict}')
+
+    
+    # Filtering
     # if using_gold_entrel:
     #     filter_entity_dict = entity_dict
     # else:
     #     filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
-    
+
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
-    
-    print(f'\nEntities to visit: {filter_entity_dict}')
-    
+    proc_logger.add_step(f'Entities to visit: {filter_entity_dict}')
+
     patterns_data_list = []
     visited_nodes = set()
+    all_rejected_patterns = []  # Mostly for debugging
+
     
-    all_rejected_patterns = [] # Mostly for debugging
-    # For each entity, find all the triple patterns that exist
+    # Walk each root entity and collect 1‑hop patterns
     for entity_qid in filter_entity_dict.values():
-        print(f'\nTraversing: {entity_qid}')
+        proc_logger.add_step(f'Traversing entity: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
-        visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
+        visited_nodes.add(entity_qid)  # root node already expanded
         entity_label = get_node_label(entity_uri, wd_ep)
+
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
-        print(f'\nTriple patterns found for {entity_uri}: {len(patterns_list)}')
-        extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
+        proc_logger.add_step(
+            f'Triple patterns found for {entity_uri}: {len(patterns_list)}'
+        )
+
+        extracted_patterns, rejected_patterns = extract_patterns_data(
+            entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP
+        )
         patterns_data_list.extend(extracted_patterns)
         all_rejected_patterns.extend(rejected_patterns)
-        print(f'\nFiltered triple patterns for {entity_uri}: {len(extracted_patterns)}')
+
+        proc_logger.add_step(
+            f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}'
+        )
+
     
-    # Compute similarity of the patterns to the (augmented) query
-    verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP)
-    # Sort the patterns
-    priority_queue = get_verbalization_similarity(aug_qtxt, patterns_data_list, verbalizer)
-    # For top N patterns
+    # Compute verbalization similarity and pick top‑N
+    verbalizer = lambda obj: obj.get_dr_aug_verbalization(
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP
+    )
+    proc_logger.add_step('Computing verbalization similarity')
+    priority_queue = get_verbalization_similarity(aug_qtxt,
+                                                   patterns_data_list,
+                                                   verbalizer)
+
     n_value = 10
-    top_triples = heapq.nsmallest(n_value, priority_queue, key=lambda x: x[0])
-    
-    id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
+    top_triples = heapq.nsmallest(n_value, priority_queue,
+                                  key=lambda x: x[0])
+    proc_logger.add_step(f'Selected top {n_value} triple patterns')
+
+    id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
+    )
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
+
     
-    sparql = generate_1hop_pattern_sparql(question_text, top_id_verbalizations, model_config)
-    print(f'\nFirst SPARQL: {sparql}')
-    ## refine this SPARQL (extra step that is needed for certain models)
-    #sparql = sparql_refinement(question_text, sparql, model_config)
-    #print(f'Refined SPARQL: {sparql}')
-        
+    # LLM call – generate SPARQL
+    sparql = generate_1hop_pattern_sparql(question_text,
+                                          top_id_verbalizations,
+                                          model_config)
+    proc_logger.add_step(f'Generated SPARQL (raw): {sparql}')
+
+    # ## refine this SPARQL (extra step that is needed for certain models)
+    # sparql = sparql_refinement(question_text, sparql, model_config)
+    # proc_logger.add_step(f'Refined SPARQL: {sparql}')
+
+    
+    # Log final output and complete the action
+    proc_logger.set_output({"sparql": sparql}).complete_action()
     return sparql
 
-def process_input_query_mhop(question_text, model_config, preprocessed_input, wd_ep, using_gold_entrel, proc_logger):
-    print(f'\nProcessing question: {question_text}')
+
+def process_input_query_mhop(question_text, model_config, preprocessed_input,
+                            wd_ep, using_gold_entrel, proc_logger):
+    """
+    Multi‑hop pattern‑based SPARQL generation
+    """
     
-    # TODO: Log entity retrieval action
+    # Log start of the multi‑hop action
+    proc_logger.start_action(
+        "process_input_query_mhop",
+        {"question": question_text, "model_config": model_config.to_dict()}
+    ).add_step(f'Processing question: {question_text}')
+
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
-    # Retrieve entities and relations for the input question
+
+    
+    # Entity / relation extraction
     if preprocessed_input:
-        aug_qtxt, entity_dict, relation_list = preprocessed_input # unpack
+        aug_qtxt, entity_dict, relation_list = preprocessed_input  # unpack
     else:
-        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(question_text)
-        
-    print(f'\nIdentified entities: {entity_dict}')
-        
-    # Filter entity dictionary to remove entities that will lead to too many child nodes
+        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(
+            question_text
+        )
+    proc_logger.add_step(f'Identified entities: {entity_dict}')
+
+    
+    # Filtering
     # if using_gold_entrel:
     #     filter_entity_dict = entity_dict
     # else:
     #     filter_entity_dict = filter_common_nodes(question_text, entity_dict, model_config)
-    
+
     ## Note: Disabling filtering logic, as entities are already getting filtered in entity linking step
     filter_entity_dict = entity_dict
-    
-    # TODO: Log triple pattern extraction action
-    print(f'\nEntities to visit: {filter_entity_dict}')
-    
+    proc_logger.add_step(f'Entities to visit: {filter_entity_dict}')
+
     patterns_data_list = []
     visited_nodes = set()
+    all_rejected_patterns = []  # Mostly for debugging
+
     
-    all_rejected_patterns = [] # Mostly for debugging
-    # For each entity, find all the triple patterns that exist
+    # Walk each root entity and collect 1‑hop patterns
     for entity_qid in filter_entity_dict.values():
-        print(f'\nTraversing: {entity_qid}')
+        proc_logger.add_step(f'Traversing entity: {entity_qid}')
         entity_uri = 'http://www.wikidata.org/entity/' + entity_qid
-        visited_nodes.add(entity_qid) # adding all the root nodes which have been extended already
+        visited_nodes.add(entity_qid)  # root node already expanded
         entity_label = get_node_label(entity_uri, wd_ep)
+
         patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
-        print(f'\nTriple patterns found for {entity_uri}: {len(patterns_list)}')
-        extracted_patterns, rejected_patterns = extract_patterns_data(entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP)
+        proc_logger.add_step(
+            f'Triple patterns found for {entity_uri}: {len(patterns_list)}'
+        )
+
+        extracted_patterns, rejected_patterns = extract_patterns_data(
+            entity_uri, entity_label, patterns_list, PROPERTY_ID_MAP
+        )
         patterns_data_list.extend(extracted_patterns)
         all_rejected_patterns.extend(rejected_patterns)
-        print(f'\nFiltered triple patterns for {entity_uri}: {len(extracted_patterns)}')
+
+        proc_logger.add_step(
+            f'Filtered triple patterns for {entity_uri}: {len(extracted_patterns)}'
+        )
+
     
-    # TODO: Implement
-    # Compute similarity of the patterns to the (augmented) query
-    verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP)
-    # Sort the patterns
-    priority_queue = get_verbalization_similarity(aug_qtxt, patterns_data_list, verbalizer)
-    # For top N patterns
+    # Compute similarity and pick top‑N (same as 1‑hop)
+    verbalizer = lambda obj: obj.get_dr_aug_verbalization(
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP
+    )
+    proc_logger.add_step('Computing verbalization similarity')
+    priority_queue = get_verbalization_similarity(aug_qtxt,
+                                                   patterns_data_list,
+                                                   verbalizer)
+
     n_value = 10
-    # TODO: Log top triple patterns
-    top_triples = heapq.nsmallest(n_value, priority_queue, key=lambda x: x[0])
-    
-    id_verbalizer=lambda obj: obj.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)
+    top_triples = heapq.nsmallest(n_value, priority_queue,
+                                  key=lambda x: x[0])
+    proc_logger.add_step(f'Selected top {n_value} triple patterns')
+
+    id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
+    )
     top_id_verbalizations = [id_verbalizer(item[1]) for item in top_triples]
-    # TODO: Log LLM call
-    sparql, indices = generate_mhop_pattern_sparql(question_text, top_id_verbalizations, model_config)
+
     
+    # First LLM call – ask for expansion indices
+    sparql, indices = generate_mhop_pattern_sparql(question_text,
+                                                   top_id_verbalizations,
+                                                   model_config)
+    proc_logger.add_step(f'LLM returned SPARQL: {sparql}')
+    proc_logger.add_step(f'LLM requested expansion for indices: {indices}')
+
     
-    # If indices are returned 
+    # If the model asks for further expansion, walk the requested edges
     if indices and not sparql:
-        # TODO: Log response processing
-        print(f'\nRequested expansion for: {indices}')
-        # For each triple to explore further
-        i = 1
+        proc_logger.add_step('Entering expansion loop')
         next_hop_patterns_data_list = []
         next_hop_reject_patterns = []
         expanded_triple_tuples = []
-        
+
+        i = 1
         for index_item in indices:
             index_item = int(index_item)
             if index_item < 0 or index_item >= len(top_triples):
                 continue
+
             cur_triple_tuple = top_triples[index_item]
             expanded_triple_tuples.append(cur_triple_tuple)
+
             cur_id = i
             cur_edge = cur_triple_tuple[1]
             cur_edge.assign_variable_id(cur_id)
-            
-            print(f'\nExpanding edge: {id_verbalizer(cur_edge)}')
-            
+
+            proc_logger.add_step(
+                f'Expanding edge #{i}: {id_verbalizer(cur_edge)}'
+            )
+
             cur_var_name = cur_edge.variable_name
-            # Find the next patterns for this triple and assign them the same IDs
             cur_constraint_tp = cur_edge.get_triple_pattern()
-            cur_patterns_list = find_next_hop_patterns(cur_constraint_tp, cur_var_name, wd_ep)
-            print(f'\nTriple patterns found for {cur_var_name}: {len(cur_patterns_list)}')
-            extracted_patterns, rejected_patterns = extract_patterns_data(cur_var_name, cur_var_name, cur_patterns_list, PROPERTY_ID_MAP)
+            cur_patterns_list = find_next_hop_patterns(
+                cur_constraint_tp, cur_var_name, wd_ep
+            )
+            proc_logger.add_step(
+                f'Triple patterns found for {cur_var_name}: {len(cur_patterns_list)}'
+            )
+
+            extracted_patterns, rejected_patterns = extract_patterns_data(
+                cur_var_name, cur_var_name, cur_patterns_list, PROPERTY_ID_MAP
+            )
             next_hop_patterns_data_list.extend(extracted_patterns)
             next_hop_reject_patterns.extend(rejected_patterns)
-            print(f'\nFiltered triple patterns for {cur_var_name}: {len(extracted_patterns)}')
-            # increment i
+
+            proc_logger.add_step(
+                f'Filtered triple patterns for {cur_var_name}: {len(extracted_patterns)}'
+            )
             i += 1
-        # Find next top triples
-        # Sort the patterns
-        next_priority_queue = get_verbalization_similarity(aug_qtxt, next_hop_patterns_data_list, verbalizer)
-        next_top_triples = heapq.nsmallest(n_value, next_priority_queue, key=lambda x: x[0])
-        top_id_verbalizations = [id_verbalizer(item[1]) for item in next_top_triples]
+
         
-        final_verbalizations = [id_verbalizer(item[1]) for item in expanded_triple_tuples]
-        
+        # Rank next‑hop patterns and generate final SPARQL
+        next_priority_queue = get_verbalization_similarity(
+            aug_qtxt, next_hop_patterns_data_list, verbalizer
+        )
+        next_top_triples = heapq.nsmallest(
+            n_value, next_priority_queue, key=lambda x: x[0]
+        )
+        top_id_verbalizations = [
+            id_verbalizer(item[1]) for item in next_top_triples
+        ]
+
+        final_verbalizations = [
+            id_verbalizer(item[1]) for item in expanded_triple_tuples
+        ]
         final_verbalizations.extend(top_id_verbalizations)
-        # Generate SPARQL from the extracted context
-        sparql = generate_1hop_pattern_sparql(question_text, final_verbalizations, model_config)
-    # TODO: Log final sparql
-    print(f'SPARQL: {sparql}')
+
+        sparql = generate_1hop_pattern_sparql(question_text,
+                                             final_verbalizations,
+                                             model_config)
+        proc_logger.add_step(f'Generated final SPARQL after expansion: {sparql}')
+
+    
+    # Log final output and complete the action
+    proc_logger.set_output({"sparql": sparql}).complete_action()
     return sparql
 
 # Example usage
@@ -325,11 +421,11 @@ if __name__ == "__main__":
     use_goldentrel = False # Whether to use gold entities and relations
     approach_id = 'pbsg_mhop' # identifier of the approach
 
-    llm_config = ChatModel.GLM4dt5AIR_Nothink.value # LLM to use
+    llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
-    kgqa_ds = KgqaDataset.QALD10.value # Dataset to use (includes filepaths and wikidata endpoint information)
+    kgqa_ds = KgqaDataset.QALD9PLUS_UPDATED_CURWD.value # Dataset to use (includes filepaths and wikidata endpoint information)
     
-    split_conf = DatasetSplit.TEST # Dataset split to use
+    split_conf = DatasetSplit.TRAIN # Dataset split to use
     
     ## Rest of the logic
     approach_name = approach_id # copying id for modification if needed

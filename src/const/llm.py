@@ -19,6 +19,16 @@ class ModelAPIConfig:
     def get_new_instance(self):
         return get_opai_client(self.endpoint, self.api_key)
     
+    def to_dict(self):
+        """Convert the configuration to a JSON-serializable dictionary."""
+        return {
+            'model_id': self.model_id,
+            'endpoint': self.endpoint,
+            'api_key': self.api_key,
+            'sysprompt': self.sysprompt,
+            'postfix': self.postfix
+        }
+    
 
 LLM_ENDPOINT = os.environ.get("LLAMA_SWAP_OPENAI_ENDPOINT")
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        
