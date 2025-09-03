@@ -248,7 +248,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     proc_logger.start_action("first_llm_call")
     sparql = generate_1hop_pattern_sparql(question_text,
                                           top_id_verbalizations,
-                                          model_config)
+                                          model_config, proc_logger)
     proc_logger.add_step(f'Generated SPARQL (raw): {sparql}')
     proc_logger.complete_action()
     
@@ -272,8 +272,8 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
     # Top‑level action for the whole multi‑hop process
     proc_logger.start_action(
         "process_input_query_mhop",
-        {"question": question_text, "model_config": model_config.to_dict()}
-    ).add_step(f'Processing question: {question_text}')
+        {"model_config": model_config.to_dict()}
+    )
 
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
@@ -290,7 +290,10 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
         aug_qtxt, entity_dict, relation_list = find_entities_and_relations(
             question_text
         )
+    
+    proc_logger.add_step(f'Augmented text: {aug_qtxt}')
     proc_logger.add_step(f'Identified entities: {entity_dict}')
+    
     proc_logger.complete_action()
     
     
@@ -438,13 +441,13 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
 
         sparql = generate_1hop_pattern_sparql(question_text,
                                              final_verbalizations,
-                                             model_config)
+                                             model_config, proc_logger)
         proc_logger.add_step(f'Generated final SPARQL after expansion: {sparql}')
         proc_logger.complete_action()
     
     
     # Log final output and close the top‑level action
-    proc_logger.set_output({"sparql": sparql}).complete_action()
+    proc_logger.complete_action()
     return sparql
 
 # Example usage

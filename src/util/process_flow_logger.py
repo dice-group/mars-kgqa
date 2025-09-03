@@ -18,7 +18,7 @@ class ProcessFlowLogger:
         # Set up log file path
         self.log_file_path = os.path.join(
             self.output_dir, f"{self.process_name}_log.txt")
-        self._fh = open(self.log_file_path, "w", buffering=1)
+        self._fh = open(self.log_file_path, "a", buffering=1)
         
         # Write process header
         self._write_section_header("PROCESS START", self.process_name)

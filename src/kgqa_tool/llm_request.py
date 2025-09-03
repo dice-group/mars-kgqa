@@ -72,7 +72,12 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     return answer_sparql
 
 
-def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_config):
+def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_config, proc_logger):
+    
+    proc_logger.start_action(
+        "generate_1hop_pattern_sparql",
+        {"num_patterns": len(top_verbalized_patterns)}
+    ).add_step("Building prompt for single‑hop SPARQL generation")
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
@@ -91,13 +96,27 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text, _ = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     
-    print(f'LLM Response: {llm_resp_text}')
+    # Log the full prompt before sending it to the LLM
+    proc_logger.add_step({"prompt": gen_prompt})
+
+    proc_logger.add_step("Calling LLM")
+    
+    llm_resp_text, think_content = prompt_chat_llm(gen_prompt, model_config.sysprompt, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
+    if think_content:
+        proc_logger.add_step({"LLM Reasoning": think_content})
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
     answer_sparql = None
     # Extract the generated SPARQL
     if "SPARQL:" in llm_resp_text:
         answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted SPARQL from LLM output")
+    
+    # Record final output and finish the action
+    proc_logger.set_output({"sparql": answer_sparql}).complete_action()
         
     return answer_sparql
 
@@ -106,7 +125,7 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns,
     
     proc_logger.start_action(
         "generate_mhop_pattern_sparql",
-        {"question": question_txt, "num_patterns": len(top_verbalized_patterns)}
+        {"num_patterns": len(top_verbalized_patterns)}
     ).add_step("Building prompt for multi‑hop SPARQL generation")
     
     patterns_str = '\n'.join(top_verbalized_patterns)
@@ -134,7 +153,7 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns,
     """
     
     # Log the prompt (full text) before sending it to the LLM
-    proc_logger.add_step("Prompt built – logging prompt")
+    #proc_logger.add_step("Prompt built – logging prompt")
     proc_logger.add_step({"prompt": gen_prompt})
     
     proc_logger.add_step("Calling LLM")
@@ -157,7 +176,10 @@ def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns,
         proc_logger.add_step("Extracted SPARQL from LLM output")
     if "Indices:" in llm_resp_text:
         indices = llm_resp_text.split("Indices:")[1].strip()
-        indices = [item.strip() for item in indices.split(',')]
+        if len(indices) > 0:
+            indices = [item.strip() for item in indices.split(',')]
+        else:
+            indices = []
         proc_logger.add_step(f"Extracted expansion indices: {indices}")
 
     proc_logger.set_output({"sparql": sparql, "indices": indices}).complete_action()

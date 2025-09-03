@@ -296,19 +296,23 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
 
+        # Extract the English question text
+        question_text = next(
+            (q['string'] for q in question_item['question'] if q['language'] == 'en'), None
+        )
+        
         # Initialise a logger for this question
         proc_logger = ProcessFlowLogger(
             process_name=f"question_{question_id}",
             output_dir=log_dir
         ).start_action(
             "process_question",
-            {"question_id": question_id}
+            {"question_id": question_id, "question_text": question_text}
         )
-
-        # Extract the English question text
-        question_text = next(
-            (q['string'] for q in question_item['question'] if q['language'] == 'en'), None
-        )
+        
+        proc_logger.add_step(f"Wikidata Endpoint: {wd_ep}")
+        proc_logger.add_step(f"Using Gold Entities?: {use_gold_entrel}")
+        
         cache_id = f"{question_id}_{question_text}"
 
         
@@ -330,6 +334,11 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         
         # Load augmented text / entities / relations
         aug_text = question_item['augmented_seq']
+        
+        # Log the gold entities, relations and SPARQL
+        proc_logger.add_step(f"Gold Entities: {question_item['gold_ent']}")
+        proc_logger.add_step(f"Gold Relations: {question_item['gold_rel']}")
+        proc_logger.add_step(f"Gold SPARQL: {question_item['query']['sparql']}")
 
         if use_gold_entrel:
             ent_dict = {e['label']: e['uri'] for e in question_item['gold_ent']}
@@ -344,6 +353,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             f"Prepared input – aug_text length: {len(aug_text)}, "
             f"entities: {len(ent_dict)}, relations: {len(rel_dict)}"
         )
+        
         
         # Call the actual query generation / solving function
         cur_generated_output = process_fn(
@@ -362,7 +372,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         
         # Store result & finish logging for this question
         cur_answers_dict[question_id] = cur_generated_output
-        proc_logger.set_output({"generated_output": cur_generated_output}).complete_action()
+        proc_logger.complete_action()
 
     # Save answers dict as tsv
     save_answers_as_tsv(cur_answers_dict, output_path)
