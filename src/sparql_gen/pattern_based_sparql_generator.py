@@ -244,9 +244,9 @@ def _generate_final_sparql(question_text, top_triples, model_config,
     else:
         # Multi‑hop expansion – combine previously‑expanded verbalizations
         # with the newly‑selected ones.
-        verbalizations = extra_verbalizations + [
+        verbalizations = [
             id_verbalizer(item[1]) for item in top_triples
-        ]
+        ] +  extra_verbalizations
 
     sparql = generate_sparql_from_patterns(
         question_text, verbalizations, model_config, proc_logger
