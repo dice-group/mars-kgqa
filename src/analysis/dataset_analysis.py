@@ -1,4 +1,4 @@
-# Sample usage: python -m src.main
+# Sample usage: python -m src.analysis.dataset_analysis
 import json
 import os
 import time

@@ -1,5 +1,5 @@
-# Sample usage: python -m src.baseline_sparql_generator
-from src.simple_factoid_solver import save_answers_as_tsv
+# Sample usage: python -m src.sparql_gen.baseline_sparql_generator
+from src.sparql_gen.sparql_gen_common import save_answers_as_tsv
 from src.kgqa_tool.llm_request import generate_baseline_sparql
 from src.const.llm import DEFAULT_CHAT_LLM_CONFIG
 from src.util.common import read_json_file

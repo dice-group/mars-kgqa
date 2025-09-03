@@ -72,10 +72,10 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     return answer_sparql
 
 
-def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_config, proc_logger):
+def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, model_config, proc_logger):
     
     proc_logger.start_action(
-        "generate_1hop_pattern_sparql",
+        "generate_sparql_from_patterns",
         {"num_patterns": len(top_verbalized_patterns)}
     ).add_step("Building prompt for single‑hop SPARQL generation")
     
@@ -120,11 +120,11 @@ def generate_1hop_pattern_sparql(question_txt, top_verbalized_patterns, model_co
         
     return answer_sparql
 
-def generate_mhop_pattern_sparql(question_txt, top_verbalized_patterns,
+def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns,
                                  model_config, proc_logger):
     
     proc_logger.start_action(
-        "generate_mhop_pattern_sparql",
+        "generate_sparql_or_expansion_indices",
         {"num_patterns": len(top_verbalized_patterns)}
     ).add_step("Building prompt for multi‑hop SPARQL generation")
     
