@@ -16,14 +16,16 @@ class ProcessFlowLogger:
         os.makedirs(self.output_dir, exist_ok=True)
         
         # Set up log file path
-        self.log_file_path = os.path.join(
-            self.output_dir, f"{self.process_name}_log.txt")
+        self.log_file_path = ProcessFlowLogger.gen_log_file_path(self.process_name, self.output_dir)
         self._fh = open(self.log_file_path, "a", buffering=1)
         
         # Write process header
         self._write_section_header("PROCESS START", self.process_name)
         self._write_line(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self._write_separator()
+        
+    def gen_log_file_path(proc_name, output_dir):
+        return os.path.join(output_dir, f"{proc_name}_log.txt")
 
     def close(self):
         """Close the log file"""

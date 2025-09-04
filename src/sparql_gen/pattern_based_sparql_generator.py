@@ -1,5 +1,5 @@
 # Sample usage: python -m src.sparql_gen.pattern_based_sparql_generator
-from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir
+from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns
 from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices
@@ -8,6 +8,7 @@ from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
 from src.util.qald_io import convert_basic_output
+from src.analysis.pf_answer_analysis import analyse_mismatches
 
 from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
@@ -436,3 +437,7 @@ if __name__ == "__main__":
     gerbil_result_path = generate_gerbil_export_path(run_name, qald_file_path)
     
     create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
+    
+    # Analyse answers
+    analysis_dir = get_analysis_dir(run_name, qald_file_path)
+    analyse_mismatches(qald_file_path, json_output_path, log_dir, analysis_dir, llm_config)

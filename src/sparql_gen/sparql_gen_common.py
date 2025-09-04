@@ -84,7 +84,7 @@ def generate_gerbil_export_path(approach_name, input_file_path):
     return _build_output_path(approach_name, input_file_path,
                               leaf_dir='gerbil', file_ext='csv')
     
-def _build_log_dir(input_file_path: str, leaf_dir: str = "logs") -> str:
+def _build_leaf_dir(input_file_path: str, leaf_dir: str) -> str:
 
     # Absolute path of the input file
     input_abs_path = os.path.abspath(input_file_path)
@@ -108,8 +108,19 @@ def get_log_dir(approach_name: str, input_file_path: str) -> str:
     Return a log directory that includes the approach name for extra
     organization, e.g. <...>/prediction/<input‑file>/logs/<approach_name>.
     """
-    base_log_dir = _build_log_dir(input_file_path)
+    base_log_dir = _build_leaf_dir(input_file_path, 'logs')
     return os.path.join(base_log_dir, approach_name)
+
+def get_analysis_dir(approach_name: str, input_file_path: str) -> str:
+    """
+    Return an analysis directory that includes the approach name for extra
+    organization, e.g. <...>/prediction/<input‑file>/analysis/<approach_name>.
+    """
+    base_analysis_dir = _build_leaf_dir(input_file_path, 'analysis')
+    return os.path.join(base_analysis_dir, approach_name)
+
+def get_question_pf_name(question_id):
+    return f"question_{question_id}"
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
                     llm_config, use_gold_entrel, log_dir):
@@ -145,7 +156,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         
         # Initialise a logger for this question
         proc_logger = ProcessFlowLogger(
-            process_name=f"question_{question_id}",
+            process_name=get_question_pf_name(question_id),
             output_dir=log_dir
         ).start_action(
             "process_question",
