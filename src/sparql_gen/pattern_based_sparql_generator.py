@@ -8,7 +8,7 @@ from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
 from src.util.qald_io import convert_basic_output
-from src.analysis.pf_answer_analysis import analyse_mismatches
+from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compiled_analysis
 
 from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
@@ -440,4 +440,5 @@ if __name__ == "__main__":
     
     # Analyse answers
     analysis_dir = get_analysis_dir(run_name, qald_file_path)
-    analyse_mismatches(qald_file_path, json_output_path, log_dir, analysis_dir, llm_config)
+    # analyse_mismatches(qald_file_path, json_output_path, log_dir, analysis_dir, llm_config)
+    generate_compiled_analysis(analysis_dir, llm_config)

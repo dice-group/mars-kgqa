@@ -1,9 +1,10 @@
 import os
+import re
 from typing import Dict, List, Tuple
 
 from src.sparql_gen.sparql_gen_common import get_question_pf_name
 from src.util.process_flow_logger import ProcessFlowLogger
-from src.kgqa_tool.llm_request import analyse_gen_sparql
+from src.kgqa_tool.llm_request import analyse_gen_sparql, compile_analyses
 
 from src.util.common import read_json_file
 from tqdm import tqdm
@@ -140,3 +141,42 @@ def analyse_mismatches(
         analysis, think_content = analyse_gen_sparql(gold_ans, pred_ans, log_txt, llm_config)
         _write_analysis(output_dir, qid, analysis, think_content)
         print(f"\t - {qid}: analysis written.")
+        
+def generate_compiled_analysis(output_dir, llm_config):
+
+    print('Compling analyses..')
+    # Gather all analysis files
+    analysis_files = [
+        f for f in os.listdir(output_dir)
+        if f.endswith("_analysis.txt")
+    ]
+
+    compiled_parts: List[str] = []
+
+    # Regex to capture the analysis block
+    analysis_pattern = re.compile(
+        r"=== ANALYSIS START ===\n(.*?)\n=== ANALYSIS END ===",
+        re.DOTALL,
+    )
+
+    for fname in analysis_files:
+        fpath = os.path.join(output_dir, fname)
+        with open(fpath, "r", encoding="utf-8") as fh:
+            content = fh.read()
+            match = analysis_pattern.search(content)
+            if match:
+                compiled_parts.append(match.group(1).strip())
+            else:
+                # If markers are missing, fall back to whole file
+                compiled_parts.append(content.strip())
+
+    # Combine everything into one big string
+    compiled_analysis = "\n\n---===---\n\n".join(compiled_parts)
+
+    analysis, _ = compile_analyses(compiled_analysis, llm_config)
+
+    # Save the compiled analysis to the output directory
+    compiled_path = os.path.join(output_dir, "compiled_analysis.md")
+    with open(compiled_path, "w", encoding="utf-8") as out_f:
+        out_f.write(analysis)
+        print(f'Compiled analysis can be found at: {compiled_path}')

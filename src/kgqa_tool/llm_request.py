@@ -316,3 +316,13 @@ def analyse_gen_sparql(gold_answer, pred_answer, log_content, model_config, use_
     llm_resp_text, think_content = prompt_chat_llm(prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     
     return llm_resp_text, think_content
+
+def compile_analyses(analyses_content, model_config):
+    
+    prompt = f"""You are given a collection of analysis excerpts from mismatched questions. Summarise the main failure patterns and suggest possible improvements.
+    \n\n
+    {analyses_content}"""
+    
+    llm_resp_text, think_content = prompt_chat_llm(prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
+    return llm_resp_text, think_content
