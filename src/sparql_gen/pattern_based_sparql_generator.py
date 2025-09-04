@@ -156,15 +156,16 @@ def _log_and_extract(question_text, model_config, preprocessed_input,
         {"preprocessed_input_provided": bool(preprocessed_input)}
     )
     if preprocessed_input:
-        aug_qtxt, entity_dict, relation_list = preprocessed_input
+        aug_qtxt, entity_dict, relation_dict = preprocessed_input
     else:
-        aug_qtxt, entity_dict, relation_list = find_entities_and_relations(
+        aug_qtxt, entity_dict, relation_dict = find_entities_and_relations(
             question_text
         )
     proc_logger.add_step(f'Augmented text: {aug_qtxt}')
     proc_logger.add_step(f'Identified/Extracted entities: {entity_dict}')
+    proc_logger.add_step(f'Identified/Extracted relations: {relation_dict}')
     proc_logger.complete_action()
-    return aug_qtxt, entity_dict, relation_list
+    return aug_qtxt, entity_dict, relation_dict
 
 
 def _filter_entities(entity_dict, using_gold_entrel, model_config,
@@ -233,7 +234,7 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
     return top_triples
 
 
-def _generate_final_sparql(question_text, top_triples, entity_dict, model_config,
+def _generate_final_sparql(question_text, top_triples, entity_dict, relation_dict, model_config,
                           proc_logger, extra_verbalizations=None):
     """Generate SPARQL (1‑hop or after expansion)."""
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
@@ -250,9 +251,10 @@ def _generate_final_sparql(question_text, top_triples, entity_dict, model_config
         ] +  extra_verbalizations
         
     entity_dict_str = '\n'.join([f"{k}: {v}" for k, v in entity_dict.items()])
+    relation_dict_str = '\n'.join([f"{k}: {v}" for k, v in relation_dict.items()])
 
     sparql = generate_sparql_from_patterns(
-        question_text, verbalizations, entity_dict_str, model_config, proc_logger
+        question_text, verbalizations, entity_dict_str, relation_dict_str, model_config, proc_logger
     )
     return sparql
 
@@ -270,7 +272,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
     # extraction & filtering
-    aug_qtxt, entity_dict, _ = _log_and_extract(
+    aug_qtxt, entity_dict, relation_dict = _log_and_extract(
         question_text, model_config, preprocessed_input, proc_logger
     )
     filter_entity_dict = _filter_entities(
@@ -286,7 +288,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     top_triples = _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger)
 
     sparql = _generate_final_sparql(
-        question_text, top_triples, filter_entity_dict, model_config, proc_logger
+        question_text, top_triples, filter_entity_dict, relation_dict, model_config, proc_logger
     )
     # -------------------------------------------------------------
     # SPARQL refinement step (commented out – enable if needed)
@@ -312,7 +314,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
     # extraction & filtering
-    aug_qtxt, entity_dict, _ = _log_and_extract(
+    aug_qtxt, entity_dict, relation_dict = _log_and_extract(
         question_text, model_config, preprocessed_input, proc_logger
     )
     filter_entity_dict = _filter_entities(
@@ -333,6 +335,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
         [item[1].get_dr_aug_verbalization(
             PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True) for item in top_triples],
         filter_entity_dict,
+        relation_dict,
         model_config, proc_logger
     )
 
@@ -381,6 +384,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
             question_text,
             expanded_triple_tuples,
             filter_entity_dict,
+            relation_dict,
             model_config,
             proc_logger,
             extra_verbalizations=extra_verbalizations

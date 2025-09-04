@@ -72,7 +72,7 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     return answer_sparql
 
 
-def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_dict_str, model_config, proc_logger):
+def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str, model_config, proc_logger):
     
     proc_logger.start_action(
         "generate_sparql_from_patterns",
@@ -81,16 +81,19 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
+    gen_prompt = f"""Given a natural language question, identified entities and relations and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow the provided "Answer Format", do not write anything else.
 
     Question: {question_txt}
+    
+    ### Identified Entity dictionary:
+    {entity_dict_str}
+    
+    ### Identified Relation dictionary:
+    {rel_dict_str}
 
     ### Triple patterns:
     {patterns_str}
-    
-    ### Additional Entity dictionary:
-    {entity_dict_str}
 
     ---
 
@@ -123,7 +126,7 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_
         
     return answer_sparql
 
-def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, entity_dict_str,
+def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str,
                                  model_config, proc_logger):
     
     proc_logger.start_action(
@@ -133,16 +136,19 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    gen_prompt = f"""Given a natural language question and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
+    gen_prompt = f"""Given a natural language question, identified entities and relations and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
 
     Question: {question_txt}
+    
+    ### Identified Entity dictionary:
+    {entity_dict_str}
+    
+    ### Identified Relation dictionary:
+    {rel_dict_str}
 
     ### Triple patterns:
     {patterns_str}
-    
-    ### Additional Entity dictionary:
-    {entity_dict_str}
 
     ---
 
