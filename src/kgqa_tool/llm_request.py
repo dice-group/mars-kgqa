@@ -72,7 +72,7 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     return answer_sparql
 
 
-def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, model_config, proc_logger):
+def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_dict_str, model_config, proc_logger):
     
     proc_logger.start_action(
         "generate_sparql_from_patterns",
@@ -88,6 +88,9 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, model_c
 
     ### Triple patterns:
     {patterns_str}
+    
+    ### Additional Entity dictionary:
+    {entity_dict_str}
 
     ---
 
@@ -120,7 +123,7 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, model_c
         
     return answer_sparql
 
-def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns,
+def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, entity_dict_str,
                                  model_config, proc_logger):
     
     proc_logger.start_action(
@@ -137,6 +140,9 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns,
 
     ### Triple patterns:
     {patterns_str}
+    
+    ### Additional Entity dictionary:
+    {entity_dict_str}
 
     ---
 

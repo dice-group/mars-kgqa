@@ -233,7 +233,7 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
     return top_triples
 
 
-def _generate_final_sparql(question_text, top_triples, model_config,
+def _generate_final_sparql(question_text, top_triples, entity_dict, model_config,
                           proc_logger, extra_verbalizations=None):
     """Generate SPARQL (1‑hop or after expansion)."""
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
@@ -248,9 +248,11 @@ def _generate_final_sparql(question_text, top_triples, model_config,
         verbalizations = [
             id_verbalizer(item[1]) for item in top_triples
         ] +  extra_verbalizations
+        
+    entity_dict_str = '\n'.join([f"{k}: {v}" for k, v in entity_dict.items()])
 
     sparql = generate_sparql_from_patterns(
-        question_text, verbalizations, model_config, proc_logger
+        question_text, verbalizations, entity_dict_str, model_config, proc_logger
     )
     return sparql
 
@@ -284,7 +286,7 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     top_triples = _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger)
 
     sparql = _generate_final_sparql(
-        question_text, top_triples, model_config, proc_logger
+        question_text, top_triples, filter_entity_dict, model_config, proc_logger
     )
     # -------------------------------------------------------------
     # SPARQL refinement step (commented out – enable if needed)
@@ -330,6 +332,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
         question_text,
         [item[1].get_dr_aug_verbalization(
             PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True) for item in top_triples],
+        filter_entity_dict,
         model_config, proc_logger
     )
 
@@ -377,6 +380,7 @@ def process_input_query_mhop(question_text, model_config, preprocessed_input,
         sparql = _generate_final_sparql(
             question_text,
             expanded_triple_tuples,
+            filter_entity_dict,
             model_config,
             proc_logger,
             extra_verbalizations=extra_verbalizations
