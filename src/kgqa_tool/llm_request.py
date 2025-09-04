@@ -294,18 +294,24 @@ def filter_common_nodes(question_txt, entity_dict, model_config):
     
     return filtered_dict
 
-def analyse_gen_sparql(gold_answer, pred_answer, log_content, model_config):
-    prompt = f"""You are given a question ID and the corresponding gold answer together with the system's predicted answer. Additionally you have the full process‑flow log for this question.
+def analyse_gen_sparql(gold_answer, pred_answer, log_content, model_config, use_answers=False):
     
-    Gold answer: {gold_answer}
-    Predicted answer: {pred_answer}
+    if use_answers:
+        start_sec = f"""For a question, you are given gold answer(s) together with the system's predicted answer. Additionally you have the full process‑flow log for this question.
+        
+        Gold answer: {gold_answer}
+        Predicted answer: {pred_answer}."""
+    else:
+        start_sec = f"""For a question, you have the full process‑flow log of the system."""
+    
+    prompt = f"""{start_sec}
     
     --- LOG START ---
     {log_content}
     --- LOG END ---
 
     Please provide a short analysis (2‑3 sentences) explaining what likely went wrong
-    in the pipeline that caused the mismatch."""
+    in the SPARQL generation pipeline that caused the mismatch and what could be the solution."""
     
     llm_resp_text, think_content = prompt_chat_llm(prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     

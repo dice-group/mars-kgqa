@@ -425,18 +425,18 @@ if __name__ == "__main__":
     load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, pbsg_variants[approach_id], wd_ep, llm_config, use_goldentrel, log_dir)
+    ##process_dataset(run_name, qald_file_path, tsv_output_path, pbsg_variants[approach_id], wd_ep, llm_config, use_goldentrel, log_dir)
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
-    convert_basic_output(tsv_output_path, qald_file_path, json_output_path, False, wd_ep)
+    ##convert_basic_output(tsv_output_path, qald_file_path, json_output_path, False, wd_ep)
     
     # Evaluating results on GERBIL
     gold_dataset_label = f'{kgqa_ds.dataset_id}_{split_conf.name.lower()}'
     system_label = f'{run_name}'
     gerbil_result_path = generate_gerbil_export_path(run_name, qald_file_path)
     
-    create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
+    ##create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
     
     # Analyse answers
     analysis_dir = get_analysis_dir(run_name, qald_file_path)

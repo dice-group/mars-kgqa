@@ -1,28 +1,12 @@
-# TODO: For a given dataset and it's prediction by a system, find all non-matching answer-sets and then analyse the process-flow logs
-
-# We have access to: gold qald, pred qald, directory of logs
-
-# Step 1: Find all the mismatching answer IDs
-# Step 2: Load all the log files with the selected IDs
-# Step 3: Ask LLM what went wrong by showing it the log file alongside retrieved answers
-# Step 4: Save the analysis in separate directory with the file name carrying question ID
-
 import os
-import csv
-import argparse
-import json
 from typing import Dict, List, Tuple
 
 from src.sparql_gen.sparql_gen_common import get_question_pf_name
 from src.util.process_flow_logger import ProcessFlowLogger
 from src.kgqa_tool.llm_request import analyse_gen_sparql
 
-# Helpers from the existing code‑base
-from src.util.common import read_json_file, create_directory_if_not_exists
-# Placeholder for the LLM request helper – replace with the actual import when
-# integrating with the rest of the project (e.g. src.kgqa_tool.llm_request).
-# from src.kgqa_tool.llm_request import ask_llm
-
+from src.util.common import read_json_file
+from tqdm import tqdm
 
 def _extract_normalised_answer(answer_obj: dict) -> str:
     """
@@ -34,13 +18,13 @@ def _extract_normalised_answer(answer_obj: dict) -> str:
       3. Empty ``head`` with a single binding (same as #1).
 
     Returns a space‑separated string of the extracted values (lower‑cased,
-    whitespace‑collapsed) so it can be compared directly with another answer.
+    whitespace‑collapsed) **sorted** so ordering does not affect comparisons.
     """
-    # Boolean result ---------------------------------------------------------
+    # Boolean result
     if "boolean" in answer_obj:
         return str(answer_obj["boolean"]).lower()
 
-    # Results with bindings --------------------------------------------------
+    # Results with bindings
     results = answer_obj.get("results", {})
     bindings = results.get("bindings", [])
     values: List[str] = []
@@ -51,6 +35,8 @@ def _extract_normalised_answer(answer_obj: dict) -> str:
             if isinstance(var_info, dict) and "value" in var_info:
                 values.append(str(var_info["value"]))
 
+    # Sort values to make the representation order‑independent
+    values.sort()
     # If no bindings were found (unlikely) fall back to an empty string
     return " ".join(values).lower()
 
@@ -66,18 +52,18 @@ def _find_mismatches(
         List of tuples ``(question_id, gold_answer, pred_answer)`` for all
         mismatching IDs.
     """
+    
     # Load gold data
     gold_data = read_json_file(gold_qald_path)
 
     gold_answers: Dict[str, str] = {}
     for q in gold_data.get("questions", []):
         qid = str(q.get("id"))
-        # QALD stores a list under the key "answers"
         answers_list = q.get("answers", [])
-        # Take the first entry (the format you showed always wraps answers in a list)
         if answers_list:
-            gold_norm = _extract_normalised_answer(answers_list[0])
-            gold_answers[qid] = gold_norm
+            # Normalise **all** answer entries and build a canonical string
+            norm_set = { _extract_normalised_answer(a) for a in answers_list }
+            gold_answers[qid] = " ".join(sorted(norm_set))
 
     # Load prediction data
     pred_data = read_json_file(pred_qald_path)
@@ -87,8 +73,8 @@ def _find_mismatches(
         qid = str(q.get("id"))
         answers_list = q.get("answers", [])
         if answers_list:
-            pred_norm = _extract_normalised_answer(answers_list[0])
-            pred_answers[qid] = pred_norm
+            norm_set = { _extract_normalised_answer(a) for a in answers_list }
+            pred_answers[qid] = " ".join(sorted(norm_set))
 
     # Compare
     mismatches: List[Tuple[str, str, str]] = []
@@ -149,7 +135,7 @@ def analyse_mismatches(
         return
 
     print(f"Found {len(mismatches)} mismatching question(s).")
-    for qid, gold_ans, pred_ans in mismatches:
+    for qid, gold_ans, pred_ans in tqdm(mismatches, 'Analysing Mismatches'):
         log_txt = _load_log(logs_dir, qid)
         analysis, think_content = analyse_gen_sparql(gold_ans, pred_ans, log_txt, llm_config)
         _write_analysis(output_dir, qid, analysis, think_content)
