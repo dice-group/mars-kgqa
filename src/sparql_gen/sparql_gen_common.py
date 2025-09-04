@@ -164,7 +164,10 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         )
         
         proc_logger.add_step(f"Wikidata Endpoint: {wd_ep}")
-        proc_logger.add_step(f"Using Gold Entities?: {use_gold_entrel}")
+        if use_gold_entrel:
+            proc_logger.add_step(f"NOTE: The model will have access to the provided gold entities.")
+        else:
+            proc_logger.add_step(f"NOTE: The model will not have access to the provided gold entities. It must use the predicted/extracted entities.")
         
         cache_id = f"{question_id}_{question_text}"
 

@@ -162,7 +162,7 @@ def _log_and_extract(question_text, model_config, preprocessed_input,
             question_text
         )
     proc_logger.add_step(f'Augmented text: {aug_qtxt}')
-    proc_logger.add_step(f'Identified entities: {entity_dict}')
+    proc_logger.add_step(f'Identified/Extracted entities: {entity_dict}')
     proc_logger.complete_action()
     return aug_qtxt, entity_dict, relation_list
 
