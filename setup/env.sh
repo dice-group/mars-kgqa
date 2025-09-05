@@ -18,3 +18,8 @@ python_version=$(python3 --version 2>&1 | awk '{split($2, v, "."); print "py" v[
 export PROJ_VENV_NAME=venv_${PROJECT_NAME}_${python_version}
 export PROJ_VENV_DIR=$PROJ_ROOT_DIR/$PROJ_VENV_NAME
 export PROJ_DATA_DIR=$PROJ_ROOT_DIR"/data_dir"
+
+# Check if SLURM is active and source the cluster‑specific config
+if [[ "$SLURM_ACTIVE" == "true" ]]; then
+    source "$PROJ_ROOT_DIR/slurm/cluster_specific_config.sh" # This will load the required environment dependencies
+fi
