@@ -2,40 +2,48 @@
 set -eu
 
 ## Sample usage:
-# To start: bash setup/llama_swap_control.sh start
-# To stop: bash setup/llama_swap_control.sh stop
-# To restart: bash setup/llama_swap_control.sh restart
-
-# NOTE: To stop the server: docker stop llama-swap
+# To start on default port:   bash setup/llama_swap_control.sh start
+# To start on custom port:    bash setup/llama_swap_control.sh start 9393
+# To stop a specific port:    bash setup/llama_swap_control.sh stop 9393
+# To restart a specific port: bash setup/llama_swap_control.sh restart 9393
 
 CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# NOTE: Set $LLAMA_CACHE variable to a directory where you want the models downloaded (or have them already downloaded)
+# Default host port (maps to container’s 8080)
+DEFAULT_PORT=9292
 
-# Determine action: start by default, or based on the first argument
+# Argument handling
+# $1 = action (start|stop|restart); defaults to start
 ACTION="${1:-start}"
+# $2 = host port; defaults to $DEFAULT_PORT
+HOST_PORT="${2:-$DEFAULT_PORT}"
+# Container name is derived from the port so each instance is unique
+CONTAINER_NAME="llama-swap-$HOST_PORT"
 
-# To trigger restart
+# GPU device selection
+# Use GPU_DEVICE env‑var if set; otherwise default to "all"
+GPU_DEVICE="${GPU_DEVICE:-all}"
+
+# Restart logic
 if [[ "$ACTION" == "restart" ]]; then
-  echo "Restarting llama-swap container..."
-  # Stop the container if it exists; ignore errors if it isn’t running
-  docker stop llama-swap 2>/dev/null && sleep 5 || true
-  # Continue to start the container (fall‑through to the start logic)
+  echo "Restarting $CONTAINER_NAME container..."
+  docker stop "$CONTAINER_NAME" 2>/dev/null && sleep 5 || true
   ACTION="start"
 fi
 
+# Stop logic
 if [[ "$ACTION" == "stop" ]]; then
-  echo "Stopping llama-swap container..."
-  docker stop llama-swap
+  echo "Stopping $CONTAINER_NAME container..."
+  docker stop "$CONTAINER_NAME"
   exit 0
 fi
 
-# If we reach here, we are starting the container
-# TODO: Allow variable based config for GPU assignment
-echo "Starting llama-swap container..."
-docker run --gpus '"device=0,1"' -d -it --rm --runtime nvidia -p 9292:8080 \
-  -v $LLAMA_CACHE:/models \
-  -v $CUR_SCRIPT_DIR/llama_swap_config.yml:/app/config.yaml \
+# Start logic
+echo "Starting $CONTAINER_NAME on host port $HOST_PORT..."
+docker run --gpus $GPU_DEVICE -d -it --rm --runtime nvidia \
+  -p "$HOST_PORT":8080 \
+  -v "$LLAMA_CACHE":/models \
+  -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
   --env LLAMA_CACHE=/models \
-  --name llama-swap \
+  --name "$CONTAINER_NAME" \
   ghcr.io/mostlygeek/llama-swap:cuda
