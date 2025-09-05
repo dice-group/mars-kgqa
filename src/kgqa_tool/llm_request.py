@@ -81,18 +81,15 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    gen_prompt = f"""Given a natural language question, identified entities and relations and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
+    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow the provided "Answer Format", do not write anything else.
 
     Question: {question_txt}
     
-    ### Identified Entity dictionary:
+    ### Identified Question Entities:
     {entity_dict_str}
-    
-    ### Identified Relation dictionary:
-    {rel_dict_str}
 
-    ### Triple patterns:
+    ### Triple Patterns:
     {patterns_str}
 
     ---
@@ -136,18 +133,15 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
     
     patterns_str = '\n'.join(top_verbalized_patterns)
 
-    gen_prompt = f"""Given a natural language question, identified entities and relations and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
+    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, tell if you need to look further into the paths to generate a Wikidata SPARQL for the question. If yes, list the index based on the 0-indexing, of the patterns. If not, then generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
 
     Question: {question_txt}
     
-    ### Identified Entity dictionary:
+    ### Identified Question Entities:
     {entity_dict_str}
-    
-    ### Identified Relation dictionary:
-    {rel_dict_str}
 
-    ### Triple patterns:
+    ### Triple Patterns:
     {patterns_str}
 
     ---
