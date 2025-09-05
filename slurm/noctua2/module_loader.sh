@@ -1,6 +1,5 @@
 #!/bin/bash
 set -eu
 
-#module load lang/Python/3.12.3-GCCcore-13.3.0 # We are moving to conda
-module load lang/Miniforge3/24.1.2-0
-module load system/CUDA/12.1.0
+module load lang/Python/3.13.1-GCCcore-14.2.0
+module load system/CUDA/12.8.0

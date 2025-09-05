@@ -2,9 +2,10 @@
 set -eu
 
 # Determine the directory of the current script
-CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # This gets overriden on the next 'source' call
+SETUP_DIR=$CUR_SCRIPT_DIR
 
-source $CUR_SCRIPT_DIR/env.sh
+source $SETUP_DIR/env.sh
 
 # Creating directory for huggingface cache
 #mkdir -p $HF_HOME
@@ -13,7 +14,7 @@ source $CUR_SCRIPT_DIR/env.sh
 python -m venv $PROJ_VENV_DIR
 source $PROJ_VENV_DIR/bin/activate
 
-pip install -r $CUR_SCRIPT_DIR/requirements.txt
+pip install -r $SETUP_DIR/requirements.txt
 
 ipython kernel install --user --name=$PROJ_VENV_NAME
 
