@@ -147,6 +147,9 @@ def load_property_info(cached_file_path):
         prop_id = get_last_uri_fragment(key)
         PROPERTY_ID_MAP[prop_id] = key
         
+def initialize_aux_values():
+    load_property_info(WIKIDATA_PROP_INFO_CACHE_FILEPATH)
+        
 
 def _log_and_extract(question_text, model_config, preprocessed_input,
                      proc_logger):
@@ -301,13 +304,13 @@ def process_input_query_1hop(question_text, model_config, preprocessed_input,
     return sparql
 
 
-def process_input_query_mhop(question_text, model_config, preprocessed_input,
+def process_input_query_2hop(question_text, model_config, preprocessed_input,
                             wd_ep, using_gold_entrel, proc_logger):
     """
-    Multi‑hop pattern‑based SPARQL generation
+    2‑hop pattern‑based SPARQL generation
     """
     proc_logger.start_action(
-        "process_input_query_mhop",
+        "process_input_query_2hop",
         {"model_config": model_config.to_dict()}
     )
 
@@ -400,13 +403,13 @@ if __name__ == "__main__":
     
     ## Constants
     pbsg_variants = {
-        'pbsg': process_input_query_1hop,
-        'pbsg_mhop': process_input_query_mhop
+        'pbsg_1hop': process_input_query_1hop,
+        'pbsg_2hop': process_input_query_2hop
     }
     
     ## Configurable variables
     use_goldentrel = False # Whether to use gold entities and relations
-    approach_id = 'pbsg_mhop' # identifier of the approach
+    approach_id = 'pbsg_2hop' # identifier of the approach
 
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
     

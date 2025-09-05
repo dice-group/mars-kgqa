@@ -10,7 +10,7 @@ from src.const.dataset import KgqaDataset, DatasetSplit
 
 
 
-def process_input_query(question_text, model_config, preprocessed_input=None, wd_ep=None):
+def process_input_query(question_text, model_config, preprocessed_input, wd_ep, using_gold_entrel, proc_logger):
     print(f'Processing question: {question_text}')
     
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
