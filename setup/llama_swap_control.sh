@@ -32,14 +32,28 @@ if [[ "$ACTION" == "restart" ]]; then
   ACTION="start"
 fi
 
+# TODO: Improve the hacky solution for apptainer deployment
+# Define where we keep the background PID for each port
+LOG_DIR="data_dir/llama-swap-logs"
+mkdir -p $LOG_DIR
+
+TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
+
+PID_FILE="${LOG_DIR}/llama-swap-${HOST_PORT}.pid"
+LOG_FILE="${LOG_DIR}/llama-swap-${HOST_PORT}-${TIMESTAMP}.log"
+
 # Stop logic – handles both Docker and Apptainer
 if [[ "$ACTION" == "stop" ]]; then
   echo "Stopping $CONTAINER_NAME ..."
   if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
-    # Apptainer instance stop
-    apptainer instance stop "$CONTAINER_NAME" || true
+    # Apptainer: kill the background process started with `run`
+    if [[ -f "$PID_FILE" ]]; then
+      kill -TERM "$(cat "$PID_FILE")" && rm -f "$PID_FILE"
+      echo "Apptainer process stopped."
+    else
+      echo "No PID file found; nothing to stop."
+    fi
   else
-    # Docker container stop
     docker stop "$CONTAINER_NAME"
   fi
   exit 0
@@ -48,17 +62,18 @@ fi
 # Start logic – handles both Docker and Apptainer
 echo "Starting $CONTAINER_NAME on host port $HOST_PORT ..."
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
-  # Apptainer instance start (runs the startup script inside the instance)
-  apptainer run --nv \
+  # Apptainer run in background via nohup; capture its PID
+  nohup apptainer run --nv \
     --env LD_LIBRARY_PATH='"$LD_LIBRARY_PATH:/app"' \
     -B "$LLAMA_CACHE":/models \
     -B "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
     --env LLAMA_CACHE=/models \
     --env LD_LIBRARY_PATH=/app/ \
     docker://ghcr.io/mostlygeek/llama-swap:cuda \
-    --listen localhost:$HOST_PORT
+    --listen localhost:$HOST_PORT \
+    >"$LOG_FILE" 2>&1 &
+  echo $! > "$PID_FILE"
 else
-  # Existing Docker execution
   docker run --gpus "$GPU_DEVICE" -d -it --rm --runtime nvidia \
     -p "$HOST_PORT":8080 \
     -v "$LLAMA_CACHE":/models \

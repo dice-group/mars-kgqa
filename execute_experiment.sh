@@ -106,7 +106,7 @@ done
 
 # Export the OpenAI‑compatible endpoint for the rest of the code
 export LLAMA_SWAP_OPENAI_ENDPOINT="http://127.0.0.1:${PORT}/v1"
-
+export OWUI=""
 
 # Build the argument list for run.py
 RUN_ARGS=(
@@ -119,6 +119,12 @@ RUN_ARGS=(
 if [[ "$USE_GOLD" == "true" ]]; then
   RUN_ARGS+=(--use-gold)
 fi
+
+## For debugging llama-swap deployment
+# echo "Sleeping the script..."
+# sleep 500000
+# exit -1
+# echo "Sleep over"
 
 # Calling run.py through the pylauncher helper
 echo "Launching experiment via pylauncher.sh ($MODE)..."
