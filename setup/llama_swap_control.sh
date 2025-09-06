@@ -17,7 +17,7 @@ DEFAULT_PORT=9292
 ACTION="${1:-start}"
 # $2 = host port; defaults to $DEFAULT_PORT
 HOST_PORT="${2:-$DEFAULT_PORT}"
-# Container name is derived from the port so each instance is unique
+# Container/instance name is derived from the port so each instance is unique
 CONTAINER_NAME="llama-swap-$HOST_PORT"
 
 # GPU device selection
@@ -26,24 +26,43 @@ GPU_DEVICE="${GPU_DEVICE:-all}"
 
 # Restart logic
 if [[ "$ACTION" == "restart" ]]; then
-  echo "Restarting $CONTAINER_NAME container..."
-  docker stop "$CONTAINER_NAME" 2>/dev/null && sleep 5 || true
+  echo "Restarting $CONTAINER_NAME ..."
+  # Stop first (will pick the correct backend)
+  "$0" stop "$HOST_PORT"
   ACTION="start"
 fi
 
-# Stop logic
+# Stop logic – handles both Docker and Apptainer
 if [[ "$ACTION" == "stop" ]]; then
-  echo "Stopping $CONTAINER_NAME container..."
-  docker stop "$CONTAINER_NAME"
+  echo "Stopping $CONTAINER_NAME ..."
+  if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+    # Apptainer instance stop
+    apptainer instance stop "$CONTAINER_NAME" || true
+  else
+    # Docker container stop
+    docker stop "$CONTAINER_NAME"
+  fi
   exit 0
 fi
 
-# Start logic
-echo "Starting $CONTAINER_NAME on host port $HOST_PORT..."
-docker run --gpus $GPU_DEVICE -d -it --rm --runtime nvidia \
-  -p "$HOST_PORT":8080 \
-  -v "$LLAMA_CACHE":/models \
-  -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
-  --env LLAMA_CACHE=/models \
-  --name "$CONTAINER_NAME" \
-  ghcr.io/mostlygeek/llama-swap:cuda
+# Start logic – handles both Docker and Apptainer
+echo "Starting $CONTAINER_NAME on host port $HOST_PORT ..."
+if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+  # Apptainer instance start (runs the startup script inside the instance)
+  apptainer instance start --nv \
+    -B "$LLAMA_CACHE":/models \
+    -B "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
+    --env LLAMA_CACHE=/models \
+    docker://ghcr.io/mostlygeek/llama-swap:cuda \
+    "$CONTAINER_NAME" \
+    /app/startup.sh "$HOST_PORT"
+else
+  # Existing Docker execution
+  docker run --gpus "$GPU_DEVICE" -d -it --rm --runtime nvidia \
+    -p "$HOST_PORT":8080 \
+    -v "$LLAMA_CACHE":/models \
+    -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
+    --env LLAMA_CACHE=/models \
+    --name "$CONTAINER_NAME" \
+    ghcr.io/mostlygeek/llama-swap:cuda
+fi

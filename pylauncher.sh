@@ -2,10 +2,7 @@
 PY_MODULE=$2
 MODE=$1
 
-# Determine the directory of the current script
-CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-source $CUR_SCRIPT_DIR/setup/env.sh
+# Environment must be loaded in the calling script
 source $PROJ_VENV_DIR/bin/activate
 
 # Capture any additional CLI arguments

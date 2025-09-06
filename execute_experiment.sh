@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# Determine the directory of the current script
+CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # This will get overriden at our next source call
+# Loading environment variables (also loads slurm specific config if needed)
+source $CUR_SCRIPT_DIR/setup/env.sh
+
 
 # Helper: print usage
 usage() {
@@ -114,7 +119,6 @@ RUN_ARGS=(
 if [[ "$USE_GOLD" == "true" ]]; then
   RUN_ARGS+=(--use-gold)
 fi
-
 
 # Calling run.py through the pylauncher helper
 echo "Launching experiment via pylauncher.sh ($MODE)..."
