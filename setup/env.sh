@@ -20,6 +20,6 @@ export PROJ_VENV_DIR=$PROJ_ROOT_DIR/$PROJ_VENV_NAME
 export PROJ_DATA_DIR=$PROJ_ROOT_DIR"/data_dir"
 
 # Check if SLURM is active and source the cluster‑specific config
-if [[ "$SLURM_ACTIVE" == "true" ]]; then
+if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
     source "$PROJ_ROOT_DIR/slurm/cluster_specific_config.sh" # This will load the required environment dependencies
 fi
