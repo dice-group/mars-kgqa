@@ -49,13 +49,14 @@ fi
 echo "Starting $CONTAINER_NAME on host port $HOST_PORT ..."
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
   # Apptainer instance start (runs the startup script inside the instance)
-  apptainer instance start --nv \
+  apptainer run --nv \
+    --env LD_LIBRARY_PATH='"$LD_LIBRARY_PATH:/app"' \
     -B "$LLAMA_CACHE":/models \
     -B "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
     --env LLAMA_CACHE=/models \
+    --env LD_LIBRARY_PATH=/app/ \
     docker://ghcr.io/mostlygeek/llama-swap:cuda \
-    "$CONTAINER_NAME" \
-    /app/startup.sh "$HOST_PORT"
+    --listen localhost:$HOST_PORT
 else
   # Existing Docker execution
   docker run --gpus "$GPU_DEVICE" -d -it --rm --runtime nvidia \

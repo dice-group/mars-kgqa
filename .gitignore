@@ -3,3 +3,4 @@ venv_*/
 .vscode/
 **__pycache__**
 *.out
+*.sif

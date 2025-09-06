@@ -32,7 +32,7 @@ models:
       --ctx-size 131072
       --n-predict 131072
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 1.0
       --top-k 64
       --top-p 0.95
@@ -46,7 +46,7 @@ models:
       --ctx-size 131072
       --n-predict 131072
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 1.0
       --top-k 0
       --top-p 1.0
@@ -61,7 +61,7 @@ models:
       --ctx-size 32768
       --n-predict 32768
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.7
       --top-k 64
       --top-p 0.95
@@ -75,7 +75,7 @@ models:
       --ctx-size 131072
       --n-predict 131072
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.6
       --top-k 20
       --top-p 0.95
@@ -89,7 +89,7 @@ models:
       --ctx-size 131072
       --n-predict 131072
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.15
       --top-k -1
       --top-p 1.00
@@ -104,7 +104,7 @@ models:
       --ctx-size 131072
       --n-predict 131072
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.7
       --top-k 20
       --top-p 0.8
@@ -118,7 +118,7 @@ models:
       --ctx-size 16384
       --n-predict 16384
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.6
       --top-p 0.95
       --min-p 0.01
@@ -131,7 +131,7 @@ models:
       --ctx-size 65536
       --n-predict 65536
       --n-gpu-layers 99
-      --flash-attn
+      --flash-attn on
       --temp 0.6
       --top-p 0.95
       --min-p 0.00
