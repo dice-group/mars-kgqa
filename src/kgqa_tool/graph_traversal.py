@@ -73,7 +73,7 @@ def find_1_hop_patterns(node_uri, endpoint_url):
     PREFIX wikibase: <http://wikiba.se/ontology#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-    SELECT DISTINCT ?direction ?property
+    SELECT DISTINCT ?direction ?property (COUNT(*) AS ?count)
     WHERE {{
         
         {{   # outgoing statements
@@ -86,6 +86,7 @@ def find_1_hop_patterns(node_uri, endpoint_url):
             ?subject ?property <{node_uri}> .
         }}
     }}
+    GROUP BY ?direction ?property
     """
     
     bindings, _ = execute_sparql_query(query, endpoint_url)
@@ -94,23 +95,20 @@ def find_1_hop_patterns(node_uri, endpoint_url):
     for b in bindings:
         patterns.append({
             "direction": b.get("direction", {}).get("value", ""),
-            "property":  b.get("property",  {}).get("value", "")
+            "property":  b.get("property",  {}).get("value", ""),
+            "count":     int(b.get("count", {}).get("value", "0"))
         })
     return patterns
 
 def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
-    
     query = f"""
     PREFIX wd: <http://www.wikidata.org/entity/>
     PREFIX wdt: <http://www.wikidata.org/prop/direct/>
     PREFIX wikibase: <http://wikiba.se/ontology#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-    SELECT DISTINCT ?direction ?property
+    SELECT DISTINCT ?direction ?property (COUNT(*) AS ?count)
     WHERE {{
-        
         {triple_constraint}
-        
         {{   # outgoing statements
             BIND ("out" AS ?direction)
             {var_name} ?property ?object .
@@ -121,15 +119,16 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
             ?subject ?property {var_name} .
         }}
     }}
+    GROUP BY ?direction ?property
     """
-    
     bindings, _ = execute_sparql_query(query, endpoint_url)
 
     patterns = []
     for b in bindings:
         patterns.append({
             "direction": b.get("direction", {}).get("value", ""),
-            "property":  b.get("property",  {}).get("value", "")
+            "property":  b.get("property", {}).get("value", ""),
+            "count":     int(b.get("count", {}).get("value", "0"))
         })
     return patterns
 

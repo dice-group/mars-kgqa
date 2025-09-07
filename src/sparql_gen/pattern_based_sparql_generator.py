@@ -3,7 +3,7 @@ from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, proce
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns
 from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices
-from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
@@ -31,6 +31,7 @@ class NodeEdge:
         relation_uri: str,
         relation_id: str,
         direction: EdgeDirection | str,
+        pattern_count: int,
         var_id: str = None
     ) -> None:
         self.node_id = node_id
@@ -44,6 +45,8 @@ class NodeEdge:
             self.direction = direction
         else:
             self.direction = EdgeDirection[direction.lower()]
+        
+        self.pattern_count = pattern_count
         
         self.assign_variable_id(var_id)
     
@@ -102,10 +105,12 @@ class NodeEdge:
             verbal_part = f"{self.variable_name} '{prop_label}' '{self.node_label}'"
             # ID part (only if requested)
             id_part = f"\t{self.variable_name} {get_prefixed_id(self.relation_uri)} {node_prefixed_repr}" if include_id else ""
+        
+        # add pattern count as well when IDs are requested
+        count_part = f"\tcount={self.pattern_count}" if include_id else ""
 
-        # combine verbalization, optional ID triple, and class info
-        verbalized_str = f"{verbal_part}{id_part}\t {class_info}"
-
+        # combine verbalization, optional ID triple, optional count, and class info
+        verbalized_str = f"{verbal_part}{id_part}{count_part}\t {class_info}"
         return verbalized_str
 
     def __repr__(self) -> str:
@@ -132,8 +137,9 @@ def extract_patterns_data(root_uri, root_label, patterns_list, prop_id_map):
             rejected_patterns.append(pattern_item)
             continue
         direction_str = pattern_item['direction']
+        pattern_count = pattern_item['count']
         edge_dir = EdgeDirection(direction_str)
-        pattern_obj = NodeEdge(root_uri, root_label, prop_uri, prop_id, edge_dir)
+        pattern_obj = NodeEdge(root_uri, root_label, prop_uri, prop_id, edge_dir, pattern_count)
         patterns_data_list.append(pattern_obj)
     
     return patterns_data_list, rejected_patterns
@@ -221,7 +227,7 @@ def _collect_root_patterns(filter_entity_dict, wd_ep, proc_logger):
 
 
 def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
-                         top_n=10):
+                         top_n=TRIPLE_PATTERN_N_TOP):
     """Compute verbalisation similarity and return the top‑N triples."""
     proc_logger.start_action("similarity_scoring")
     verbalizer = lambda obj: obj.get_dr_aug_verbalization(
@@ -232,7 +238,7 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
         aug_qtxt, patterns_data_list, verbalizer
     )
     top_triples = heapq.nsmallest(top_n, priority_queue, key=lambda x: x[0])
-    proc_logger.add_step(f'Selected top {top_n} triple patterns')
+    proc_logger.add_step(f'Selected top {len(priority_queue)} triple patterns (top-n: {top_n})')
     proc_logger.complete_action()
     return top_triples
 
@@ -346,7 +352,7 @@ def process_input_query_2hop(question_text, model_config, preprocessed_input,
     if indices and not sparql:
         proc_logger.start_action("expansion_loop")
         expanded_triple_tuples = []
-        extra_verbalizations = []
+        new_patterns = []
 
         for i, idx in enumerate(map(int, indices), start=1):
             if idx < 0 or idx >= len(top_triples):
@@ -372,16 +378,27 @@ def process_input_query_2hop(question_text, model_config, preprocessed_input,
             extracted, _ = extract_patterns_data(
                 var_name, var_name, next_patterns, PROPERTY_ID_MAP
             )
-            # rank next‑hop patterns
-            next_top = _score_and_select_top(
-                aug_qtxt, extracted, proc_logger, top_n=10
+            
+            proc_logger.add_step(
+                f'Filtered triple patterns for {var_name}: {len(extracted)}'
             )
-            extra_verbalizations.extend([
-                edge.get_dr_aug_verbalization(
-                    PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
-                ) for edge in [t[1] for t in next_top]
-            ])
-
+            
+            new_patterns.extend(extracted)
+        
+        # rank next‑top patterns
+        next_top = _score_and_select_top(aug_qtxt, new_patterns, proc_logger)
+        extra_verbalizations = [
+            edge.get_dr_aug_verbalization(
+                PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
+            ) for edge in [t[1] for t in next_top]
+        ]    
+            
+        proc_logger.add_step(
+            f'Expanded triples: {len(expanded_triple_tuples)}'
+        )
+        proc_logger.add_step(
+            f'Extra verbalizations: {len(extra_verbalizations)}'
+        )
         # generate final SPARQL using both the expanded and newly‑selected triples
         sparql = _generate_final_sparql(
             question_text,
