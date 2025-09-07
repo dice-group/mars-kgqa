@@ -35,7 +35,6 @@ fi
 # TODO: Improve the hacky solution for apptainer deployment
 # Define where we keep the background PID for each port
 LOG_DIR="data_dir/llama-swap-logs"
-mkdir -p $LOG_DIR
 
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 
@@ -62,6 +61,7 @@ fi
 # Start logic – handles both Docker and Apptainer
 echo "Starting $CONTAINER_NAME on host port $HOST_PORT ..."
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+  mkdir -p $LOG_DIR
   # Apptainer run in background via nohup; capture its PID
   nohup apptainer run --nv \
     --env LD_LIBRARY_PATH='"$LD_LIBRARY_PATH:/app"' \
