@@ -3,7 +3,7 @@ from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, proce
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns
 from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices
-from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP
+from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP, MAX_MULTI_HOP
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
 import heapq
@@ -414,6 +414,138 @@ def process_input_query_2hop(question_text, model_config, preprocessed_input,
 
     proc_logger.complete_action()
     return sparql
+
+def _build_verbalizations(edges):
+    """Return a list of verbalized patterns (with IDs) for the given edges."""
+    id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True
+    )
+    return [id_verbalizer(e) for e in edges]
+
+def process_input_query_multi_hop(question_text, model_config, preprocessed_input,
+                                 wd_ep, using_gold_entrel, proc_logger):
+    """
+    Multi‑hop pattern‑based SPARQL generation
+    """
+    proc_logger.start_action(
+        "process_input_query_multi_hop",
+        {"question": question_text, "model_config": model_config.to_dict()}
+    )
+    wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
+
+    # Extraction & filtering (same as the 1‑hop flow)
+    aug_qtxt, entity_dict, relation_dict = _log_and_extract(
+        question_text, model_config, preprocessed_input, proc_logger
+    )
+    filter_entity_dict = _filter_entities(
+        entity_dict, using_gold_entrel, model_config, proc_logger
+    )
+
+    # Collect initial 1‑hop patterns
+    patterns_data_list, _, _ = _collect_root_patterns(
+        filter_entity_dict, wd_ep, proc_logger
+    )
+    top_triples = _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger)
+
+    # Keep a flat list of all edges that have been “accepted” so far.
+    selected_edges = [t[1] for t in top_triples]
+
+    # Iterative expansion loop (max MAX_MULTI_HOP iterations)
+    for hop in range(1, MAX_MULTI_HOP + 1):
+        proc_logger.start_action("hop_iteration", {"hop": hop})
+
+        # Ask LLM whether we already have enough info or need more hops.
+        verbalizations = _build_verbalizations(selected_edges)
+        sparql, indices = generate_sparql_or_expansion_indices(
+            question_text,
+            verbalizations,
+            entity_dict,
+            relation_dict,
+            model_config,
+            proc_logger
+        )
+
+        # If LLM produced a SPARQL, stop here.
+        if sparql:
+            proc_logger.add_step(f"LLM returned final SPARQL at hop {hop}")
+            proc_logger.complete_action()   # close hop_iteration
+            proc_logger.complete_action()   # close process_input_query_multi_hop
+            return sparql
+
+        # No SPARQL yet, we must expand the requested edges.
+        if not indices:
+            proc_logger.add_step("LLM returned no indices – stopping expansion")
+            proc_logger.complete_action()
+            break   # safety‑break (should not happen, but guards against loops)
+
+        # Expand each indexed edge
+        new_patterns = []
+        i = 1
+        for idx_str in indices:
+            idx = int(idx_str)
+            if idx < 0 or idx >= len(selected_edges):
+                continue
+
+            edge = selected_edges[idx]
+            cur_edge_id = i
+            i = i+1
+            # give the edge a fresh variable name for the next hop
+            edge.assign_variable_id(cur_edge_id)
+
+            proc_logger.add_step(
+                f"Expanding edge #{idx_str}: "
+                f"{edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)}"
+            )
+
+            # Build a constraint triple (e.g. "?subject wdt:P31 ?obj .")
+            constraint_tp = edge.get_triple_pattern()
+            var_name = edge.variable_name
+
+            # Retrieve next‑hop patterns from the KG.
+            next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep)
+            proc_logger.add_step(
+                f"Found {len(next_patterns)} next‑hop patterns for var {var_name}"
+            )
+
+            # Extract & filter them.
+            extracted, _ = extract_patterns_data(
+                var_name, var_name, next_patterns, PROPERTY_ID_MAP
+            )
+            new_patterns.extend(extracted)
+
+        # Rank the newly discovered patterns and add the top N
+        if new_patterns:
+            next_top = _score_and_select_top(aug_qtxt, new_patterns, proc_logger)
+            # add only the edge objects (not the score tuples) to the pool
+            selected_edges.extend([t[1] for t in next_top])
+            proc_logger.add_step(
+                f"Added {len(next_top)} new edges after hop {hop}"
+            )
+        else:
+            proc_logger.add_step("No new patterns discovered – breaking")
+            proc_logger.complete_action()
+            break
+
+        proc_logger.complete_action()   # close hop_iteration
+
+    # Force SPARQL generation after reaching the hop limit
+    proc_logger.add_step(
+        f"Reached hop limit ({MAX_MULTI_HOP}) – forcing final SPARQL generation"
+    )
+    final_verbalizations = _build_verbalizations(selected_edges)
+
+    # Use the same helper that builds the SPARQL from patterns.
+    final_sparql = generate_sparql_from_patterns(
+        question_text,
+        final_verbalizations,
+        '\n'.join([f"{k}: {v}" for k, v in entity_dict.items()]),
+        '\n'.join([f"{k}: {v}" for k, v in relation_dict.items()]),
+        model_config,
+        proc_logger
+    )
+    proc_logger.set_output({"sparql": final_sparql}).complete_action()
+    return final_sparql
+
 
 # Example usage
 if __name__ == "__main__":

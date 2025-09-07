@@ -11,6 +11,7 @@ MAX_TRIES = 10 # Maximum iterations to keep trying looking for an answer
 EXTENDED_ANSWER_SEARCH_LIMIT = 3 # Maximum iterations to keep looking after previous answers were found
 
 TRIPLE_PATTERN_N_TOP = 20
+MAX_MULTI_HOP = 5
 TRIPLE_VERBALIZATION_LENGTH_LIMIT = 400 # To keep things under for a tokenization length of 512, just to be on the safe side ;)
 
 ANSWER_NOT_FOUND_STR = 'Answer not found'
