@@ -449,6 +449,9 @@ def process_input_query_multi_hop(question_text, model_config, preprocessed_inpu
 
     # Keep a flat list of all edges that have been “accepted” so far.
     selected_edges = [t[1] for t in top_triples]
+    
+    # Track edges that have already been expanded (by their variable name)
+    expanded_edges = set()
 
     # Iterative expansion loop (max MAX_MULTI_HOP iterations)
     for hop in range(1, MAX_MULTI_HOP + 1):
@@ -485,8 +488,14 @@ def process_input_query_multi_hop(question_text, model_config, preprocessed_inpu
             idx = int(idx_str)
             if idx < 0 or idx >= len(selected_edges):
                 continue
-
+            
             edge = selected_edges[idx]
+
+            # Skip edges that were already expanded
+            if edge.variable_name in expanded_edges:
+                proc_logger.add_step(f"Skipping already‑expanded edge #{idx_str} (var {edge.variable_name})")
+                continue
+            
             cur_edge_id = i
             i = i+1
             # give the edge a fresh variable name for the next hop
@@ -506,6 +515,8 @@ def process_input_query_multi_hop(question_text, model_config, preprocessed_inpu
             proc_logger.add_step(
                 f"Found {len(next_patterns)} next‑hop patterns for var {var_name}"
             )
+            # Mark as expanded before we start the next‑hop search
+            expanded_edges.add(edge.variable_name)
 
             # Extract & filter them.
             extracted, _ = extract_patterns_data(
