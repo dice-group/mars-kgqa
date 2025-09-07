@@ -5,7 +5,8 @@
 set -euo pipefail
 
 # Determine the directory of the current script
-CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # This will get overriden at our next source call
+CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # This will get overriden at our next source call
+
 # Loading environment variables (also loads slurm specific config if needed)
 source $CUR_SCRIPT_DIR/setup/env.sh
 
@@ -95,14 +96,21 @@ trap cleanup EXIT INT TERM
 
 # Give the server a moment to start up
 echo "Waiting for llama‑swap to become reachable..."
-for i in {1..10}; do
+up=0                         # track whether the service started
+for i in {1..60}; do
   if curl -s "http://127.0.0.1:$PORT/v1/models" > /dev/null 2>&1; then
     echo "Llama‑swap is up."
+    up=1                     # mark success
     break
   fi
   sleep 1
 done
 
+# If the loop finished without a successful curl, exit with an error
+if [[ $up -ne 1 ]]; then
+  echo "Error: Llama‑swap did not start." >&2
+  exit 1   # any non‑zero code signals failure
+fi
 
 # Export the OpenAI‑compatible endpoint for the rest of the code
 export LLAMA_SWAP_OPENAI_ENDPOINT="http://127.0.0.1:${PORT}/v1"
