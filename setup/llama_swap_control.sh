@@ -62,6 +62,7 @@ fi
 echo "Starting $CONTAINER_NAME on host port $HOST_PORT ..."
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
   mkdir -p $LOG_DIR
+  # NOTE: Build the apptainer SIF from OCI beforehand
   # Apptainer run in background via nohup; capture its PID
   nohup apptainer run --nv \
     --env LD_LIBRARY_PATH='"$LD_LIBRARY_PATH:/app"' \
@@ -69,7 +70,7 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
     -B "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
     --env LLAMA_CACHE=/models \
     --env LD_LIBRARY_PATH=/app/ \
-    docker://ghcr.io/mostlygeek/llama-swap:cuda \
+    llama-swap_cuda.sif \
     --listen localhost:$HOST_PORT \
     >"$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
