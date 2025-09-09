@@ -322,13 +322,12 @@ def process_input_query_multi_hop(
             proc_logger.add_step(f"LLM returned final SPARQL at hop {hop}")
             proc_logger.complete_action()   # close hop_iteration
             proc_logger.complete_action()   # close process_input_query_multi_hop
-            proc_logger.complete_action()
             return sparql
 
         # No SPARQL yet, we must expand the requested edges.
         if not indices:
             proc_logger.add_step("LLM returned no indices – stopping expansion")
-            proc_logger.complete_action()
+            proc_logger.complete_action()   # close hop_iteration
             break   # safety‑break (should not happen, but guards against loops)
 
         # Expand each indexed edge
@@ -386,7 +385,7 @@ def process_input_query_multi_hop(
             )
         else:
             proc_logger.add_step("No new patterns discovered – breaking")
-            proc_logger.complete_action()
+            proc_logger.complete_action()    # close hop_iteration
             break
 
         proc_logger.complete_action()   # close hop_iteration
@@ -406,7 +405,7 @@ def process_input_query_multi_hop(
     )
     if refine_sparql:
         final_sparql = sparql_refinement(question_text, final_sparql, model_config, proc_logger)
-    proc_logger.complete_action()
+    proc_logger.complete_action() # close process_input_query_multi_hop
     return final_sparql
 
 
