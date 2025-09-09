@@ -119,7 +119,7 @@ def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_
         proc_logger.add_step("Extracted SPARQL from LLM output")
     
     # Record final output and finish the action
-    proc_logger.set_output({"sparql": answer_sparql}).complete_action()
+    proc_logger.complete_action()
         
     return answer_sparql
 
@@ -191,9 +191,14 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
     proc_logger.set_output({"sparql": sparql, "indices": indices}).complete_action()
     return sparql, indices
 
-def sparql_refinement(question_txt, sparql_str, model_config):
+def sparql_refinement(question_txt, sparql_str, model_config, proc_logger):
     
-
+    # Log the start of the refinement step
+    proc_logger.start_action(
+        "sparql_refinement",
+        {"question": question_txt, "original_sparql": sparql_str}
+    ).add_step("Building refinement prompt")
+    
     check_prompt = f"""For the given question, FIX the provided SPARQL for Wikidata. Write it as it is, if the SPARQL requires no fix. Strictly follow the provided "Answer Format", do not write anything else. 
 
     Question: {question_txt}
@@ -207,14 +212,29 @@ def sparql_refinement(question_txt, sparql_str, model_config):
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    # Log the full prompt
+    proc_logger.add_step({"prompt": check_prompt})
     
-    print(f'LLM Response: {llm_resp_text}')
+    llm_resp_text, _ = prompt_chat_llm(
+        check_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
     answer_sparql = None
     # Extract the generated SPARQL
     if "SPARQL:" in llm_resp_text:
         answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
-        
+        proc_logger.add_step("Extracted refined SPARQL")
+    
+    # Finish logging
+    proc_logger.set_output({"refined_sparql": answer_sparql}).complete_action()
+    
     return answer_sparql
 
 def check_if_answer(question_txt, top_triples, context_list, model_config):
@@ -281,22 +301,41 @@ def recognize_entities_and_relations(question_txt, model_config):
     
     return llm_resp_text
 
-def filter_common_nodes(question_txt, entity_dict, model_config):
-    # Return filtered dict of entities to explore further
+def filter_common_nodes(question_txt, entity_dict, model_config, proc_logger):
+    # Log the start of the filtering step
+    proc_logger.start_action(
+        "filter_common_nodes",
+        {"question": question_txt, "entity_dict": entity_dict}
+    ).add_step("Building filter prompt")
+    
     filter_prompt = f"""For the following question, strictly pick and list a comma separated list of entity ids to explore further, the ids should provide a good starting point to start looking for an answer. The ids ideally should not lead to too many child nodes otherwise the search becomes too expensive, be careful in choosing expensive ids. Choose at least one id. Do not write anything else.
 
     Question: {question_txt}
 
     Entity Dict: {entity_dict}
     """
-    llm_resp_text, _ = prompt_chat_llm(filter_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    # Log the prompt
+    proc_logger.add_step({"prompt": filter_prompt})
     
+    llm_resp_text, _ = prompt_chat_llm(
+        filter_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
     
     qid_set = set([item.strip() for item in llm_resp_text.split(',')])
     filtered_dict = dict()
     for key, val in entity_dict.items():
         if val in qid_set:
             filtered_dict[key] = val
+    
+    # Log the final filtered dictionary
+    proc_logger.set_output({"filtered_entity_dict": filtered_dict}).complete_action()
     
     return filtered_dict
 

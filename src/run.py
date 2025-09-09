@@ -12,7 +12,9 @@ from src.util.qald_io import convert_basic_output
 from src.util.gerbil import create_export_gerbil_experiment
 from src.util.qald_io import convert_basic_output
 from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compiled_analysis
-from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH
+from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
+
+from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP
 
 def parse_args() -> argparse.Namespace:
     """Define and parse CLI arguments."""
@@ -52,6 +54,42 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use gold entity and relation annotations if provided."
     )
+    
+    parser.add_argument(
+        "--filter-entities",
+        action="store_true",
+        help="Filter out entities that do not meet certain criteria."
+    )
+    parser.add_argument(
+        "--topn-count",
+        type=int,
+        default=TRIPLE_PATTERN_N_TOP,
+        help="Maximum number of top‑N candidates to keep per step."
+    )
+    parser.add_argument(
+        "--mhop-limit",
+        type=int,
+        default=MAX_MULTI_HOP,
+        help="Maximum number of hops allowed in multi‑hop reasoning."
+    )
+    parser.add_argument(
+        "--include-pattern-count",
+        action="store_true",
+        help="Include the count of matched patterns in the output."
+    )
+    parser.add_argument(
+        "--refine-sparql",
+        action="store_true",
+        help="Run a post‑processing step to refine generated SPARQL queries."
+    )
+    parser.add_argument(
+        "--entity-annotator",
+        type=str,
+        choices=[a.name for a in EntityAnnotator],
+        default=EntityAnnotator.AUG_EL.name,
+        help="Select which entity annotator to apply."
+    )
+    
     return parser.parse_args()
 
 
@@ -67,14 +105,39 @@ def main() -> None:
     llm_config = ChatModel[args.llm].value
     kgqa_ds = KgqaDataset[args.dataset].value
     split_conf = DatasetSplit[args.split]
+    # entity_annotator
+    ent_annot = EntityAnnotator[args.entity_annotator]
     
     use_goldentrel = args.use_gold
+    
+    approach_config = []
+
+    if args.filter_entities:
+        approach_config.append("filter")
+    if args.topn_count != 10:                     # default is 10
+        approach_config.append(f"top{args.topn_count}")
+    if args.mhop_limit != 2:                      # default is 2
+        approach_config.append(f"hop{args.mhop_limit}")
+    if args.include_pattern_count:
+        approach_config.append("patterncount")
+    if args.refine_sparql:
+        approach_config.append("refine")
+    # always include the chosen entity annotator (even if default)
+    approach_config.append(f"ent_{ent_annot.name.lower()}")
+
+    # join the parts with dashes; if no extra flags, keep it empty
+    approach_suffix = ""
+    if approach_config:
+        approach_suffix = "__" + "-".join(approach_config)
     
     # Process arguments
     ## Rest of the logic
     approach_name = approach_id # copying id for modification if needed
     if use_goldentrel:
         approach_name+='_gold-entrel'
+    
+    # adding config info to approach name
+    approach_name += approach_suffix
     
     run_name = f'{approach_name}__{llm_config.model_id}'
     
@@ -87,10 +150,12 @@ def main() -> None:
     # Generate a log directory path
     log_dir = get_log_dir(run_name, qald_file_path)
     # call the aux init
-    aux_init_fn()
+    if aux_init_fn:
+        aux_init_fn()
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir)
+    process_dataset(run_name, qald_file_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
+    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot)
     
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)

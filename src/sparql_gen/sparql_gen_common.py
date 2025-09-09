@@ -123,7 +123,8 @@ def get_question_pf_name(question_id):
     return f"question_{question_id}"
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
-                    llm_config, use_gold_entrel, log_dir):
+                    llm_config, use_gold_entrel, log_dir, filter_entities, topn_count,
+                    mhop_limit, include_pattern_count, refine_sparql, ent_annot):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -217,8 +218,12 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             llm_config,
             (aug_text, ent_dict, rel_dict),
             wd_ep,
-            use_gold_entrel,
-            proc_logger
+            filter_entities,
+            proc_logger,
+            topn_count,
+            mhop_limit,
+            include_pattern_count,
+            refine_sparql
         )
         
         # Cache the generated output

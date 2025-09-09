@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 QALD10_WIKIDATA_EP = "https://skynet.coypu.org/wikidata/" # Dump: https://zenodo.org/records/7496690
 TENTRIS_WIKIDATA_EP = "https://wikidata.data.dice-research.org/sparql" # Dump: https://files.dice-research.org/datasets/Wikidata/wikidata-20240904-truthy-BETA/
 CURRENT_WIKIDATA_EP = "https://query.wikidata.org/sparql"
@@ -71,3 +73,6 @@ def _build_prefix_map(block: str) -> dict[str, str]:
     return mapping
 
 PREFIX_MAP = _build_prefix_map(PREFIX_BLOCK)
+
+class EntityAnnotator(Enum):
+    AUG_EL = auto()
