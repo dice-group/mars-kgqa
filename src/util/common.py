@@ -3,6 +3,7 @@ import os
 import requests
 from src.const.misc import PREFIX_MAP
 import csv
+import time
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -67,6 +68,10 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
         print(f"HTTP Request failed: {e}")
         req_failed = True
         return [] if get_only_bindings else {}, req_failed
+    
+    
+    # to avoid overwhelming the endpoint with frequent requests
+    time.sleep(3)
 
     ret_val = data
     if get_only_bindings:

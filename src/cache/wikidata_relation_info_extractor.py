@@ -86,7 +86,6 @@ def collect_all_relations(endpoint_url, lang='en', batch_size=50000): # 14.08.25
         batch = extract_relation_info(
             endpoint_url, lang=lang, limit=batch_size, offset=offset
         )
-        time.sleep(3) # Sleep for 3 seconds between requests
         if not batch:
             break   # no more results
 

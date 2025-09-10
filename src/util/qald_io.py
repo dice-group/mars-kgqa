@@ -4,7 +4,6 @@ import csv
 import json
 import ast
 from tqdm import tqdm
-import time
 
 def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint):
     lcquad_data = read_json_file(lcquad2_file_path)
@@ -33,8 +32,6 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_end
                 qald_item[key_item] = qa_item[key_item]
             
         qald_questions.append(qald_item)
-        # waiting 3 seconds before next iteration
-        time.sleep(3)
     # Create QALD Dataset    
     qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions' : qald_questions}
     # Save json
@@ -106,8 +103,6 @@ def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
             continue # cannot update this item
         answer_obj = [sparql_response]
         question_item['answers'] = answer_obj
-        # wait before next iteration
-        time.sleep(3)
     # Removing failed items safely
     qald_obj['questions'] = [ q for q in qald_obj['questions'] if q not in failed_update_items ]
     # Save the QALD file
@@ -201,9 +196,7 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
             answer_obj = [qald_answer]
             question_item['query'] = { 'sparql': formatted_sparql}
 
-        question_item['answers'] = answer_obj
-        # wait 3 seconds between requests
-        time.sleep(3)    
+        question_item['answers'] = answer_obj  
     
     save_json_file(qald_obj, output_file_path)
     

@@ -336,6 +336,9 @@ def process_input_query_multi_hop(
         for idx_str in indices:
             idx = int(idx_str)
             if idx < 0 or idx >= len(selected_edges):
+                proc_logger.add_step(
+                    f"Skipping invalid index {idx_str}"
+                )
                 continue
             
             edge = selected_edges[idx]
@@ -362,6 +365,7 @@ def process_input_query_multi_hop(
 
             # Retrieve next‑hop patterns from the KG.
             next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep)
+            
             proc_logger.add_step(
                 f"Found {len(next_patterns)} next‑hop patterns for var {var_name}"
             )

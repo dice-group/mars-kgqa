@@ -154,7 +154,7 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
 
     Answer Format (Path Expansion Selection):
 
-    Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value>
+    Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value. Do not pick too many.>
 
     """
     
