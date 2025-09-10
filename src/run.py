@@ -114,9 +114,9 @@ def main() -> None:
 
     if args.filter_entities:
         approach_config.append("filter")
-    if args.topn_count != 10:                     # default is 10
+    if args.topn_count: # this can be set to 0 to remove this suffix in special cases
         approach_config.append(f"top{args.topn_count}")
-    if args.mhop_limit != 2:                      # default is 2
+    if args.mhop_limit: # this can be set to 0 to remove this suffix in cases like SSG
         approach_config.append(f"hop{args.mhop_limit}")
     if args.include_pattern_count:
         approach_config.append("patterncount")
