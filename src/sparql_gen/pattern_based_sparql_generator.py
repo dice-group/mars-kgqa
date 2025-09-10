@@ -232,7 +232,7 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
         aug_qtxt, patterns_data_list, verbalizer
     )
     top_triples = heapq.nsmallest(top_n, priority_queue, key=lambda x: x[0])
-    proc_logger.add_step(f'Selected top {len(priority_queue)} triple patterns (top-n: {top_n})')
+    proc_logger.add_step(f'Selected top {len(top_triples)} triple patterns (top-n: {top_n})')
     proc_logger.complete_action()
     return top_triples
 
