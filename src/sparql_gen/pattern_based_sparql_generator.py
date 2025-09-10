@@ -334,11 +334,14 @@ def process_input_query_multi_hop(
         new_patterns = []
         i = 1
         for idx_str in indices:
-            idx = int(idx_str)
+            try:
+                idx = int(idx_str)
+            except ValueError:
+                # Skip malformed index strings
+                proc_logger.add_step(f"Skipping malformed index {idx_str}")
+                continue
             if idx < 0 or idx >= len(selected_edges):
-                proc_logger.add_step(
-                    f"Skipping invalid index {idx_str}"
-                )
+                proc_logger.add_step(f"Skipping invalid index {idx_str}")
                 continue
             
             edge = selected_edges[idx]
