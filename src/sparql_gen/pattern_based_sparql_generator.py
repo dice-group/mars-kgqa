@@ -259,7 +259,16 @@ def process_input_query_multi_hop(
     # start logging for this query
     proc_logger.start_action(
         "process_input_query_multi_hop",
-        {"question": question_text, "model_config": model_config.to_dict()}
+        {
+            "question": question_text,
+            "model_config": model_config.to_dict(),
+            "wd_endpoint": wd_ep,
+            "filter_entities": filter_entities,
+            "top_n": topn_count,
+            "max_hops": mhop_limit,
+            "include_pattern_count": include_pattern_count,
+            "refine_sparql": refine_sparql,
+        }
     )
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
 
