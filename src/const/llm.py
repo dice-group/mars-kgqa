@@ -34,7 +34,7 @@ LLM_ENDPOINT = os.environ.get("LLAMA_SWAP_OPENAI_ENDPOINT")
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        
 class ChatModel(Enum):
     # All models are using Q8
-    GEMMA3 = ModelAPIConfig("gemma-3-27b-it", LLM_ENDPOINT, os.environ.get("OWUI"))
+    GEMMA3 = ModelAPIConfig("gemma-3-27b-it", LLM_ENDPOINT, os.environ.get("OWUI")) # Gets stuck on being provided large > 10 top-N context
     QWEN3 = ModelAPIConfig("qwen3-32b", LLM_ENDPOINT, os.environ.get("OWUI"))
     MISTRAL3 = ModelAPIConfig("mistral-small-3.2-24b", LLM_ENDPOINT, os.environ.get("OWUI"))
     GPTOSS120B = ModelAPIConfig("gpt-oss-120b", LLM_ENDPOINT, os.environ.get("OWUI"))

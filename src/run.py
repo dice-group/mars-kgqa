@@ -15,6 +15,7 @@ from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compile
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
 
 from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP
+import time
 
 def parse_args() -> argparse.Namespace:
     """Define and parse CLI arguments."""
@@ -152,14 +153,20 @@ def main() -> None:
     # call the aux init
     if aux_init_fn:
         aux_init_fn()
+        
+    start = time.time()
     
     # Generates TSV (for readability)
     process_dataset(run_name, qald_file_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
     args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot)
     
+    print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
+    
     json_output_path = generate_output_path(run_name, qald_file_path, 'json')
     # Converts TSV to JSON (for evaluation)
     convert_basic_output(tsv_output_path, qald_file_path, json_output_path, False, wd_ep)
+    
+    print(f"[TIME] Extraction of results took {time.time() - start:.2f}s")
     
     # Evaluating results on GERBIL
     gold_dataset_label = f'{kgqa_ds.dataset_id}_{split_conf.name.lower()}'
@@ -168,11 +175,18 @@ def main() -> None:
     
     create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
     
+    print(f"[TIME] Gerbil evaluation took {time.time() - start:.2f}s")
+    
     # Analyse answers
     analysis_dir = get_analysis_dir(run_name, qald_file_path)
     
     analyse_mismatches(qald_file_path, json_output_path, log_dir, analysis_dir, llm_config)
+    
+    print(f"[TIME] Analyzing mismatched entries took {time.time() - start:.2f}s")
+    
     generate_compiled_analysis(analysis_dir, llm_config)
+    
+    print(f"[TIME] Compilation of analyses took {time.time() - start:.2f}s")
 
 
 if __name__ == "__main__":
