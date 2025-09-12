@@ -379,7 +379,7 @@ def process_input_query_multi_hop(
             next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep)
             
             proc_logger.add_step(
-                f"Found {len(next_patterns)} next‑hop patterns for var {var_name}"
+                f'Triple patterns found for {var_name}: {len(next_patterns)}'
             )
             # Mark as expanded before we start the next‑hop search
             expanded_edges.add(edge.variable_name)
@@ -387,6 +387,9 @@ def process_input_query_multi_hop(
             # Extract & filter them.
             extracted, _ = extract_patterns_data(
                 var_name, var_name, next_patterns, PROPERTY_ID_MAP
+            )
+            proc_logger.add_step(
+                f'Filtered triple patterns for {var_name}: {len(extracted)}'
             )
             new_patterns.extend(extracted)
 
