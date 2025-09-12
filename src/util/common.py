@@ -57,7 +57,7 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     req_failed = False
 
     try:
-        response = requests.get(endpoint_url, params={'query': query, 'format': 'json'}, headers=headers, timeout=600)
+        response = requests.post(endpoint_url, data={'query': query, 'format': 'json'}, headers=headers, timeout=600)
         response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
     except requests.exceptions.RequestException as e:
