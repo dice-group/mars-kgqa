@@ -136,6 +136,19 @@ models:
       --top-p 0.95
       --min-p 0.00
     ttl: 300
+  llama-4-scout-17b-16e-instruct:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_XL
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --flash-attn on
+      --temp 0.6
+      --top-p 0.9
+      --min-p 0.01
+    ttl: 300
 groups:
   nomic-embed-text-v2-moe:
     persistent: true
