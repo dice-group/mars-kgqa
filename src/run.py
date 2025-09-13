@@ -16,6 +16,7 @@ from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
 
 from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP
 import time
+import os
 
 def parse_args() -> argparse.Namespace:
     """Define and parse CLI arguments."""
@@ -140,7 +141,10 @@ def main() -> None:
     # adding config info to approach name
     approach_name += approach_suffix
     
-    run_name = f'{approach_name}__{llm_config.model_id}'
+    # read system name from env: RUN_SYS_NAME
+    run_sys_name = os.environ.get("RUN_SYS_NAME")
+    
+    run_name = f'{run_sys_name}__{approach_name}__{llm_config.model_id}'
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     

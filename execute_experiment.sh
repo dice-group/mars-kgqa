@@ -11,6 +11,8 @@ CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
 # Loading environment variables (also loads slurm specific config if needed)
 source "$CUR_SCRIPT_DIR/setup/env.sh"
 
+# Assign system name
+export RUN_SYS_NAME="${CLUSTER_NAME:-$(hostname)}"
 
 # Helper: print usage
 usage() {
