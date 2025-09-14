@@ -43,7 +43,7 @@ class ChatModel(Enum):
     QWEN3_CODER = ModelAPIConfig("qwen3-coder-30b-a3b", LLM_ENDPOINT, os.environ.get("OWUI"))
     DEEPSEEK_R1_QWEN3_8B = ModelAPIConfig("deepseek-r1-0528-qwen3-8b", LLM_ENDPOINT, os.environ.get("OWUI"))
     LLAMA_NEMOTRON_SUPER_49B = ModelAPIConfig("llama-3_3-nemotron-super-49b-v1_5", LLM_ENDPOINT, os.environ.get("OWUI"), "/no_think") # Thinking model is taking too long, almost stuck at every request # Even normal model gets stuck
-    LLAMA4_SCOUT_17B16E = ModelAPIConfig("llama-4-scout-17b-16e-instruct", LLM_ENDPOINT, os.environ.get("OWUI"))
+    LLAMA4_SCOUT_17B16E = ModelAPIConfig("llama-4-scout-17b-16e-instruct", LLM_ENDPOINT, os.environ.get("OWUI"), "If a format is given, stick to it strictly and do NOT add any explanation to it. The outputs for provided formats will be machine processed and require strict adherence to match pattern.") # Adding system prompt to stop this model from writing extra explanations
 
 # Embedding model
 class EmbeddingModel(Enum):
