@@ -16,7 +16,11 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
         # Call the OpenAI API
         completion = client_instance.chat.completions.create(
             model=model_id,
-            messages=message_list
+            messages=message_list,
+            extra_body={
+                "seed":42,
+                "cache_prompt":False
+            }
         )
     except Exception as e:
         # Write the prompt to a temporary file if an exception occurs

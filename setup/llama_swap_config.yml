@@ -8,7 +8,6 @@ macros:
     --port ${PORT}
     --no-webui
     --no-mmap
-    --no-warmup
     --prio 3
     --poll 100
   # --offline
@@ -158,7 +157,6 @@ models:
       --n-predict 40960
       --n-gpu-layers 99
       --flash-attn on
-      --seed 3407
       --prio 2
       --temp 0.7
       --repeat-penalty 1.0
