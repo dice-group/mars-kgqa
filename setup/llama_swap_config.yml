@@ -149,6 +149,23 @@ models:
       --top-p 0.9
       --min-p 0.01
     ttl: 300
+  magistral-small-2509:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/Magistral-Small-2509-GGUF:Q8_0
+      --jinja
+      --ctx-size 40960
+      --n-predict 40960
+      --n-gpu-layers 99
+      --flash-attn on
+      --seed 3407
+      --prio 2
+      --temp 0.7
+      --repeat-penalty 1.0
+      --min-p 0.01
+      --top-k -1
+      --top-p 0.95
+    ttl: 300
 groups:
   nomic-embed-text-v2-moe:
     persistent: true

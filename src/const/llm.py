@@ -2,6 +2,12 @@ import os
 from enum import Enum
 from src.util.llm import get_opai_client
 
+
+MAGISTRAL_2509_SYS_PROMPT = """First draft your thinking process (inner monologue) until you arrive at a response. Format your response using Markdown, and use LaTeX for any mathematical equations. Write both your thoughts and the response in the same language as the input.
+
+Your thinking process must follow the template below:[THINK]Your thoughts or/and draft, like working through an exercise on scratch paper. Be as casual and as long as you want until you are confident to generate the response. Use the same language as the input.[/THINK]Here, provide a self-contained response.
+"""
+
 class ModelAPIConfig:
     
     def __init__(self, model_id, endpoint, api_key, sysprompt=None, postfix=None):
@@ -44,6 +50,7 @@ class ChatModel(Enum):
     DEEPSEEK_R1_QWEN3_8B = ModelAPIConfig("deepseek-r1-0528-qwen3-8b", LLM_ENDPOINT, os.environ.get("OWUI"))
     LLAMA_NEMOTRON_SUPER_49B = ModelAPIConfig("llama-3_3-nemotron-super-49b-v1_5", LLM_ENDPOINT, os.environ.get("OWUI"), "/no_think") # Thinking model is taking too long, almost stuck at every request # Even normal model gets stuck
     LLAMA4_SCOUT_17B16E = ModelAPIConfig("llama-4-scout-17b-16e-instruct", LLM_ENDPOINT, os.environ.get("OWUI"), "If a format is given, stick to it strictly and do NOT add any explanation to it. The outputs for provided formats will be machine processed and require strict adherence to match pattern.") # Adding system prompt to stop this model from writing extra explanations
+    MAGISTRAL_SMALL_2509 = ModelAPIConfig("magistral-small-2509", LLM_ENDPOINT, os.environ.get("OWUI"), MAGISTRAL_2509_SYS_PROMPT)
 
 # Embedding model
 class EmbeddingModel(Enum):
@@ -51,3 +58,5 @@ class EmbeddingModel(Enum):
 
 DEFAULT_CHAT_LLM_CONFIG = ChatModel.GEMMA3.value # can be changed later
 DEFAULT_EMBED_LLM_CONFIG = EmbeddingModel.NOMICV2_CONFIG.value
+
+
