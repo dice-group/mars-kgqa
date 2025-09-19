@@ -57,6 +57,9 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str):
             ans = " ".join(ans.split())
             row = [qid, ans]
             writer.writerow(row)
+
+def evaluate_external_system(system_name, kgqa_dataset, split, external_qald_file, lang):
+    pass
             
 # Example usage
 if __name__ == "__main__":
@@ -66,6 +69,6 @@ if __name__ == "__main__":
     # ds_split = DatasetSplit.TEST
     
     # ds_path = ds_obj.value.split_dict[ds_split]
-    # qald_to_grasp_jsonl(ds_path, f'data_dir/grasp/input/{ds_obj.value.dataset_id}_{ds_split.name.lower()}.jsonl')
+    # qald_to_grasp_jsonl(ds_path, f'data_dir/external_systems/grasp/input/{ds_obj.value.dataset_id}_{ds_split.name.lower()}.jsonl')
     
-    grasp_output_to_tsv('data_dir/grasp/output/original/qald10_test_output.jsonl', 'data_dir/grasp/output/tsv/qald10_test_output.tsv')
+    grasp_output_to_tsv('data_dir/external_systems/grasp/output/original/qald10_test_output.jsonl', 'data_dir/grasp/output/tsv/qald10_test_output.tsv')
