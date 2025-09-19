@@ -3,6 +3,18 @@ import json
 import csv
 from pathlib import Path
 from typing import Iterable, Dict, Any
+import re
+from typing import Pattern
+
+_LANG_FILTER_RE: Pattern = re.compile(
+    r"""
+    FILTER\s*\(\s*LANG\s*\(\s*\?\w+\s*\)\s*=\s*['"]\w{2}['"]\s*\)
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+def has_language_filter(sparql_snippet: str) -> bool:
+    return bool(_LANG_FILTER_RE.search(sparql_snippet))
 
 def qald_to_grasp_jsonl(qald_file: str, jsonl_out: str):
     qald_path = Path(qald_file)
@@ -60,6 +72,13 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str):
 
 def evaluate_external_system(system_name, kgqa_dataset, split, external_qald_file, lang):
     pass
+
+def refine_output_sparql(sparql_str):
+    if has_language_filter(sparql_str):
+        # TODO: Refine the input sparql to remove the selected labels if any
+        pass
+    # NOTE: More refinement cases to be added here if needed
+    return sparql_str
             
 # Example usage
 if __name__ == "__main__":

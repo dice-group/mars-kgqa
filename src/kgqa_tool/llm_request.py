@@ -371,3 +371,58 @@ def compile_analyses(analyses_content, model_config):
     llm_resp_text, think_content = prompt_chat_llm(prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
     
     return llm_resp_text, think_content
+
+
+def sparql_filter(sparql_str, has_lang_filter, model_config, proc_logger):
+    
+    # Log the start of the refinement step
+    proc_logger.start_action(
+        "sparql_filter",
+        {"original_sparql": sparql_str}
+    ).add_step("Building refinement prompt")
+    
+    tasks_list = []
+    i = 1
+    if has_lang_filter:
+        tasks_list.append(f'{i}. Remove the logic to select a label.')
+    
+    tasks_str = '\n'.join(tasks_list)
+    
+    model_prompt = f"""For the given SPARQL, look at the tasks to perform, and produce a single final SPARQL that accomodates all of the requested changes. Write it as it is, if nothing to do. Strictly follow the provided "Answer Format", do not write anything else. 
+    
+    Input SPARQL: {sparql_str}
+
+    TASKS:
+    {tasks_str}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    # Log the full prompt
+    proc_logger.add_step({"prompt": model_prompt})
+    
+    llm_resp_text, _ = prompt_chat_llm(
+        model_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted refined SPARQL")
+    
+    # Finish logging
+    proc_logger.set_output({"refined_sparql": answer_sparql}).complete_action()
+    
+    return answer_sparql
