@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterable, Dict, Any
 import re
 from typing import Pattern
+from src.kgqa_tool.llm_request import sparql_filter
 
 _LANG_FILTER_RE: Pattern = re.compile(
     r"""
@@ -45,7 +46,7 @@ def qald_to_grasp_jsonl(qald_file: str, jsonl_out: str):
             }
             out_f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-def grasp_output_to_tsv(grasp_out: str, tsv_out: str):
+def grasp_output_to_tsv(grasp_out: str, tsv_out: str, refine_sparql: bool):
     
     inp_path = Path(grasp_out)
     out_path = Path(tsv_out)
@@ -67,6 +68,9 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str):
             ans = output_section.get("sparql") or ""
             # Ensure the SPARQL query is a single‑line string (remove newlines and extra whitespace)
             ans = " ".join(ans.split())
+            ans = ans.strip()
+            if refine_sparql and len(ans) > 0: 
+                ans = refine_output_sparql(ans)
             row = [qid, ans]
             writer.writerow(row)
 
@@ -84,10 +88,10 @@ def refine_output_sparql(sparql_str):
 if __name__ == "__main__":
     # from src.const.dataset import KgqaDataset, DatasetSplit
     
-    # ds_obj = KgqaDataset.QALD9PLUS_UPDATED_CURWD
+    # ds_obj = KgqaDataset.QALD10
     # ds_split = DatasetSplit.TEST
     
     # ds_path = ds_obj.value.split_dict[ds_split]
     # qald_to_grasp_jsonl(ds_path, f'data_dir/external_systems/grasp/input/{ds_obj.value.dataset_id}_{ds_split.name.lower()}.jsonl')
     
-    grasp_output_to_tsv('data_dir/external_systems/grasp/output/original/qald10_test_output.jsonl', 'data_dir/grasp/output/tsv/qald10_test_output.tsv')
+    grasp_output_to_tsv('data_dir/external_systems/grasp/output/original/gpt-oss-120b/qald9plus_updt_curwd_test_output.jsonl', 'data_dir/external_systems/grasp/output/tsv/gpt-oss-120b/qald9plus_updt_curwd_test_output.tsv')
