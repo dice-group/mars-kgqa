@@ -142,7 +142,7 @@ def evaluate_external_system(system_name, kgqa_dataset, split, external_tsv_file
 if __name__ == "__main__":
     from src.const.dataset import KgqaDataset, DatasetSplit
     
-    ds_obj = KgqaDataset.QALD10
+    ds_obj = KgqaDataset.QALD9PLUS_UPDATED_CURWD
     ds_split = DatasetSplit.TEST
     
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # qald_to_grasp_jsonl(ds_path, f'data_dir/external_systems/grasp/input/{ds_obj.value.dataset_id}_{ds_split.name.lower()}.jsonl')
     
     ## Convert output of GRASP to TSV to be processed
-    tsv_file_path = f'{output_dir}/tsv/gpt-oss-120b/qald10_test_output.tsv'
+    tsv_file_path = f'{output_dir}/tsv/gpt-oss-120b/qald9plus_updt_curwd_test_output.tsv'
     # grasp_output_to_tsv(f'{output_dir}/original/gpt-oss-120b/qald10_test_output.jsonl', tsv_file_path, True, llm_config)
     
     ## Generate QALD json and execute gerbil experiment
