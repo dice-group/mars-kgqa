@@ -47,7 +47,7 @@ def save_json_file(json_obj, output_file_path):
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         json.dump(json_obj, outfile, ensure_ascii=False, indent=4)
 
-def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
+def execute_sparql_query(query, endpoint_url, get_only_bindings=True, timeout=600):
     headers = {
         "Accept": "application/sparql-results+json",
         # Identify the client as Firefox (optional version string)
@@ -57,7 +57,7 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     req_failed = False
 
     try:
-        response = requests.post(endpoint_url, data={'query': query, 'format': 'json'}, headers=headers, timeout=600)
+        response = requests.post(endpoint_url, data={'query': query, 'format': 'json'}, headers=headers, timeout=timeout)
         response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
     except requests.exceptions.RequestException as e:
@@ -71,7 +71,7 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True):
     
     
     # to avoid overwhelming the endpoint with frequent requests
-    time.sleep(3)
+    # time.sleep(3) # not need if using local endpoints
 
     ret_val = data
     if get_only_bindings:
