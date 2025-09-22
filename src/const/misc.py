@@ -79,4 +79,4 @@ def _build_prefix_map(block: str) -> dict[str, str]:
 PREFIX_MAP = _build_prefix_map(PREFIX_BLOCK)
 
 class EntityAnnotator(Enum):
-    AUG_EL = auto()
+    AUG_EL_V0D1 = 'aug_linker_v0.1'

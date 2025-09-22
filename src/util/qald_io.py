@@ -1,6 +1,7 @@
 from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file
 from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, DEFAULT_WIKIDATA_ENDPOINT_URL
 import csv
+import os
 import json
 import ast
 from tqdm import tqdm
@@ -207,7 +208,35 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
         question_item['answers'] = answer_obj  
     
     save_json_file(qald_obj, output_file_path)
+
+def encapsulate_qald_aug_info(dataset_label, entrel_linker_name, qald_file_path):
+    qald_obj = read_json_file(qald_file_path)
     
+    entrel_keys = ['found_ent', 'found_rel', 'augmented_ent', 'augmented_rel', 'filtered_ent', 'filtered_rel']
+    
+    question_list = []
+     # For each id in the qald_gold
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        qald_item = {}
+        orig_keys = question_item.keys()
+        # Copy augmented fields
+        for key_item in orig_keys:
+            if key_item in entrel_keys:
+                if entrel_linker_name not in qald_item:
+                    qald_item[entrel_linker_name] = {}
+                qald_item[entrel_linker_name][key_item] = question_item[key_item]
+            else:
+                qald_item[key_item] = question_item[key_item]   
+        question_list.append(qald_item)
+    # Create QALD Dataset    
+    qald_dict = {'dataset': {'id': f'{dataset_label} (with ent-rel links)'}, 'questions' : question_list}
+    # Backup old file
+    if os.path.isfile(qald_file_path):
+        dir_name, base_name = os.path.split(qald_file_path)
+        backup_path = os.path.join(dir_name, f"old.{base_name}")
+        os.rename(qald_file_path, backup_path)   # rename to old.<original>
+    # Save json
+    save_json_file(qald_dict, qald_file_path)
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach

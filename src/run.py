@@ -88,7 +88,7 @@ def parse_args() -> argparse.Namespace:
         "--entity-annotator",
         type=str,
         choices=[a.name for a in EntityAnnotator],
-        default=EntityAnnotator.AUG_EL.name,
+        default=EntityAnnotator.AUG_EL_V0D1.name,
         help="Select which entity annotator to apply."
     )
     
@@ -144,7 +144,7 @@ def main() -> None:
     # read system name from env: RUN_SYS_NAME
     run_sys_name = os.environ.get("RUN_SYS_NAME")
     
-    run_name = f'{run_sys_name}__{approach_name}__{llm_config.model_id}'
+    run_name = f'{run_sys_name}__{approach_name}__{llm_config.model_id}__{ent_annot.name.lower()}'
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     

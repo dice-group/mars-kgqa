@@ -145,6 +145,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
 
     # Read the qald preprocessed file
     qald_json = read_json_file(qald_file_path)
+    
+    ent_linker = ent_annot.value
 
     # For each question
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
@@ -183,7 +185,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         
         # Verify required pre‑processed fields are present
         if not use_gold_entrel and not all(
-            key in question_item for key in ['augmented_seq', 'filtered_ent', 'filtered_rel']
+            key in question_item for key in ['augmented_seq', ent_linker]
         ):
             proc_logger.add_step("Missing augmented data; skipping question").complete_action()
             continue  # skip if augmented data is missing
@@ -201,10 +203,9 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             ent_dict = {e['label']: e['uri'] for e in question_item['gold_ent']}
             rel_dict = {r['label']: r['uri'] for r in question_item['gold_rel']}
         else:
-            # ent_dict = question_item['found_ent']
-            # rel_dict = question_item['found_rel']
-            ent_dict = {e['label']: e['uri'] for e in question_item['filtered_ent']}
-            rel_dict = {r['label']: r['uri'] for r in question_item['filtered_rel']}
+            proc_logger.add_step(f'Entity/Relation Linker: {ent_linker}')
+            ent_dict = {e['label']: e['uri'] for e in question_item[ent_linker]['filtered_ent']}
+            rel_dict = {r['label']: r['uri'] for r in question_item[ent_linker]['filtered_rel']}
 
         proc_logger.add_step(
             f"Prepared input – aug_text length: {len(aug_text)}, "
