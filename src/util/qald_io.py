@@ -88,11 +88,17 @@ def get_qald_answer_sparql(sparql, endpoint):
     sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
     return formatted_sparql, sparql_response
 
-def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
+def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint, ignore_ids=[]):
+    ignore_ids = [str(item) for item in ignore_ids]
     qald_obj = read_json_file(qald_file_path)
     failed_update_items = []
+    ignored_items = []
      # For each id in the qald_gold
     for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        q_id = question_item["id"]
+        if str(q_id) in ignore_ids:
+            ignored_items.append(question_item)
+            continue # ignore this item
         # Extract SPARQL query
         gold_sparql = question_item['query']['sparql']
         sparql_response, request_failed = execute_sparql_query(gold_sparql, sparql_endpoint, get_only_bindings=False)
@@ -103,15 +109,17 @@ def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint):
             continue # cannot update this item
         answer_obj = [sparql_response]
         question_item['answers'] = answer_obj
+    
+    removed_items = failed_update_items + ignored_items
     # Removing failed items safely
-    qald_obj['questions'] = [ q for q in qald_obj['questions'] if q not in failed_update_items ]
+    qald_obj['questions'] = [ q for q in qald_obj['questions'] if q not in removed_items]
     # Save the QALD file
     create_directory_if_not_exists(output_file_path)
     # Write qald_obj to output_file_path
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         json.dump(qald_obj, outfile, ensure_ascii=False, indent=4)
     # Return failed items
-    return failed_update_items
+    return failed_update_items, ignored_items
 
 def get_qald_answer_obj(answer_tuples):
     # Generate bindings
