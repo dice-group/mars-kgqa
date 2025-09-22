@@ -201,9 +201,13 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
             answer_obj = get_qald_answer_obj(answer_item)
             question_item['query'] = {}
         else:
-            formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, wd_ep)
-            answer_obj = [qald_answer]
-            question_item['query'] = { 'sparql': formatted_sparql}
+            if not answer_item:
+                answer_obj = []
+                question_item['query'] = { 'sparql': ''}
+            else:
+                formatted_sparql, qald_answer = get_qald_answer_sparql(answer_item, wd_ep)
+                answer_obj = [qald_answer]
+                question_item['query'] = { 'sparql': formatted_sparql}
 
         question_item['answers'] = answer_obj  
     

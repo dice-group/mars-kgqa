@@ -124,10 +124,10 @@ def refine_output_sparql(sparql_str, model_config, proc_logger):
         sparql_str = sparql_filter(sparql_str, lang_filter, model_config, proc_logger)
     return sparql_str
 
-def evaluate_external_system(system_name, kgqa_dataset, split, external_tsv_file, gerbil_output_dir, lang):
+def evaluate_external_system(system_name, kgqa_dataset, split, qald_file_path, external_tsv_file, gerbil_output_dir, lang):
     # convert to json file
     wd_ep = kgqa_dataset.value.preferred_wd_endpoint
-    qald_file_path = kgqa_dataset.value.split_dict[split]
+    # qald_file_path = kgqa_dataset.value.split_dict[split]
     json_output_path = external_tsv_file.replace('/tsv/', '/json/').replace('.tsv', '.json')
     
     convert_basic_output(external_tsv_file, qald_file_path, json_output_path, False, wd_ep)
