@@ -261,7 +261,7 @@ def create_export_gerbil_experiment(
     """
     gerbil = Gerbil()
     gerbil.add_ref_file(gold_file_label, gold_file_path)
-    gerbil.add_pred_file(f"{system_label}-{language}", pred_file_path)
+    gerbil.add_pred_file(f"{system_label}", pred_file_path)
 
     response = gerbil.submit_experiment(language)
     if response:

@@ -116,6 +116,7 @@ def main() -> None:
     processor_fn = approach_enum.processor
     aux_init_fn  = approach_enum.aux_init
     llm_config = ChatModel[args.llm].value
+    llm_name = ChatModel[args.llm].name
     kgqa_ds = KgqaDataset[args.dataset].value
     split_conf = DatasetSplit[args.split]
     # entity_annotator
@@ -127,19 +128,19 @@ def main() -> None:
     approach_config = []
 
     if args.filter_entities:
-        approach_config.append("filter")
+        approach_config.append("enfil")
     if args.topn_count: # this can be set to 0 to remove this suffix in special cases
-        approach_config.append(f"top{args.topn_count}")
+        approach_config.append(f"t{args.topn_count}")
     if args.mhop_limit: # this can be set to 0 to remove this suffix in cases like SSG
-        approach_config.append(f"hop{args.mhop_limit}")
+        approach_config.append(f"h{args.mhop_limit}")
     if args.include_pattern_count:
-        approach_config.append("patterncount")
+        approach_config.append("pc")
     if args.refine_sparql:
-        approach_config.append("refine")
+        approach_config.append("sref")
     if args.use_aug_similarity:
-        approach_config.append("augsim")
+        approach_config.append("ausm")
     # always include the chosen entity annotator (even if default)
-    approach_config.append(f"ent_{ent_annot.name.lower()}")
+    approach_config.append(f"{ent_annot.name.lower()}")
 
     # join the parts with dashes; if no extra flags, keep it empty
     approach_suffix = ""
@@ -150,7 +151,7 @@ def main() -> None:
     ## Rest of the logic
     approach_name = approach_id # copying id for modification if needed
     if use_goldentrel:
-        approach_name+='_gold-entrel'
+        approach_name+='_gld-er'
     
     # adding config info to approach name
     approach_name += approach_suffix
@@ -158,7 +159,12 @@ def main() -> None:
     # read system name from env: RUN_SYS_NAME
     run_sys_name = os.environ.get("RUN_SYS_NAME")
     
-    run_name = f'{q_lang}__{run_sys_name}__{approach_name}__{llm_config.model_id}__{ent_annot.name.lower()}'
+    run_name = f'{q_lang}__{run_sys_name}__{approach_name}__{llm_name.lower()}' # Keep this under 120 characters or GERBIL will show blank result page
+    
+    if len(run_name) > 100:
+        raise ValueError(
+            f'Assigned name is too long, this will lead to GERBIL issues, please fix.\nName: {run_name}'
+        )
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
