@@ -1,7 +1,10 @@
 #!/bin/bash
 
 ## Sample usage:
-## bash execute_experiment.sh --gpu 0 --approach PBSG_MHOP --dataset QALD9PLUS_UPDATED_CURWD --split TEST --llm GPTOSS120B --topn-count 10 --mhop-limit 1 --include-pattern-count
+## bash execute_experiment.sh --gpu 0 --approach PBSG_MHOP \
+#   --dataset QALD10_UPDATED_TENTRISQ10 --split TEST --llm GPTOSS120B \
+#   --topn-count 20 --mhop-limit 5 --include-pattern-count \
+#   --use-aug-similarity --language en
 
 set -euo pipefail
 
@@ -55,7 +58,7 @@ INCLUDE_PATTERN_COUNT="false"
 REFINE_SPARQL="false"
 ENTITY_ANNOTATOR=""   # optional, only added if user supplies a value
 USE_AUG_SIMILARITY="false"
-LANGUAGE="en
+LANGUAGE="en"
 
 
 # Parse arguments
