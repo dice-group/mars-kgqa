@@ -241,6 +241,44 @@ def encapsulate_qald_aug_info(dataset_label, entrel_linker_name, qald_file_path)
         os.rename(qald_file_path, backup_path)   # rename to old.<original>
     # Save json
     save_json_file(qald_dict, qald_file_path)
+    
+def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_filepath, sparql_endpoint):
+    spinach_question_list = read_json_file(input_spinach_filepath)
+    qald_question_list = []
+    ignored_items = []
+    for question_item in tqdm(spinach_question_list, desc='Processing questions'):
+        qald_item = {}
+        q_id = question_item['id']
+        question_text = question_item['question']
+        sparql = question_item['sparql']
+        if not question_text:
+            print(f'Missing question text for ID: {q_id}')
+            ignored_items.append(question_item)
+            continue
+        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint)
+        if not sparql_response:
+            print(f'Missing answer for ID: {q_id}\tQuestion: {question_text}')
+            ignored_items.append(question_item)
+            continue
+        answer_obj = [sparql_response]
+        # Build QALD item dictionary
+        qald_item['id'] = str(q_id) # For uniformity
+        qald_item['answers'] = answer_obj
+        qald_item['query'] = { 'sparql': formatted_sparql}
+        qald_item['question'] = [{ "language": "en", "string": question_text}]
+        
+        qald_question_list.append(qald_item)
+    # Create QALD Dataset    
+    qald_dict = {'dataset': {'id': f'{dataset_label} (QALD Format)'}, 'questions' : qald_question_list}
+    # Save json
+    save_json_file(qald_dict, output_qald_filepath)
+    
+    ignored_ids = [q['id'] for q in ignored_items]
+    
+    print(f'Following questions ignored: {f'{','.join(ignored_ids)}'}')
+    
+    print(f'Total {len(ignored_items)} out of {len(spinach_question_list)} ignored.')
+    print(f'Total {len(qald_question_list)} out of {len(spinach_question_list)} saved.')
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
@@ -249,11 +287,31 @@ if __name__ == "__main__":
     # has_tuples = True
     
     ## Sample convert_basic_output call for SPARQL Generation approach
-    tsv_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
-    output_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/json/aug_pred_sparql.json"
-    has_tuples = False
+    # tsv_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_sparql.tsv"
+    # output_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/json/aug_pred_sparql.json"
+    # has_tuples = False
     
     
-    qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
+    # qald_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/aug_gold.json"
     
-    convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples=has_tuples)
+    # convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples=has_tuples)
+    
+    ## Convert SPINACH dataset to QALD-format
+    from src.const.dataset import KgqaDataset, DatasetSplit
+    from src.util.qald_io import convert_spinach_to_qald
+
+    spinach_ds = KgqaDataset.SPINACH_TENTRISQ10.value
+
+    wd_ep = spinach_ds.preferred_wd_endpoint
+
+    split_conf = DatasetSplit.TEST
+    input_path = 'data_dir/processed_kgqa_ds/spinach/test/test.json'
+
+    out_dir = os.path.dirname(input_path)
+    out_file_name = 'qald_' + os.path.basename(input_path)
+
+    output_file_path = os.path.join(out_dir, out_file_name)
+
+    dataset_name = f'{spinach_ds.dataset_name} - {split_conf.name}'
+
+    convert_spinach_to_qald(dataset_name, input_path, output_file_path, wd_ep)
