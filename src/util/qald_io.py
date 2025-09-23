@@ -39,7 +39,7 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_end
     save_json_file(qald_dict, output_qald_file_path)
     
 
-def get_qald_answer_sparql(sparql, endpoint):
+def get_qald_answer_sparql(sparql, endpoint, use_sleep=False):
     
     if "prefix" in sparql.lower():
         formatted_sparql = sparql
@@ -86,7 +86,7 @@ def get_qald_answer_sparql(sparql, endpoint):
         # Adding hard limit for the results
         formatted_sparql += "\nLIMIT 1000"
     
-    sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False)
+    sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False, use_sleep=use_sleep)
     return formatted_sparql, sparql_response
 
 def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint, ignore_ids=[]):
@@ -242,7 +242,7 @@ def encapsulate_qald_aug_info(dataset_label, entrel_linker_name, qald_file_path)
     # Save json
     save_json_file(qald_dict, qald_file_path)
     
-def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_filepath, sparql_endpoint):
+def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_filepath, sparql_endpoint, use_sleep=False):
     spinach_question_list = read_json_file(input_spinach_filepath)
     qald_question_list = []
     ignored_items = []
@@ -255,7 +255,7 @@ def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_f
             print(f'Missing question text for ID: {q_id}')
             ignored_items.append(question_item)
             continue
-        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint)
+        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint, use_sleep)
         if not sparql_response:
             print(f'Missing answer for ID: {q_id}\tQuestion: {question_text}')
             ignored_items.append(question_item)

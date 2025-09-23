@@ -40,6 +40,11 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/updt_curwd_qald_aug_gold.json"
     }, CURRENT_WIKIDATA_EP)
     
+    SPINACH_TENTRISQ10 =  KgqaDatasetInfo("spinach_tentrisq10", "SPINACH  (Answerset from QALD 10 Wikidata - Tentris)", {
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach/train/tentrisq10_aug_gold.json",
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentrisq10_aug_gold.json"
+    }, QALD10_TENTRIS_WIKIDATA_EP)
+    
     ## Obsolete datasets - End
     
     ## Working datasets - Start
@@ -54,10 +59,10 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_updt_filtered_gold_ent.json"
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
-    SPINACH_TENTRISQ10 =  KgqaDatasetInfo("spinach_tentrisq10", "SPINACH  (Answerset from QALD 10 Wikidata - Tentris)", {
-        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach/train/tentrisq10_aug_gold.json",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentrisq10_aug_gold.json"
-    }, QALD10_TENTRIS_WIKIDATA_EP)
+    SPINACH_CURWD =  KgqaDatasetInfo("spinach_curwd", "SPINACH  (Answerset from Official Wikidata)", {
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach/train/curwd_aug_gold.json",
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/curwd_aug_gold.json"
+    }, CURRENT_WIKIDATA_EP)
     
     ## Working datasets - End
     
