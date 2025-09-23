@@ -33,6 +33,8 @@ Options:
   --include-pattern-count       Include the count of matched patterns in the output
   --refine-sparql               Run a post‑processing step to refine generated SPARQL
   --entity-annotator <NAME>     Entity annotator to apply (e.g. AUG_EL)
+  --use-aug-similarity          Use augmented sequence for similarity computations
+  --language <CODE>             Language code for the questions (default: en)
   -h, --help                    Show this help message
 EOF
   exit 1
@@ -45,13 +47,15 @@ PORT=""
 MODE="run"   # normal execution; can be changed to "debug" via --debug
 USE_GOLD="false"
 
-# Default values for the *new* optional flags – empty means “not passed”
+# Default values for the optional flags – empty means “not passed”
 FILTER_ENTITIES="false"
 TOPN_COUNT=""          # optional, only added if user supplies a value
 MHOP_LIMIT=""         # optional, only added if user supplies a value
 INCLUDE_PATTERN_COUNT="false"
 REFINE_SPARQL="false"
 ENTITY_ANNOTATOR=""   # optional, only added if user supplies a value
+USE_AUG_SIMILARITY="false"
+LANGUAGE="en
 
 
 # Parse arguments
@@ -71,6 +75,8 @@ while [[ $# -gt 0 ]]; do
     --dataset)       DATASET="${2:?Missing value for --dataset}"; shift 2 ;;
     --split)         SPLIT="${2:?Missing value for --split}"; shift 2 ;;
     --llm)           LLM="${2:?Missing value for --llm}"; shift 2 ;;
+    --use-aug-similarity)   USE_AUG_SIMILARITY="true"; shift ;;
+    --language)             LANGUAGE="${2:?Missing value for --language}"; shift 2 ;;
     -h|--help)       usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
@@ -149,6 +155,8 @@ RUN_ARGS=(
 [[ "$INCLUDE_PATTERN_COUNT" == "true" ]] && RUN_ARGS+=(--include-pattern-count)
 [[ "$REFINE_SPARQL" == "true" ]]       && RUN_ARGS+=(--refine-sparql)
 [[ -n "$ENTITY_ANNOTATOR" ]]           && RUN_ARGS+=(--entity-annotator "$ENTITY_ANNOTATOR")
+[[ "$USE_AUG_SIMILARITY" == "true" ]]  && RUN_ARGS+=(--use-aug-similarity)
+[[ -n "$LANGUAGE" ]]                   && RUN_ARGS+=(--language "$LANGUAGE")
 
 # Launch experiment via pylauncher.sh
 echo "Launching experiment via pylauncher.sh ($MODE)..."

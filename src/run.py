@@ -91,7 +91,18 @@ def parse_args() -> argparse.Namespace:
         default=EntityAnnotator.AUG_EL_V0D1.name,
         help="Select which entity annotator to apply."
     )
-    
+    parser.add_argument(
+        "--use-aug-similarity",
+        action="store_true",
+        help="Use augmented sequence for similarity computations."
+    )
+    parser.add_argument(
+        "--language",
+        type=str,
+        default='en',
+        help="Language code for the questions to use."
+    )
+    # NOTE: If new arguments are added, update execute_experiment.sh and slurm/schedule_experiment.sh with new arguments as well.
     return parser.parse_args()
 
 
@@ -109,6 +120,7 @@ def main() -> None:
     split_conf = DatasetSplit[args.split]
     # entity_annotator
     ent_annot = EntityAnnotator[args.entity_annotator]
+    q_lang = args.language
     
     use_goldentrel = args.use_gold
     
@@ -124,6 +136,8 @@ def main() -> None:
         approach_config.append("patterncount")
     if args.refine_sparql:
         approach_config.append("refine")
+    if args.use_aug_similarity:
+        approach_config.append("augsim")
     # always include the chosen entity annotator (even if default)
     approach_config.append(f"ent_{ent_annot.name.lower()}")
 
@@ -144,7 +158,7 @@ def main() -> None:
     # read system name from env: RUN_SYS_NAME
     run_sys_name = os.environ.get("RUN_SYS_NAME")
     
-    run_name = f'{run_sys_name}__{approach_name}__{llm_config.model_id}__{ent_annot.name.lower()}'
+    run_name = f'{q_lang}__{run_sys_name}__{approach_name}__{llm_config.model_id}__{ent_annot.name.lower()}'
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
@@ -162,7 +176,7 @@ def main() -> None:
     
     # Generates TSV (for readability)
     process_dataset(run_name, qald_file_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
-    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot)
+    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang)
     
     print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
     
@@ -181,7 +195,7 @@ def main() -> None:
     system_label = f'{run_name}'
     gerbil_result_path = generate_gerbil_export_path(run_name, qald_file_path)
     
-    create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, 'en', gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
+    create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, q_lang, gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
     
     print(f"[TIME] Gerbil evaluation took {time.time() - cur_start:.2f}s")
     

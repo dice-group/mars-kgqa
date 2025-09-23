@@ -124,7 +124,7 @@ def get_question_pf_name(question_id):
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
                     llm_config, use_gold_entrel, log_dir, filter_entities, topn_count,
-                    mhop_limit, include_pattern_count, refine_sparql, ent_annot):
+                    mhop_limit, include_pattern_count, refine_sparql, ent_annot, use_aug_sim, q_lang):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -154,7 +154,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
 
         # Extract the English question text
         question_text = next(
-            (q['string'] for q in question_item['question'] if q['language'] == 'en'), None
+            (q['string'] for q in question_item['question'] if q['language'] == q_lang), None
         )
         
         # Initialise a logger for this question
@@ -163,7 +163,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             output_dir=log_dir
         ).start_action(
             "process_question",
-            {"question_id": question_id, "question_text": question_text}
+            {"question_id": question_id, "question_text": question_text, "language": q_lang}
         )
         
         proc_logger.add_step(f"Wikidata Endpoint: {wd_ep}")
@@ -192,7 +192,7 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
 
         
         # Load augmented text / entities / relations
-        aug_text = question_item['augmented_seq']
+        aug_text = question_item['augmented_seq'][q_lang]
         
         # Log the gold entities, relations and SPARQL
         proc_logger.add_step(f"Gold Entities: {question_item['gold_ent']}")
@@ -204,8 +204,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             rel_dict = {r['label']: r['uri'] for r in question_item['gold_rel']}
         else:
             proc_logger.add_step(f'Entity/Relation Linker: {ent_linker}')
-            ent_dict = {e['label']: e['uri'] for e in question_item[ent_linker]['filtered_ent']}
-            rel_dict = {r['label']: r['uri'] for r in question_item[ent_linker]['filtered_rel']}
+            ent_dict = {e['label']: e['uri'] for e in question_item[ent_linker][q_lang]['filtered_ent']}
+            rel_dict = {r['label']: r['uri'] for r in question_item[ent_linker][q_lang]['filtered_rel']}
 
         proc_logger.add_step(
             f"Prepared input – aug_text length: {len(aug_text)}, "
@@ -224,7 +224,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             topn_count,
             mhop_limit,
             include_pattern_count,
-            refine_sparql
+            refine_sparql,
+            use_aug_sim
         )
         
         # Cache the generated output

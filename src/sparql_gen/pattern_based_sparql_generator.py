@@ -254,6 +254,7 @@ def process_input_query_multi_hop(
     mhop_limit: int,
     include_pattern_count: bool,
     refine_sparql: bool,
+    use_aug_sim: bool,
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
     # start logging for this query
@@ -279,6 +280,9 @@ def process_input_query_multi_hop(
     filter_entity_dict = _filter_entities(
         question_text, entity_dict, filter_entities, model_config, proc_logger
     )
+    
+    if not use_aug_sim:
+        aug_qtxt = question_text # overwrite augmented text if it is not required
 
     # collect initial 1‑hop patterns
     patterns_data_list, _, _ = _collect_root_patterns(

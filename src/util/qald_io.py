@@ -213,10 +213,12 @@ def convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tu
     
     save_json_file(qald_obj, output_file_path)
 
+# NOTE: This function would not be needed once this is already done in the entity linking part
 def encapsulate_qald_aug_info(dataset_label, entrel_linker_name, qald_file_path):
     qald_obj = read_json_file(qald_file_path)
     
     entrel_keys = ['found_ent', 'found_rel', 'augmented_ent', 'augmented_rel', 'filtered_ent', 'filtered_rel']
+    aug_seq_key = 'augmented_seq'
     
     question_list = []
      # For each id in the qald_gold
@@ -227,8 +229,10 @@ def encapsulate_qald_aug_info(dataset_label, entrel_linker_name, qald_file_path)
         for key_item in orig_keys:
             if key_item in entrel_keys:
                 if entrel_linker_name not in qald_item:
-                    qald_item[entrel_linker_name] = {}
-                qald_item[entrel_linker_name][key_item] = question_item[key_item]
+                    qald_item[entrel_linker_name] = {'en': {}}
+                qald_item[entrel_linker_name]['en'][key_item] = question_item[key_item]
+            elif key_item == aug_seq_key:
+                qald_item[key_item] = {'en': question_item[key_item]}
             else:
                 qald_item[key_item] = question_item[key_item]   
         question_list.append(qald_item)
