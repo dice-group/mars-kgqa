@@ -4,13 +4,15 @@ import json
 from datetime import datetime
 
 class ProcessFlowLogger:
-    def __init__(self, process_name, output_dir):
+    def __init__(self, process_name, output_dir, enable_print=True):
         """Initialize logger with process name and output directory"""
         self.process_name = process_name
         self.output_dir = output_dir
         self.process_start_time = time.time()
         self.action_stack = []
         self.processed_actions = 0
+        
+        self.enable_print = enable_print
         
         # Create output directory if it doesn't exist
         os.makedirs(self.output_dir, exist_ok=True)
@@ -36,7 +38,8 @@ class ProcessFlowLogger:
         """Write a single line to the log"""
         self._fh.write(text + "\n")
         self._fh.flush()
-        print(text)  # Also print to console
+        if self.enable_print:
+            print(text)  # Also print to console
 
     def _write_separator(self):
         """Write a separator line"""

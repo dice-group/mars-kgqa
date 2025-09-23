@@ -12,6 +12,7 @@ from src.const.llm import ChatModel
 from src.util.qald_io import convert_basic_output
 from src.util.gerbil import create_export_gerbil_experiment
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH
+from tqdm import tqdm
 
 _LANG_FILTER_RE: Pattern = re.compile(
     r"""
@@ -57,7 +58,7 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str, refine_sparql: bool, model
     # Initialize logger
     log_dir = os.path.dirname(tsv_out)
     log_file = os.path.splitext(os.path.basename(tsv_out))[0]
-    proc_logger = ProcessFlowLogger(f"log_{log_file}", log_dir)
+    proc_logger = ProcessFlowLogger(f"log_{log_file}", log_dir, enable_print=False)
     
     # Log input information
     proc_logger.log_input_info({
@@ -84,7 +85,7 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str, refine_sparql: bool, model
             writer.writerow(header)
             
             line_count = 0
-            for line in in_f:
+            for line in tqdm(in_f, 'TSV Conversion'):
                 if not line.strip():
                     continue
                 obj = json.loads(line)
