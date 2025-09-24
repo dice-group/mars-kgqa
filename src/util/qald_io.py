@@ -368,6 +368,39 @@ def fetch_qald9_multilingual_strings(qald9_dir, *qald_9plus_filepaths):
         # ensure output directory exists
         create_directory_if_not_exists(target_path)
         save_json_file(qald_plus, target_path)
+        
+def _get_gerbil_ready_filepath(json_filepath):
+    dir_name, base_name = os.path.split(json_filepath)
+    output_filepath = os.path.join(dir_name, f"gerbil-ready_{base_name}")
+    return output_filepath
+
+def clean_qald_gerbil_json(qald_json_filepath):
+    qald_obj = read_json_file(qald_json_filepath)
+    
+    copy_keys = {'id', 'question', 'query', 'answers'}
+    
+    question_list = []
+     # For each id in the qald_gold
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        qald_item = {}
+        orig_keys = question_item.keys()
+        # Copy augmented fields
+        for key_item in orig_keys: 
+            if key_item in copy_keys:
+                qald_item[key_item] = question_item[key_item]
+        question_list.append(qald_item)
+    # Create QALD Dataset
+    qald_dict = {}
+    if 'dataset' in qald_obj:
+        qald_dict['dataset'] = qald_obj['dataset']    
+    qald_dict['questions'] = question_list
+    
+    output_qald_file_path = _get_gerbil_ready_filepath(qald_json_filepath)
+    
+    # Save json
+    save_json_file(qald_dict, output_qald_file_path)
+    
+    print(f'Cleaned file stored at: {output_qald_file_path}')
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
