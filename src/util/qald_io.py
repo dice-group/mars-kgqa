@@ -283,6 +283,22 @@ def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_f
     
     print(f'Total {len(ignored_items)} out of {len(spinach_question_list)} ignored.')
     print(f'Total {len(qald_question_list)} out of {len(spinach_question_list)} saved.')
+    
+def fetch_qald9_multilingual_strings(qald9_dir, *qald_9plus_filepaths):
+    # TODO: Implement
+    # For each file in qald9_dir
+    # Read them into json, then iterate over 'questions'
+    # For each question, open the 'question' list of dict with items like {'language': <langcode>, 'string': <question_string>}
+    # Find the 'en' string and then save it to dictionary like <english_question_string>: <question_list_of_dict>
+    # Raise error if a repeated english entry is found
+    
+    # Once the string dictionary is ready, now iterate over all the the qald_9plus_filepaths
+    # Check if the English question is in the dictionary
+    # if yes, then add every language string that is not there
+    
+    # replace the current files with one with old_multi. prefix
+    # write the new files with the current name
+    pass
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
