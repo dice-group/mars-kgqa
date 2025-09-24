@@ -50,7 +50,7 @@ class KgqaDataset(Enum):
     ## Working datasets - Start
     
     QALD9PLUS_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald9plus_tentrisq10", "QALD-9-plus (Updated on QALD 10 Wikidata - Tentris)", {
-        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_updt_aug_gold.json",
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json",
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json"
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
