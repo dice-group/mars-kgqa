@@ -401,6 +401,7 @@ def clean_qald_gerbil_json(qald_json_filepath):
     save_json_file(qald_dict, output_qald_file_path)
     
     print(f'Cleaned file stored at: {output_qald_file_path}')
+    return output_qald_file_path
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach

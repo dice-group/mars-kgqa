@@ -10,7 +10,7 @@ from src.const.approach import Approach
 from src.sparql_gen.sparql_gen_common import process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir
 from src.util.qald_io import convert_basic_output
 from src.util.gerbil import create_export_gerbil_experiment
-from src.util.qald_io import convert_basic_output
+from src.util.qald_io import convert_basic_output, clean_qald_gerbil_json, _get_gerbil_ready_filepath
 from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compiled_analysis
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
 
@@ -168,12 +168,12 @@ def main() -> None:
     
     wd_ep = kgqa_ds.preferred_wd_endpoint
     
-    qald_file_path = kgqa_ds.split_dict[split_conf]
+    gold_qald_path = kgqa_ds.split_dict[split_conf]
     
-    tsv_output_path = generate_output_path(run_name, qald_file_path, 'tsv')
+    tsv_output_path = generate_output_path(run_name, gold_qald_path, 'tsv')
     
     # Generate a log directory path
-    log_dir = get_log_dir(run_name, qald_file_path)
+    log_dir = get_log_dir(run_name, gold_qald_path)
     # call the aux init
     if aux_init_fn:
         aux_init_fn()
@@ -181,16 +181,16 @@ def main() -> None:
     start = time.time()
     
     # Generates TSV (for readability)
-    process_dataset(run_name, qald_file_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
+    process_dataset(run_name, gold_qald_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
     args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang)
     
     print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
     
     cur_start = time.time()
     
-    json_output_path = generate_output_path(run_name, qald_file_path, 'json')
+    json_output_path = generate_output_path(run_name, gold_qald_path, 'json')
     # Converts TSV to JSON (for evaluation)
-    convert_basic_output(tsv_output_path, qald_file_path, json_output_path, False, wd_ep)
+    convert_basic_output(tsv_output_path, gold_qald_path, json_output_path, False, wd_ep)
     
     print(f"[TIME] Extraction of results took {time.time() - cur_start:.2f}s")
     
@@ -199,18 +199,25 @@ def main() -> None:
     # Evaluating results on GERBIL
     gold_dataset_label = f'{kgqa_ds.dataset_id}_{split_conf.name.lower()}'
     system_label = f'{run_name}'
-    gerbil_result_path = generate_gerbil_export_path(run_name, qald_file_path)
+    gerbil_result_path = generate_gerbil_export_path(run_name, gold_qald_path)
     
-    create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_label, json_output_path, q_lang, gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
+    # Use gerbil-ready gold and pred json
+    gerbilready_pred_json_path = clean_qald_gerbil_json(json_output_path)
+    
+    gerbilready_gold_json_path = _get_gerbil_ready_filepath(gold_qald_path)
+    if not os.path.isfile(gerbilready_gold_json_path):
+        gerbilready_gold_json_path = clean_qald_gerbil_json(gold_qald_path)
+    
+    create_export_gerbil_experiment(gold_dataset_label, gerbilready_gold_json_path, system_label, gerbilready_pred_json_path, q_lang, gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
     
     print(f"[TIME] Gerbil evaluation took {time.time() - cur_start:.2f}s")
     
     cur_start = time.time()
     
     # Analyse answers
-    analysis_dir = get_analysis_dir(run_name, qald_file_path)
+    analysis_dir = get_analysis_dir(run_name, gold_qald_path)
     
-    analyse_mismatches(qald_file_path, json_output_path, log_dir, analysis_dir, llm_config)
+    analyse_mismatches(gold_qald_path, json_output_path, log_dir, analysis_dir, llm_config)
     
     print(f"[TIME] Analyzing mismatched entries took {time.time() - cur_start:.2f}s")
     
