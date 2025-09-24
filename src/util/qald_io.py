@@ -1,3 +1,4 @@
+# Sample usage: bash pylauncher.sh normal src.util.qald_io
 from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file
 from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, DEFAULT_WIKIDATA_ENDPOINT_URL
 import csv
@@ -285,20 +286,88 @@ def convert_spinach_to_qald(dataset_label, input_spinach_filepath, output_qald_f
     print(f'Total {len(qald_question_list)} out of {len(spinach_question_list)} saved.')
     
 def fetch_qald9_multilingual_strings(qald9_dir, *qald_9plus_filepaths):
-    # TODO: Implement
-    # For each file in qald9_dir
-    # Read them into json, then iterate over 'questions'
-    # For each question, open the 'question' list of dict with items like {'language': <langcode>, 'string': <question_string>}
-    # Find the 'en' string and then save it to dictionary like <english_question_string>: <question_list_of_dict>
-    # Raise error if a repeated english entry is found
-    
-    # Once the string dictionary is ready, now iterate over all the the qald_9plus_filepaths
-    # Check if the English question is in the dictionary
-    # if yes, then add every language string that is not there
-    
-    # replace the current files with one with old_multi. prefix
-    # write the new files with the current name
-    pass
+    # Build English‑to‑multilingual dictionary from the original QALD‑9 set
+    eng_to_questions = {}
+
+    # iterate over all JSON files in the supplied directory
+    for fname in os.listdir(qald9_dir):
+        if not fname.lower().endswith('.json'):
+            continue
+        file_path = os.path.join(qald9_dir, fname)
+        qald_obj = read_json_file(file_path)
+
+        for q_item in qald_obj.get('questions', []):
+            # find the English entry in the ``question`` list
+            en_entry = next(
+                (entry for entry in q_item.get('question', [])
+                 if entry.get('language') == 'en'), None)
+
+            if en_entry is None:
+                # no English string – skip this question
+                continue
+
+            eng_q = en_entry.get('string')
+            if eng_q in eng_to_questions:
+                print(f'Duplicate English question found across QALD‑9 files: "{eng_q}"')
+                continue
+            # store the whole list of language entries for later merging
+            eng_to_questions[eng_q] = q_item.get('question', [])
+
+    # Enrich each QALD‑9‑plus file using the mapping
+    for target_path in qald_9plus_filepaths:
+        qald_plus = read_json_file(target_path)
+
+        total_q = len(qald_plus.get('questions', []))
+        updated_q = 0
+        unmerged_questions = []
+        
+        for q_item in qald_plus.get('questions', []):
+            # locate English string in the target item
+            en_entry = next(
+                (entry for entry in q_item.get('question', [])
+                 if entry.get('language') == 'en'), None)
+
+            if en_entry is None:
+                # nothing to match – skip
+                unmerged_questions.append(eng_q)
+                continue
+
+            eng_q = en_entry.get('string')
+            # get multilingual list from the original QALD‑9 data (if present)
+            multi_list = eng_to_questions.get(eng_q)
+            if not multi_list:
+                # No multilingual data for this question – skip
+                unmerged_questions.append(eng_q)
+                continue
+
+            # Merge missing language entries
+            existing_langs = {
+                entry.get('language') for entry in q_item.get('question', [])
+            }
+            merged = False
+            for lang_entry in multi_list:
+                if lang_entry.get('language') not in existing_langs:
+                    q_item.setdefault('question', []).append(lang_entry)
+                    merged = True
+            if merged:
+                updated_q += 1
+            else:
+                unmerged_questions.append(eng_q)
+
+        print(f'[{os.path.basename(target_path)}] Updated {updated_q} / {total_q} questions')
+        if unmerged_questions:
+            print('Unmerged questions:')
+            for uq in unmerged_questions:
+                print(f'  - {uq}')
+        # Backup original file and write the enriched version
+        if os.path.isfile(target_path):
+            dir_name, base_name = os.path.split(target_path)
+            backup_path = os.path.join(dir_name, f"old_multi.{base_name}")
+            os.rename(target_path, backup_path)   # rename to old.<original>
+
+        # ensure output directory exists
+        create_directory_if_not_exists(target_path)
+        save_json_file(qald_plus, target_path)
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
@@ -317,21 +386,28 @@ if __name__ == "__main__":
     # convert_basic_output(tsv_file_path, qald_file_path, output_file_path, has_tuples=has_tuples)
     
     ## Convert SPINACH dataset to QALD-format
-    from src.const.dataset import KgqaDataset, DatasetSplit
-    from src.util.qald_io import convert_spinach_to_qald
+    # from src.const.dataset import KgqaDataset, DatasetSplit
+    # from src.util.qald_io import convert_spinach_to_qald
 
-    spinach_ds = KgqaDataset.SPINACH_TENTRISQ10.value
+    # spinach_ds = KgqaDataset.SPINACH_TENTRISQ10.value
 
-    wd_ep = spinach_ds.preferred_wd_endpoint
+    # wd_ep = spinach_ds.preferred_wd_endpoint
 
-    split_conf = DatasetSplit.TEST
-    input_path = 'data_dir/processed_kgqa_ds/spinach/test/test.json'
+    # split_conf = DatasetSplit.TEST
+    # input_path = 'data_dir/processed_kgqa_ds/spinach/test/test.json'
 
-    out_dir = os.path.dirname(input_path)
-    out_file_name = 'qald_' + os.path.basename(input_path)
+    # out_dir = os.path.dirname(input_path)
+    # out_file_name = 'qald_' + os.path.basename(input_path)
 
-    output_file_path = os.path.join(out_dir, out_file_name)
+    # output_file_path = os.path.join(out_dir, out_file_name)
 
-    dataset_name = f'{spinach_ds.dataset_name} - {split_conf.name}'
+    # dataset_name = f'{spinach_ds.dataset_name} - {split_conf.name}'
 
-    convert_spinach_to_qald(dataset_name, input_path, output_file_path, wd_ep)
+    # convert_spinach_to_qald(dataset_name, input_path, output_file_path, wd_ep)
+    
+    ## Enrich QALD9Plus with QALD9 multilingual questions
+    qald9_dir = 'data_dir/kgqa_datasets/qald9'
+    qald9plus_test = 'data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json'
+    qald9plus_train = 'data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_updt_aug_gold.json'
+    
+    fetch_qald9_multilingual_strings(qald9_dir, qald9plus_test, qald9plus_train)
