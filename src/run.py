@@ -140,7 +140,10 @@ def main() -> None:
     if args.use_aug_similarity:
         approach_config.append("ausm")
     # always include the chosen entity annotator (even if default)
-    approach_config.append(f"{ent_annot.name.lower()}")
+    if use_goldentrel:
+        approach_config.append(f"gld-enrl")
+    else:
+        approach_config.append(f"{ent_annot.name.lower()}")
 
     # join the parts with dashes; if no extra flags, keep it empty
     approach_suffix = ""
@@ -150,8 +153,6 @@ def main() -> None:
     # Process arguments
     ## Rest of the logic
     approach_name = approach_id # copying id for modification if needed
-    if use_goldentrel:
-        approach_name+='_gld-er'
     
     # adding config info to approach name
     approach_name += approach_suffix
