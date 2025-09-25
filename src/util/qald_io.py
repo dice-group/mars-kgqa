@@ -6,6 +6,8 @@ import os
 import json
 import ast
 from tqdm import tqdm
+from src.kgqa_tool.graph_traversal import fetch_labels
+import re
 
 def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint):
     lcquad_data = read_json_file(lcquad2_file_path)
@@ -403,6 +405,46 @@ def clean_qald_gerbil_json(qald_json_filepath):
     print(f'Cleaned file stored at: {output_qald_file_path}')
     return output_qald_file_path
 
+def _extract_identifiers(sparql):
+    # \b = word boundary, [QP] = Q or P, \d+ = one‑or‑more digits, \b = trailing word boundary
+    pattern = r'\b[QP]\d+\b'
+    identifiers = set(re.findall(pattern, sparql))
+
+    # Separate Q‑identifiers (entities) from P‑identifiers (relations)
+    entities = {id_ for id_ in identifiers if id_.startswith('Q')}
+    relations = {id_ for id_ in identifiers if id_.startswith('P')}
+
+    return entities, relations
+
+def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path):
+    qald_obj = read_json_file(qald_file_path)
+    
+    ent_pref = "http://www.wikidata.org/entity/"
+    # getting cached property data
+    from src.sparql_gen.pattern_based_sparql_generator import load_property_info
+    load_property_info(prop_cache_path)
+    # import variable after it has been initialized
+    from src.sparql_gen.pattern_based_sparql_generator import PROPERTY_ID_MAP, PROPERTY_INFO_MAP
+
+     # For each id in the qald_gold
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        gold_sparql = question_item['query']['sparql']
+        gold_ents, gold_rels = _extract_identifiers(gold_sparql)
+        # Fetch labels
+        gold_ent_ld = fetch_labels(gold_ents, wd_ep, ent_pref)
+        question_item['gold_ent'] = gold_ent_ld
+        
+        gold_rel_ld = [{'uri': p_id, 'label': PROPERTY_INFO_MAP.get(PROPERTY_ID_MAP.get(p_id, {}), {}).get('label', '')} for p_id in gold_rels]
+        question_item['gold_rel'] = gold_rel_ld
+
+    # Backup old file
+    if os.path.isfile(qald_file_path):
+        dir_name, base_name = os.path.split(qald_file_path)
+        backup_path = os.path.join(dir_name, f"nogold.{base_name}")
+        os.rename(qald_file_path, backup_path)   # rename to old.<original>
+    # Save json
+    save_json_file(qald_obj, qald_file_path)
+
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
     # tsv_file_path = "data_dir/processed_kgqa_ds/qald9plus/test/prediction/tsv/aug_pred_gt.tsv"
@@ -440,8 +482,40 @@ if __name__ == "__main__":
     # convert_spinach_to_qald(dataset_name, input_path, output_file_path, wd_ep)
     
     ## Enrich QALD9Plus with QALD9 multilingual questions
-    qald9_dir = 'data_dir/kgqa_datasets/qald9'
-    qald9plus_test = 'data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json'
-    qald9plus_train = 'data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_updt_aug_gold.json'
+    # qald9_dir = 'data_dir/kgqa_datasets/qald9'
+    # qald9plus_test = 'data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json'
+    # qald9plus_train = 'data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_updt_aug_gold.json'
     
-    fetch_qald9_multilingual_strings(qald9_dir, qald9plus_test, qald9plus_train)
+    # fetch_qald9_multilingual_strings(qald9_dir, qald9plus_test, qald9plus_train)
+    
+    from src.const.dataset import KgqaDataset, DatasetSplit
+    qald_dict = {
+        # Train dataset not needed - ent-rel linkers might have bias
+        # 'qald9plus_train': {
+        #     'file_path': 'data_dir/processed_kgqa_ds/qald9plus/train/qald_9_filtered.json',
+        #     'name': 'QALD-9-plus - Train',
+        #     'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+        #     'split': DatasetSplit.TRAIN
+        # },
+        'qald9plus_test': {
+            'file_path': 'data_dir/processed_kgqa_ds/qald9plus/test/qald_9_augmented_final.json',
+            'name': 'QALD-9-plus - Test',
+            'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+            'split': DatasetSplit.TEST
+        },
+        'qald10_test': {
+            'file_path': 'data_dir/processed_kgqa_ds/qald10/test/qald_10_augmented_final.json',
+            'name': 'QALD-10 - Test',
+            'kgqa_ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+            'split': DatasetSplit.TEST,
+            'ignore_ids': [92, 203] # qald10 question that crashes tentris endpoint (better to avoid queries with sum)
+        }
+    }
+        
+    from src.util.qald_io import update_qald_gold_info
+    from src.const.misc import WIKIDATA_PROP_INFO_CACHE_FILEPATH
+    for qald_ds in qald_dict:
+        print(f'Processing: {qald_ds}')
+        ds_dict = qald_dict[qald_ds]
+        kgqa_ds_obj = ds_dict['kgqa_ds'].value
+        update_qald_gold_info(ds_dict['file_path'], kgqa_ds_obj.preferred_wd_endpoint, WIKIDATA_PROP_INFO_CACHE_FILEPATH)

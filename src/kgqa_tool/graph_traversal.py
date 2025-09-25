@@ -157,6 +157,51 @@ def get_node_label(node_uri, endpoint_url, lang = "en"):
         return bindings[0].get("label", {}).get("value", "")
     return ""
 
+def fetch_labels(id_list, endpoint_url, pref):
+    """
+    Fetch English labels for a list of Wikidata IDs.
+    """
+    if not id_list:
+        return []
+
+    # Build the VALUES clause – each full URI is wrapped in <>.
+    values_block = " ".join(f"<{pref}{qid}>" for qid in id_list)
+
+    query = f"""
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+    SELECT ?uri ?label WHERE {{
+        VALUES ?uri {{ {values_block} }}
+        OPTIONAL {{
+            ?uri rdfs:label ?label .
+            FILTER (lang(?label) = 'en')
+        }}
+    }}
+    """
+
+    bindings, _ = execute_sparql_query(query, endpoint_url)
+
+    # Transform SPARQL results into the desired list of dicts.
+    results = []
+    # Initialize with empty labels in case some IDs have no label.
+    for qid in id_list:
+        results.append({"uri": qid, "label": ""})
+
+    # Fill in the labels that were returned.
+    for b in bindings:
+        full_uri = b.get('uri', {}).get('value')
+        label = b.get('label', {}).get('value', '')
+        if full_uri:
+            # Strip the prefix to get the plain ID.
+            qid = full_uri.replace(pref, "")
+            # Find the corresponding dict and set the label.
+            for entry in results:
+                if entry["uri"] == qid:
+                    entry["label"] = label
+                    break
+
+    return results
+
 # Example usage
 if __name__ == "__main__":
     node_uri = "http://www.wikidata.org/entity/Q567"

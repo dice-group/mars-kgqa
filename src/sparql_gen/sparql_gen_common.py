@@ -185,14 +185,14 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
         
         # Verify required pre‑processed fields are present
         if not use_gold_entrel and not all(
-            key in question_item for key in ['augmented_seq', ent_linker]
+            key in question_item for key in ['augmented_translations', ent_linker]
         ):
             proc_logger.add_step("Missing augmented data; skipping question").complete_action()
             continue  # skip if augmented data is missing
 
         
         # Load augmented text / entities / relations
-        aug_text = question_item['augmented_seq'][q_lang]
+        aug_text = question_item['augmented_translations'][q_lang]
         
         # Log the gold entities, relations and SPARQL
         proc_logger.add_step(f"Gold Entities: {question_item['gold_ent']}")
@@ -204,8 +204,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             rel_dict = {r['label']: r['uri'] for r in question_item['gold_rel']}
         else:
             proc_logger.add_step(f'Entity/Relation Linker: {ent_linker}')
-            ent_dict = {e['label']: e['uri'] for e in question_item[ent_linker][q_lang]['filtered_ent']}
-            rel_dict = {r['label']: r['uri'] for r in question_item[ent_linker][q_lang]['filtered_rel']}
+            ent_dict = {e['label']: e['uri'] for e in question_item[ent_linker][q_lang]['entities']}
+            rel_dict = {r['label']: r['uri'] for r in question_item[ent_linker][q_lang]['relations']}
 
         proc_logger.add_step(
             f"Prepared input – aug_text length: {len(aug_text)}, "

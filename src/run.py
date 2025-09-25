@@ -88,7 +88,7 @@ def parse_args() -> argparse.Namespace:
         "--entity-annotator",
         type=str,
         choices=[a.name for a in EntityAnnotator],
-        default=EntityAnnotator.AUG_EL_V0D1.name,
+        default=EntityAnnotator.T5AUG_ERL.name,
         help="Select which entity annotator to apply."
     )
     parser.add_argument(
