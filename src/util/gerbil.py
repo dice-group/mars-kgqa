@@ -133,6 +133,7 @@ class Gerbil:
             "multiselect": "",
             "qlang": "",
         }
+        # TODO: Write logic to re-use already uploaded gold files
         file_obj = self._prepare_file(self.ref_path)
         self._post_file(data, file_obj, "reference")
 
