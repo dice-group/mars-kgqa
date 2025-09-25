@@ -56,7 +56,7 @@ class KgqaDataset(Enum):
     
     QALD10_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald10_tentrisq10", "QALD-10  (Updated on QALD 10 Wikidata - Tentris)", {
         # DatasetSplit.TRAIN: "",
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_updt_filtered_gold_ent.json"
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json"
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
     SPINACH_CURWD =  KgqaDatasetInfo("spinach_curwd", "SPINACH  (Answerset from Official Wikidata)", {
