@@ -38,6 +38,6 @@ RUN_NAME="${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}-${LANGUAGE}"
 [[ "$USE_AUG_SIMILARITY" == "true" ]] && RUN_NAME="${RUN_NAME}-augsim"
 RUN_NAME="${RUN_NAME}-${TIMESTAMP}"
 
-sbatch --job-name="$RUN_NAME" --gres=gpu:h100:1 --time=10:00:00 \
+sbatch --job-name="$RUN_NAME" --mem=64G --cpus-per-task=32 --gres=gpu:h100:1 --time=10:00:00 \
        -o "$CLUSTER_LOG_DIR/%x__slurm-%j.out" \
        "$CUR_SCRIPT_DIR/../execute_experiment.sh" $PASSED_ARGS
