@@ -257,6 +257,7 @@ def process_input_query_multi_hop(
     use_aug_sim: bool,
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
+    # TODO: Introduce concrete examples from patterns
     # start logging for this query
     proc_logger.start_action(
         "process_input_query_multi_hop",
