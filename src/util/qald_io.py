@@ -426,7 +426,7 @@ def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path):
     # import variable after it has been initialized
     from src.sparql_gen.pattern_based_sparql_generator import PROPERTY_ID_MAP, PROPERTY_INFO_MAP
 
-     # For each id in the qald_gold
+    # For each id in the qald_gold
     for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
         gold_sparql = question_item['query']['sparql']
         gold_ents, gold_rels = _extract_identifiers(gold_sparql)
@@ -441,7 +441,24 @@ def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path):
     if os.path.isfile(qald_file_path):
         dir_name, base_name = os.path.split(qald_file_path)
         backup_path = os.path.join(dir_name, f"nogold.{base_name}")
-        os.rename(qald_file_path, backup_path)   # rename to old.<original>
+        os.rename(qald_file_path, backup_path)
+    # Save json
+    save_json_file(qald_obj, qald_file_path)
+    
+def reformat_spinach_qald(qald_file_path):
+    qald_obj = read_json_file(qald_file_path)
+    # For each id in the qald_gold
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        question_item['augmented_translations'] = {'en': question_item['augmented_seq']}
+        question_item['t5_aug'] = {'en': question_item['t5_aug']}
+        # Remove the original sequence to avoid duplication
+        question_item.pop('augmented_seq', None)
+    
+    # Backup old file
+    if os.path.isfile(qald_file_path):
+        dir_name, base_name = os.path.split(qald_file_path)
+        backup_path = os.path.join(dir_name, f"badlyformatted.{base_name}")
+        os.rename(qald_file_path, backup_path)
     # Save json
     save_json_file(qald_obj, qald_file_path)
 
