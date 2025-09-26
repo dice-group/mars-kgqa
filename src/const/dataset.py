@@ -47,6 +47,11 @@ class KgqaDataset(Enum):
     #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentrisq10_aug_gold.json"
     # }, QALD10_TENTRIS_WIKIDATA_EP)
     
+    ## Uses federated sparql, cannot host locally
+    # SPINACH_TENTRIS_WIKI =  KgqaDatasetInfo("spinach_tentriswd", "SPINACH  (Answerset from Tentris Wikidata)", {
+    #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentriswd_qald_test_final.json"
+    # }, TENTRIS_WIKIDATA_EP, use_sleep=False)
+    
     ## Obsolete datasets - End
     
     ## Working datasets - Start
@@ -67,6 +72,3 @@ class KgqaDataset(Enum):
     }, CURRENT_WIKIDATA_EP, use_sleep=True)
     
     ## Working datasets - End
-    
-    
-    
