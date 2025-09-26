@@ -238,6 +238,9 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
 
 def _build_verbalizations(edges, include_pattern_count):
     """Return a list of verbalized patterns (with IDs) for the given edges."""
+    # TODO: Look into edges and create paths
+    # TODO: Update leaf edges with concrete examples
+    # TODO: Use concrete examples in verbalization
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count
     )
