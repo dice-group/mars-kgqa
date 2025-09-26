@@ -183,7 +183,7 @@ def main() -> None:
     
     # Generates TSV (for readability)
     process_dataset(run_name, gold_qald_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
-    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang)
+    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang, kgqa_ds.use_sleep)
     
     print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
     

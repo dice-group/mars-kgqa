@@ -416,7 +416,7 @@ def _extract_identifiers(sparql):
 
     return entities, relations
 
-def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path):
+def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path, use_sleep=False):
     qald_obj = read_json_file(qald_file_path)
     
     ent_pref = "http://www.wikidata.org/entity/"
@@ -431,10 +431,10 @@ def update_qald_gold_info(qald_file_path, wd_ep, prop_cache_path):
         gold_sparql = question_item['query']['sparql']
         gold_ents, gold_rels = _extract_identifiers(gold_sparql)
         # Fetch labels
-        gold_ent_ld = fetch_labels(gold_ents, wd_ep, ent_pref)
+        gold_ent_ld = fetch_labels(gold_ents, wd_ep, ent_pref, use_sleep=use_sleep)
         question_item['gold_ent'] = gold_ent_ld
         
-        gold_rel_ld = [{'uri': p_id, 'label': PROPERTY_INFO_MAP.get(PROPERTY_ID_MAP.get(p_id, {}), {}).get('label', '')} for p_id in gold_rels]
+        gold_rel_ld = [{'uri': p_id, 'label': PROPERTY_INFO_MAP.get(PROPERTY_ID_MAP.get(p_id, ''), {}).get('label', '')} for p_id in gold_rels]
         question_item['gold_rel'] = gold_rel_ld
 
     # Backup old file

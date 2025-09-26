@@ -4,7 +4,7 @@ from src.const.misc import SPARQL_HARD_LIMIT
 from src.util.common import execute_sparql_query
 
 # Find all the 1-hop triples for a node (given URI), alongside the labels for relations and nodes using SPARQL
-def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
+def find_1_hop_triples(node_uri, endpoint_url, lang_list=[], use_sleep=False):
     formatted_lang_list = ''
     if lang_list:
         formatted_lang_list = ',' + ', '.join(f"'{item}'" for item in lang_list)
@@ -48,7 +48,7 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
     }} LIMIT {SPARQL_HARD_LIMIT}
     """
     
-    bindings, _ = execute_sparql_query(query, endpoint_url)
+    bindings, _ = execute_sparql_query(query, endpoint_url, use_sleep=use_sleep)
 
     triples = []
     for binding_item in bindings:
@@ -65,7 +65,7 @@ def find_1_hop_triples(node_uri, endpoint_url, lang_list=[]):
 
     return triples
 
-def find_1_hop_patterns(node_uri, endpoint_url):
+def find_1_hop_patterns(node_uri, endpoint_url, use_sleep=False):
     
     query = f"""
     PREFIX wd: <http://www.wikidata.org/entity/>
@@ -89,7 +89,7 @@ def find_1_hop_patterns(node_uri, endpoint_url):
     GROUP BY ?direction ?property
     """
     
-    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10)
+    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10, use_sleep=use_sleep)
 
     patterns = []
     for b in bindings:
@@ -100,7 +100,7 @@ def find_1_hop_patterns(node_uri, endpoint_url):
         })
     return patterns
 
-def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
+def find_next_hop_patterns(triple_constraint, var_name, endpoint_url, use_sleep=False):
     query = f"""
     PREFIX wd: <http://www.wikidata.org/entity/>
     PREFIX wdt: <http://www.wikidata.org/prop/direct/>
@@ -121,7 +121,7 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
     }}
     GROUP BY ?direction ?property
     """
-    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10)
+    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10, use_sleep=use_sleep)
 
     patterns = []
     for b in bindings:
@@ -133,7 +133,7 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url):
     return patterns
 
 
-def get_node_label(node_uri, endpoint_url, lang = "en"):
+def get_node_label(node_uri, endpoint_url, lang = "en", use_sleep=False):
     # A query that prefers the requested language, falling back to any label.
     query = f"""
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -151,13 +151,13 @@ def get_node_label(node_uri, endpoint_url, lang = "en"):
     LIMIT 1
     """
 
-    bindings, _ = execute_sparql_query(query, endpoint_url)
+    bindings, _ = execute_sparql_query(query, endpoint_url, use_sleep=use_sleep)
 
     if bindings:
         return bindings[0].get("label", {}).get("value", "")
     return ""
 
-def fetch_labels(id_list, endpoint_url, pref):
+def fetch_labels(id_list, endpoint_url, pref, use_sleep=False):
     """
     Fetch English labels for a list of Wikidata IDs.
     """
@@ -179,7 +179,7 @@ def fetch_labels(id_list, endpoint_url, pref):
     }}
     """
 
-    bindings, _ = execute_sparql_query(query, endpoint_url)
+    bindings, _ = execute_sparql_query(query, endpoint_url, use_sleep=use_sleep)
 
     # Transform SPARQL results into the desired list of dicts.
     results = []

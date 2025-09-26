@@ -192,7 +192,7 @@ def _filter_entities(question_text, entity_dict, filter_entities, model_config, 
     return filter_entity_dict
 
 
-def _collect_root_patterns(filter_entity_dict, wd_ep, proc_logger):
+def _collect_root_patterns(filter_entity_dict, wd_ep, proc_logger, use_sleep=False):
     """Collect 1‑hop patterns for each root entity."""
     proc_logger.start_action("root_entity_pattern_collection")
     patterns_data_list, visited_nodes, all_rejected_patterns = [], set(), []
@@ -200,9 +200,9 @@ def _collect_root_patterns(filter_entity_dict, wd_ep, proc_logger):
         proc_logger.add_step(f'Traversing entity: {entity_qid}')
         entity_uri = f'http://www.wikidata.org/entity/{entity_qid}'
         visited_nodes.add(entity_qid)
-        entity_label = get_node_label(entity_uri, wd_ep)
+        entity_label = get_node_label(entity_uri, wd_ep, use_sleep=use_sleep)
 
-        patterns_list = find_1_hop_patterns(entity_uri, wd_ep)
+        patterns_list = find_1_hop_patterns(entity_uri, wd_ep, use_sleep=use_sleep)
         proc_logger.add_step(
             f'Triple patterns found for {entity_uri}: {len(patterns_list)}'
         )
@@ -255,6 +255,7 @@ def process_input_query_multi_hop(
     include_pattern_count: bool,
     refine_sparql: bool,
     use_aug_sim: bool,
+    use_sleep:bool,
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
     # TODO: Introduce concrete examples from patterns
@@ -381,7 +382,7 @@ def process_input_query_multi_hop(
             var_name = edge.variable_name
 
             # Retrieve next‑hop patterns from the KG.
-            next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep)
+            next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep, use_sleep=use_sleep)
             
             proc_logger.add_step(
                 f'Triple patterns found for {var_name}: {len(next_patterns)}'
