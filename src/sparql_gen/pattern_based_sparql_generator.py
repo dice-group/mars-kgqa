@@ -271,6 +271,8 @@ def process_input_query_multi_hop(
             "max_hops": mhop_limit,
             "include_pattern_count": include_pattern_count,
             "refine_sparql": refine_sparql,
+            "use_aug_sim": use_aug_sim,
+            "use_sleep": use_sleep
         }
     )
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
@@ -288,7 +290,7 @@ def process_input_query_multi_hop(
 
     # collect initial 1‑hop patterns
     patterns_data_list, _, _ = _collect_root_patterns(
-        filter_entity_dict, wd_ep, proc_logger
+        filter_entity_dict, wd_ep, proc_logger, use_sleep=use_sleep
     )
     top_triples = _score_and_select_top(
         aug_qtxt, patterns_data_list, proc_logger, top_n=topn_count

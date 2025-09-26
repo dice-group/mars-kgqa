@@ -88,8 +88,8 @@ def find_1_hop_patterns(node_uri, endpoint_url, use_sleep=False):
     }}
     GROUP BY ?direction ?property
     """
-    
-    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10, use_sleep=use_sleep)
+    timeout = 60 if use_sleep else 10
+    bindings, _ = execute_sparql_query(query, endpoint_url, True, timeout, use_sleep=use_sleep)
 
     patterns = []
     for b in bindings:
@@ -121,7 +121,8 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url, use_sleep=
     }}
     GROUP BY ?direction ?property
     """
-    bindings, _ = execute_sparql_query(query, endpoint_url, True, 10, use_sleep=use_sleep)
+    timeout = 60 if use_sleep else 10
+    bindings, _ = execute_sparql_query(query, endpoint_url, True, timeout, use_sleep=use_sleep)
 
     patterns = []
     for b in bindings:
