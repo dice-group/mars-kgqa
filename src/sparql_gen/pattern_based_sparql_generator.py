@@ -236,6 +236,32 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
     proc_logger.complete_action()
     return top_triples
 
+def _construct_paths(edge_list):
+    # if edge.variable_name matches \?\w+_\d+ and edge.node_id does not match \?\w+(_\d+)?, then this a root node
+    # create a map <variable_name:root_node>
+
+    # if edge.variable_name matches \?\w+_\d+ and edge.node_id matches \?\w+(_\d+)?, then this is an intermediate node
+    # fetch edge.node_id as parent_id
+    # create a map of intermediate nodes <parent_id:<variable_name:intermediate_node>>
+
+    # if edge.variable_name matches \?\w+(^_\d+), then this is a leaf node (unexpanded node)
+    # fetch edge.node_id as parent_id
+    # create a map of leaf nodes <parent_id:<variable_name:leaf_node>>
+
+    # else: throw error for unidentified node
+
+    # Start building paths:
+    # Initiate paths with root nodes
+    # Run the below in loop until intermediate map is cleared:
+        # For each path, find all the children in intermediate nodes that match have parent_id of the last current node in the path. If multiple children are found, create copies of previous path and then assign unique child to each
+        
+    # Throw error if intermediate map is not empty, it means we have missing parent nodes
+
+    # For each entry in leaf map:
+        # if parent_id matches any last node in paths, then assign it to them (follow same path copy logic if multiple children found as before)
+        # if no parent_id is found then create a path with this as a root node
+    pass
+
 def _build_verbalizations(edges, include_pattern_count):
     """Return a list of verbalized patterns (with IDs) for the given edges."""
     # TODO: Look into edges and create paths
