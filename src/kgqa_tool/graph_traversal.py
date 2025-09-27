@@ -1,7 +1,6 @@
 # Sample usage: python -m src.kgqa_tool.graph_traversal
-import requests
 from src.const.misc import SPARQL_HARD_LIMIT
-from src.util.common import execute_sparql_query
+from src.util.common import execute_sparql_query, get_sparql_timeout
 
 # Find all the 1-hop triples for a node (given URI), alongside the labels for relations and nodes using SPARQL
 def find_1_hop_triples(node_uri, endpoint_url, lang_list=[], use_sleep=False):
@@ -88,7 +87,7 @@ def find_1_hop_patterns(node_uri, endpoint_url, use_sleep=False):
     }}
     GROUP BY ?direction ?property
     """
-    timeout = 60 if use_sleep else 10
+    timeout = get_sparql_timeout(use_sleep)
     bindings, _ = execute_sparql_query(query, endpoint_url, True, timeout, use_sleep=use_sleep)
 
     patterns = []
@@ -121,7 +120,7 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url, use_sleep=
     }}
     GROUP BY ?direction ?property
     """
-    timeout = 60 if use_sleep else 10
+    timeout = get_sparql_timeout(use_sleep)
     bindings, _ = execute_sparql_query(query, endpoint_url, True, timeout, use_sleep=use_sleep)
 
     patterns = []
@@ -132,6 +131,39 @@ def find_next_hop_patterns(triple_constraint, var_name, endpoint_url, use_sleep=
             "count":     int(b.get("count", {}).get("value", "0"))
         })
     return patterns
+
+def find_concrete_examples(constraints_str, var_name, endpoint_url, limit=2, use_sleep=False):
+    query = f"""
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT DISTINCT {var_name} ?displayLabel
+    WHERE {{
+        {constraints_str}
+        # Bind the English label when var_name is an IRI
+        OPTIONAL {{
+            {var_name} rdfs:label ?varLabel .
+            FILTER (lang(?varLabel) = "en")
+        }}
+        # Keep literals OR URIs that have a label
+        FILTER ( isLiteral({var_name}) || bound(?varLabel) )
+        # Choose the appropriate display value
+        BIND( IF(isLiteral({var_name}), {var_name}, ?varLabel) AS ?displayLabel )
+    }}
+    LIMIT {limit}
+    """
+    timeout = get_sparql_timeout(use_sleep)
+    bindings, _ = execute_sparql_query(query, endpoint_url, True, timeout, use_sleep=use_sleep)
+
+    var_name_key = var_name.replace('?', '')
+    examples = []
+    for b in bindings:
+        examples.append({
+            var_name: b.get(var_name_key, {}).get("value", ""),
+            "displayLabel": b.get("displayLabel", {}).get("value", ""),
+        })
+    return examples
 
 
 def get_node_label(node_uri, endpoint_url, lang = "en", use_sleep=False):

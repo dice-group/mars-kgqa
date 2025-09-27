@@ -1,7 +1,7 @@
 # Sample usage: python -m src.sparql_gen.pattern_based_sparql_generator
 from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
-from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns
+from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns, find_concrete_examples
 from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP, MAX_MULTI_HOP
 from src.const.llm import ChatModel
@@ -14,6 +14,8 @@ from enum import Enum, auto
 from src.const.dataset import KgqaDataset, DatasetSplit
 from src.util.gerbil import create_export_gerbil_experiment
 from src.util.process_flow_logger import ProcessFlowLogger
+import re
+import copy
 
 PROPERTY_INFO_MAP = None
 PROPERTY_ID_MAP = None
@@ -237,35 +239,151 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
     return top_triples
 
 def _construct_paths(edge_list):
-    # if edge.variable_name matches \?\w+_\d+ and edge.node_id does not match \?\w+(_\d+)?, then this a root node
-    # create a map <variable_name:root_node>
+    """
+    Build ordered paths (lists of Edge objects) from a flat list of edges.
+    """
+    # Categorise edges
+    root_edges = []
+    intermediate_map = {}
+    leaf_map = {}
 
-    # if edge.variable_name matches \?\w+_\d+ and edge.node_id matches \?\w+(_\d+)?, then this is an intermediate node
-    # fetch edge.node_id as parent_id
-    # create a map of intermediate nodes <parent_id:<variable_name:intermediate_node>>
+    var_with_idx_pat = re.compile(r'^\?\w+_\d+$')
+    var_no_idx_pat    = re.compile(r'^\?\w+$')
 
-    # if edge.variable_name matches \?\w+(^_\d+), then this is a leaf node (unexpanded node)
-    # fetch edge.node_id as parent_id
-    # create a map of leaf nodes <parent_id:<variable_name:leaf_node>>
+    for edge in edge_list:
+        var_name = edge.variable_name
+        node_is_var = isinstance(edge.node_id, str) and edge.node_id.startswith("?")
 
-    # else: throw error for unidentified node
+        # Root node
+        if var_with_idx_pat.match(var_name) and not node_is_var:
+            root_edges.append(edge)
 
-    # Start building paths:
-    # Initiate paths with root nodes
-    # Run the below in loop until intermediate map is cleared:
-        # For each path, find all the children in intermediate nodes that match have parent_id of the last current node in the path. If multiple children are found, create copies of previous path and then assign unique child to each
-        
-    # Throw error if intermediate map is not empty, it means we have missing parent nodes
+        # Intermediate node
+        elif var_with_idx_pat.match(var_name) and node_is_var:
+            parent = edge.node_id
+            intermediate_map.setdefault(parent, []).append((var_name, edge))
 
-    # For each entry in leaf map:
-        # if parent_id matches any last node in paths, then assign it to them (follow same path copy logic if multiple children found as before)
-        # if no parent_id is found then create a path with this as a root node
-    pass
+        # Leaf node
+        elif var_no_idx_pat.match(var_name):
+            parent = edge.node_id
+            leaf_map.setdefault(parent, []).append((var_name, edge))
 
-def _build_verbalizations(edges, include_pattern_count):
+        else:
+            raise ValueError(
+                f"Unrecognised edge pattern: var={var_name}, node_id={edge.node_id}"
+            )
+
+    # Initialise paths with root edges
+    paths = [[root] for root in root_edges]
+
+    # Expand intermediate nodes iteratively
+    while intermediate_map:
+        extended = False
+        new_paths = []
+
+        for path in paths:
+            last_edge = path[-1]
+            children = intermediate_map.get(last_edge.variable_name, [])
+
+            if children:
+                extended = True
+                for child_var, child_edge in children:
+                    new_paths.append(path + [child_edge])
+                # Mark this parent as processed
+                del intermediate_map[last_edge.variable_name]
+            else:
+                new_paths.append(path)
+
+        paths = new_paths
+
+        if not extended:
+            # No further expansion possible – break to avoid infinite loop
+            break
+
+    if intermediate_map:
+        # If anything is left we couldn’t resolve a parent → raise early
+        raise RuntimeError(
+            f"Unresolved intermediate nodes remain: {list(intermediate_map.keys())}"
+        )
+
+    # Attach leaf nodes
+    for parent_var, leaf_entries in list(leaf_map.items()):
+        matching_paths = [p for p in paths if p[-1].variable_name == parent_var]
+
+        if matching_paths:
+            # Extend each matching path with every leaf child (branching if needed)
+            for path in matching_paths:
+                for leaf_var, leaf_edge in leaf_entries:
+                    paths.append(path + [leaf_edge])
+                # Remove the original path (will be superseded by extensions)
+                paths.remove(path)
+        else:
+            # No parent found → treat leaf as a root‑only path
+            for leaf_var, leaf_edge in leaf_entries:
+                paths.append([leaf_edge])
+
+        del leaf_map[parent_var]
+
+    return paths
+
+def _build_cache_key(edge):
+    cache_key = (
+        edge.node_id,
+        edge.relation_uri,
+        edge.variable_name,
+        edge.direction,
+    )
+    return cache_key
+
+def _update_con_ex_and_contraints_cache(paths_list, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+    # Iterate over every path (list of Edge objects)
+    for path in paths_list:
+        # Keep track of the constraint triples
+        accumulated_constraints = []
+
+        for edge in path:
+            # Build a hashable cache key for the edge
+            cache_key = _build_cache_key(edge)
+
+            # If we already have examples for this edge, just reuse them
+            if cache_key in conc_ex_and_constraints_cache:
+                # Append cached examples to the accumulated constraints for later edges
+                accumulated_constraints.append(conc_ex_and_constraints_cache[cache_key][1])
+                continue
+
+            # Build a constraint triple (e.g. "?subject wdt:P31 ?obj .")
+            triple_pattern = edge.get_triple_pattern()
+
+            # Combine with constraints from preceding edges in the path.
+            if accumulated_constraints:
+                # Pre‑pend previous constraints so the KG query respects the full path
+                constraints_str = " \n ".join(accumulated_constraints + [triple_pattern])
+            else:
+                constraints_str = triple_pattern
+
+            # Query the KG for a few concrete examples.
+            examples = find_concrete_examples(
+                constraints_str,
+                edge.variable_name,
+                wd_ep,
+                limit=2,
+                use_sleep=False
+            )
+
+            conc_ex_and_constraints_cache[cache_key] = (examples, constraints_str, copy.deepcopy(accumulated_constraints))
+
+            accumulated_constraints.append(triple_pattern)
+
+def _update_edge_cache(edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+    # Build paths
+    paths = _construct_paths(edges)
+    # Build concrete examples for each edge in path (maintain cache for previously seen edges)
+    _update_con_ex_and_contraints_cache(paths, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+
+def _build_verbalizations(edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
     """Return a list of verbalized patterns (with IDs) for the given edges."""
-    # TODO: Look into edges and create paths
-    # TODO: Update leaf edges with concrete examples
+    # Update the edge cache in case something is missing
+    _update_edge_cache(edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
     # TODO: Use concrete examples in verbalization
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count
@@ -287,7 +405,7 @@ def process_input_query_multi_hop(
     use_sleep:bool,
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
-    # TODO: Introduce concrete examples from patterns
+    
     # start logging for this query
     proc_logger.start_action(
         "process_input_query_multi_hop",
@@ -305,7 +423,8 @@ def process_input_query_multi_hop(
         }
     )
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
-
+    # TODO: Introduce concrete examples from patterns
+    conc_ex_and_constraints_cache = dict() # This needs to be refreshed for every new question
     # extraction & filtering
     aug_qtxt, entity_dict, relation_dict = _log_and_extract(
         question_text, model_config, preprocessed_input, proc_logger
@@ -330,7 +449,7 @@ def process_input_query_multi_hop(
     
     if mhop_limit == 1:
         proc_logger.add_step("mhop_limit=1 – generating final SPARQL directly")
-        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count)
+        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
         final_sparql = generate_sparql_from_patterns(
             question_text,
             final_verbalizations,
@@ -346,12 +465,12 @@ def process_input_query_multi_hop(
     
     # Track edges that have already been expanded (by their variable name)
     expanded_edges = set()
-
+    i = 1
     # iterative expansion (max mhop_limit iterations)
     for hop in range(1, mhop_limit + 1):
         proc_logger.start_action("hop_iteration", {"hop": hop})
 
-        verbalizations = _build_verbalizations(selected_edges, include_pattern_count)
+        verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
         sparql, indices = generate_sparql_or_expansion_indices(
             question_text,
             verbalizations,
@@ -378,7 +497,7 @@ def process_input_query_multi_hop(
 
         # Expand each indexed edge
         new_patterns = []
-        i = 1
+        
         for idx_str in indices:
             try:
                 idx = int(idx_str)
@@ -408,8 +527,11 @@ def process_input_query_multi_hop(
                 f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)}"
             )
 
-            # Build a constraint triple (e.g. "?subject wdt:P31 ?obj .")
-            constraint_tp = edge.get_triple_pattern()
+            # Build constraint with the full path followed so far
+            _update_edge_cache(selected_edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+            cache_key = _build_cache_key(edge)
+            constraint_tp = conc_ex_and_constraints_cache[cache_key][1]
+            
             var_name = edge.variable_name
 
             # Retrieve next‑hop patterns from the KG.
@@ -450,7 +572,7 @@ def process_input_query_multi_hop(
     proc_logger.add_step(
         f"Reached hop limit ({mhop_limit}) – generating final SPARQL"
     )
-    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count)
+    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
     final_sparql = generate_sparql_from_patterns(
         question_text,
         final_verbalizations,

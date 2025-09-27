@@ -1,7 +1,7 @@
 import json
 import os
 import requests
-from src.const.misc import PREFIX_MAP
+from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT
 import csv
 import time
 
@@ -103,3 +103,7 @@ def export_csv(output_file, dataset):
         writer.writerows(dataset)
     f.close()
     print("csv file is exported to ", output_file)
+    
+def get_sparql_timeout(use_sleep=False):
+    timeout = SPARQL_DEFAULT_TIMEOUT if use_sleep else SPARQL_QUICK_TIMEOUT
+    return timeout
