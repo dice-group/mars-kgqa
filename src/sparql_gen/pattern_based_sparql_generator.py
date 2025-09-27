@@ -16,6 +16,7 @@ from src.util.gerbil import create_export_gerbil_experiment
 from src.util.process_flow_logger import ProcessFlowLogger
 import re
 import copy
+import json
 
 PROPERTY_INFO_MAP = None
 PROPERTY_ID_MAP = None
@@ -80,7 +81,7 @@ class NodeEdge:
             triple_pattern_str = f'{self.variable_name} <{self.relation_uri}> {node_repr} . '
         return triple_pattern_str
             
-    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False, include_count=False):
+    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False, include_count=False, conc_ex_map = {}, include_concrete_ex=False):
         
         prop_ent_uri = prop_id_map[self.relation_id]
 
@@ -111,9 +112,25 @@ class NodeEdge:
         
         # add pattern count if requested
         count_part = f"\tcount={self.pattern_count}" if include_count else ""
+        
+        # add concrete example if requested
+        concrete_examples_part = ''
+        if include_concrete_ex:
+            edge_key = _build_cache_key(self)
+            conc_examples = conc_ex_map[edge_key][0]
+            example_dict_list = []
+            for item in conc_examples:
+                ex_id = item[self.variable_name]
+                ex_label = item['displayLabel']
+                is_literal = ex_id == ex_label
+                if is_literal:
+                    example_dict_list.append({'value': ex_id})
+                else:
+                    example_dict_list.append({'id': get_prefixed_id(ex_id), 'label': ex_label})
+            concrete_examples_part = f'\t{self.variable_name} examples: {','.join(json.dumps(d) for d in example_dict_list)}'
 
         # combine verbalization, optional ID triple, optional count, and class info
-        verbalized_str = f"{verbal_part}{id_part}{count_part}\t {class_info}"
+        verbalized_str = f"{verbal_part}{id_part}{count_part}{concrete_examples_part}\t {class_info}"
         return verbalized_str
 
     def __repr__(self) -> str:
@@ -335,7 +352,7 @@ def _build_cache_key(edge):
     )
     return cache_key
 
-def _update_con_ex_and_contraints_cache(paths_list, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+def _update_con_ex_and_contraints_cache(paths_list, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
     # Iterate over every path (list of Edge objects)
     for path in paths_list:
         # Keep track of the constraint triples
@@ -362,31 +379,35 @@ def _update_con_ex_and_contraints_cache(paths_list, conc_ex_and_constraints_cach
                 constraints_str = triple_pattern
 
             # Query the KG for a few concrete examples.
-            examples = find_concrete_examples(
-                constraints_str,
-                edge.variable_name,
-                wd_ep,
-                limit=2,
-                use_sleep=False
-            )
+            examples = []
+            if conc_ex_limit > 0:
+                examples = find_concrete_examples(
+                    constraints_str,
+                    edge.variable_name,
+                    wd_ep,
+                    limit=conc_ex_limit,
+                    use_sleep=use_sleep
+                )
 
             conc_ex_and_constraints_cache[cache_key] = (examples, constraints_str, copy.deepcopy(accumulated_constraints))
 
             accumulated_constraints.append(triple_pattern)
 
-def _update_edge_cache(edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+def _update_edge_cache(edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
     # Build paths
     paths = _construct_paths(edges)
     # Build concrete examples for each edge in path (maintain cache for previously seen edges)
-    _update_con_ex_and_contraints_cache(paths, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+    _update_con_ex_and_contraints_cache(paths, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
 
-def _build_verbalizations(edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+def _build_verbalizations(edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
     """Return a list of verbalized patterns (with IDs) for the given edges."""
     # Update the edge cache in case something is missing
-    _update_edge_cache(edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
-    # TODO: Use concrete examples in verbalization
+    _update_edge_cache(edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+    use_conc_ex = conc_ex_limit > 0
+    
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
-        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count, 
+        conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex
     )
     return [id_verbalizer(e) for e in edges]
 
@@ -403,6 +424,7 @@ def process_input_query_multi_hop(
     refine_sparql: bool,
     use_aug_sim: bool,
     use_sleep:bool,
+    conc_ex_limit: int
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
     
@@ -419,11 +441,16 @@ def process_input_query_multi_hop(
             "include_pattern_count": include_pattern_count,
             "refine_sparql": refine_sparql,
             "use_aug_sim": use_aug_sim,
-            "use_sleep": use_sleep
+            "use_sleep": use_sleep,
+            "conc_ex_limit": conc_ex_limit
         }
     )
+    use_conc_ex = False
+    if conc_ex_limit > 0:
+        use_conc_ex = True
+    
     wd_ep = wd_ep if wd_ep else DEFAULT_WIKIDATA_ENDPOINT_URL
-    # TODO: Introduce concrete examples from patterns
+    # To introduce concrete examples from patterns
     conc_ex_and_constraints_cache = dict() # This needs to be refreshed for every new question
     # extraction & filtering
     aug_qtxt, entity_dict, relation_dict = _log_and_extract(
@@ -449,7 +476,7 @@ def process_input_query_multi_hop(
     
     if mhop_limit == 1:
         proc_logger.add_step("mhop_limit=1 – generating final SPARQL directly")
-        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
         final_sparql = generate_sparql_from_patterns(
             question_text,
             final_verbalizations,
@@ -470,7 +497,7 @@ def process_input_query_multi_hop(
     for hop in range(1, mhop_limit + 1):
         proc_logger.start_action("hop_iteration", {"hop": hop})
 
-        verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+        verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
         sparql, indices = generate_sparql_or_expansion_indices(
             question_text,
             verbalizations,
@@ -523,16 +550,16 @@ def process_input_query_multi_hop(
             # give the edge a fresh variable name for the next hop
             edge.assign_variable_id(cur_edge_id)
 
-            proc_logger.add_step(
-                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True)}"
-            )
-
             # Build constraint with the full path followed so far
-            _update_edge_cache(selected_edges, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+            _update_edge_cache(selected_edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
             cache_key = _build_cache_key(edge)
             constraint_tp = conc_ex_and_constraints_cache[cache_key][1]
             
             var_name = edge.variable_name
+            
+            proc_logger.add_step(
+                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, True, conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex)}"
+            )
 
             # Retrieve next‑hop patterns from the KG.
             next_patterns = find_next_hop_patterns(constraint_tp, var_name, wd_ep, use_sleep=use_sleep)
@@ -572,7 +599,7 @@ def process_input_query_multi_hop(
     proc_logger.add_step(
         f"Reached hop limit ({mhop_limit}) – generating final SPARQL"
     )
-    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
     final_sparql = generate_sparql_from_patterns(
         question_text,
         final_verbalizations,
