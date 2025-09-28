@@ -4,7 +4,7 @@
 ## bash execute_experiment.sh --gpu 0 --approach PBSG_MHOP \
 #   --dataset QALD10_UPDATED_TENTRISQ10 --split TEST --llm GPTOSS120B \
 #   --topn-count 20 --mhop-limit 5 --include-pattern-count \
-#   --use-aug-similarity --language en --conc-ex-limit 2
+#   --use-aug-similarity --language en --conc-ex-limit 2 --use-class-info
 
 set -euo pipefail
 
@@ -39,6 +39,7 @@ Options:
   --use-aug-similarity          Use augmented sequence for similarity computations
   --language <CODE>             Language code for the questions (default: en)
   --conc-ex-limit <N>           Number of concrete examples to use for each pattern (default: 0)
+  --use-class-info              Use class (domain/range) information in verbalizations
   -h, --help                    Show this help message
 EOF
   exit 1
@@ -51,7 +52,7 @@ PORT=""
 MODE="run"   # normal execution; can be changed to "debug" via --debug
 USE_GOLD="false"
 
-# Default values for the optional flags – empty means “not passed”
+# Default values for the optional flags – empty means "not passed"
 FILTER_ENTITIES="false"
 TOPN_COUNT=""          # optional, only added if user supplies a value
 MHOP_LIMIT=""         # optional, only added if user supplies a value
@@ -61,6 +62,7 @@ ENTITY_ANNOTATOR=""   # optional, only added if user supplies a value
 USE_AUG_SIMILARITY="false"
 LANGUAGE="en"
 CONC_EX_LIMIT=""      # optional, only added if user supplies a value
+USE_CLASS_INFO="false"
 
 
 # Parse arguments
@@ -83,6 +85,7 @@ while [[ $# -gt 0 ]]; do
     --use-aug-similarity)   USE_AUG_SIMILARITY="true"; shift ;;
     --language)             LANGUAGE="${2:?Missing value for --language}"; shift 2 ;;
     --conc-ex-limit) CONC_EX_LIMIT="${2:?Missing value for --conc-ex-limit}"; shift 2 ;;
+    --use-class-info)       USE_CLASS_INFO="true"; shift ;;
     -h|--help)       usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
@@ -164,6 +167,7 @@ RUN_ARGS=(
 [[ "$USE_AUG_SIMILARITY" == "true" ]]  && RUN_ARGS+=(--use-aug-similarity)
 [[ -n "$LANGUAGE" ]]                   && RUN_ARGS+=(--language "$LANGUAGE")
 [[ -n "$CONC_EX_LIMIT" ]]              && RUN_ARGS+=(--conc-ex-limit "$CONC_EX_LIMIT")
+[[ "$USE_CLASS_INFO" == "true" ]]      && RUN_ARGS+=(--use-class-info)
 
 # Launch experiment via pylauncher.sh
 echo "Launching experiment via pylauncher.sh ($MODE)..."

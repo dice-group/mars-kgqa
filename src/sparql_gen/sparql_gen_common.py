@@ -124,7 +124,7 @@ def get_question_pf_name(question_id):
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
                     llm_config, use_gold_entrel, log_dir, filter_entities, topn_count,
-                    mhop_limit, include_pattern_count, refine_sparql, ent_annot, use_aug_sim, q_lang, use_sleep, conc_ex_limit):
+                    mhop_limit, include_pattern_count, refine_sparql, ent_annot, use_aug_sim, q_lang, use_sleep, conc_ex_limit, use_class_info):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -227,7 +227,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             refine_sparql,
             use_aug_sim,
             use_sleep,
-            conc_ex_limit
+            conc_ex_limit,
+            use_class_info
         )
         
         # Cache the generated output

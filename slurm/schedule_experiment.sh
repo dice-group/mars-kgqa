@@ -3,7 +3,7 @@
 # Sample usage: bash slurm/schedule_experiment.sh --approach PBSG_MHOP \
 #   --dataset QALD10_UPDATED_TENTRISQ10 --split TEST --llm GPTOSS120B \
 #   --topn-count 20 --mhop-limit 5 --include-pattern-count \
-#   --use-aug-similarity --language en --conc-ex-limit 2
+#   --use-aug-similarity --language en --conc-ex-limit 2 --use-class-info
 set -eu
 
 PASSED_ARGS="$@"
@@ -11,6 +11,7 @@ CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 USE_GOLD="pred_ent" # default value for run name to indicate that the predicted entites are to be used
 USE_AUG_SIMILARITY="false"
+USE_CLASS_INFO="false"
 LANGUAGE="en"
 
 # Iterate over all passed flags
@@ -27,6 +28,7 @@ while [[ $# -gt 0 ]]; do
     --use-aug-similarity)    USE_AUG_SIMILARITY="true"; shift 1 ;;
     --language)          LANGUAGE="${2:?Missing value for --language}"; shift 2 ;;
     --conc-ex-limit)     CONC_EX_LIMIT="$2"; shift 2 ;;
+    --use-class-info)    USE_CLASS_INFO="true"; shift 1 ;;
     *)                    shift ;;   # ignore unknown args
   esac
 done
@@ -37,6 +39,7 @@ mkdir -p "$CLUSTER_LOG_DIR"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 RUN_NAME="${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}-${LANGUAGE}"
 [[ "$USE_AUG_SIMILARITY" == "true" ]] && RUN_NAME="${RUN_NAME}-augsim"
+[[ "$USE_CLASS_INFO" == "true" ]] && RUN_NAME="${RUN_NAME}-clsinf"
 [[ -n "${CONC_EX_LIMIT:-}" ]] && RUN_NAME="${RUN_NAME}-concelim${CONC_EX_LIMIT}"
 RUN_NAME="${RUN_NAME}-${TIMESTAMP}"
 

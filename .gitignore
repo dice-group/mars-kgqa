@@ -4,3 +4,4 @@ venv_*/
 **__pycache__**
 *.out
 *.sif
+old*.*/

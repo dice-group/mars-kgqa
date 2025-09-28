@@ -108,6 +108,11 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Number of concrete examples to use for each pattern."
     )
+    parser.add_argument(
+        "--use-class-info",
+        action="store_true",
+        help="Use class (domain/range) information in the verbalizations."
+    )
     # NOTE: If new arguments are added, update execute_experiment.sh and slurm/schedule_experiment.sh with new arguments as well.
     return parser.parse_args()
 
@@ -152,7 +157,8 @@ def main() -> None:
         approach_config.append(f"{ent_annot.name.lower()}")
     if args.conc_ex_limit:
         approach_config.append(f"exlim{args.conc_ex_limit}")
-
+    if args.use_class_info:
+        approach_config.append("clsinf")
     # join the parts with dashes; if no extra flags, keep it empty
     approach_suffix = ""
     if approach_config:
@@ -191,7 +197,7 @@ def main() -> None:
     
     # Generates TSV (for readability)
     process_dataset(run_name, gold_qald_path, tsv_output_path, processor_fn, wd_ep, llm_config, use_goldentrel, log_dir,
-    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang, kgqa_ds.use_sleep, args.conc_ex_limit)
+    args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang, kgqa_ds.use_sleep, args.conc_ex_limit, args.use_class_info)
     
     print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
     

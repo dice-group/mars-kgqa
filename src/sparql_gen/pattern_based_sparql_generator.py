@@ -81,7 +81,7 @@ class NodeEdge:
             triple_pattern_str = f'{self.variable_name} <{self.relation_uri}> {node_repr} . '
         return triple_pattern_str
             
-    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False, include_count=False, conc_ex_map = {}, include_concrete_ex=False):
+    def get_dr_aug_verbalization(self, prop_id_map=PROPERTY_ID_MAP, prop_info_map=PROPERTY_INFO_MAP, include_id=False, include_count=False, conc_ex_map = {}, include_concrete_ex=False, include_class_info=False):
         
         prop_ent_uri = prop_id_map[self.relation_id]
 
@@ -109,11 +109,13 @@ class NodeEdge:
             subject_var = self.variable_name
             object_var = node_prefixed_repr
         
-        # Assigning variable name besides subject and object for better clarity    
-        class_info = (
-            f"(possible DOMAIN ({subject_var}) classes: {','.join(dom_label_list)}), "
-            f"(possible RANGE ({object_var}) classes: {','.join(range_label_list)})"
-        )
+        class_info = ''
+        # Assigning variable name besides subject and object for better clarity 
+        if include_class_info:
+            class_info = (
+                f"\t (possible DOMAIN ({subject_var}) classes: {','.join(dom_label_list)}), "
+                f"(possible RANGE ({object_var}) classes: {','.join(range_label_list)})"
+            )
         
         # add pattern count if requested
         count_part = f"\tcount={self.pattern_count}" if include_count else ""
@@ -135,7 +137,7 @@ class NodeEdge:
             concrete_examples_part = f'\t{self.variable_name} examples: {','.join(json.dumps(d) for d in example_dict_list)}'
 
         # combine verbalization, optional ID triple, optional count, and class info
-        verbalized_str = f"{verbal_part}{id_part}{count_part}{concrete_examples_part}\t {class_info}"
+        verbalized_str = f"{verbal_part}{id_part}{count_part}{concrete_examples_part}{class_info}"
         return verbalized_str
 
     def __repr__(self) -> str:
@@ -245,11 +247,11 @@ def _collect_root_patterns(filter_entity_dict, wd_ep, proc_logger, use_sleep=Fal
 
 
 def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
-                         top_n=TRIPLE_PATTERN_N_TOP):
+                         top_n=TRIPLE_PATTERN_N_TOP, use_class_info=False):
     """Compute verbalisation similarity and return the top‑N triples."""
     proc_logger.start_action("similarity_scoring")
     verbalizer = lambda obj: obj.get_dr_aug_verbalization(
-        PROPERTY_ID_MAP, PROPERTY_INFO_MAP
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, use_class_info=use_class_info
     )
     proc_logger.add_step('Computing verbalization similarity')
     priority_queue = get_verbalization_similarity(
@@ -404,7 +406,7 @@ def _update_edge_cache(edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_e
     # Build concrete examples for each edge in path (maintain cache for previously seen edges)
     _update_con_ex_and_contraints_cache(paths, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
 
-def _build_verbalizations(edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=False):
+def _build_verbalizations(edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=False, use_class_info=False):
     """Return a list of verbalized patterns (with IDs) for the given edges."""
     # Update the edge cache in case something is missing
     _update_edge_cache(edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
@@ -412,7 +414,7 @@ def _build_verbalizations(edges, include_pattern_count, conc_ex_limit, conc_ex_a
     
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count, 
-        conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex
+        conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, use_class_info=use_class_info
     )
     return [id_verbalizer(e) for e in edges]
 
@@ -429,7 +431,8 @@ def process_input_query_multi_hop(
     refine_sparql: bool,
     use_aug_sim: bool,
     use_sleep:bool,
-    conc_ex_limit: int
+    conc_ex_limit: int,
+    use_class_info: bool,
 ):
     """Multi‑hop pattern‑based SPARQL generation with configurable limits."""
     
@@ -447,7 +450,8 @@ def process_input_query_multi_hop(
             "refine_sparql": refine_sparql,
             "use_aug_sim": use_aug_sim,
             "use_sleep": use_sleep,
-            "conc_ex_limit": conc_ex_limit
+            "conc_ex_limit": conc_ex_limit,
+            "use_class_info": use_class_info,
         }
     )
     use_conc_ex = False
@@ -570,7 +574,7 @@ def process_input_query_multi_hop(
             var_name = edge.variable_name
             
             proc_logger.add_step(
-                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, True, conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex)}"
+                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, True, conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, use_class_info=use_class_info)}"
             )
 
             # Retrieve next‑hop patterns from the KG.
