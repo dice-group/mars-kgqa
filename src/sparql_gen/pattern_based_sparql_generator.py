@@ -251,7 +251,7 @@ def _score_and_select_top(aug_qtxt, patterns_data_list, proc_logger,
     """Compute verbalisation similarity and return the top‑N triples."""
     proc_logger.start_action("similarity_scoring")
     verbalizer = lambda obj: obj.get_dr_aug_verbalization(
-        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, use_class_info=use_class_info
+        PROPERTY_ID_MAP, PROPERTY_INFO_MAP, include_class_info=use_class_info
     )
     proc_logger.add_step('Computing verbalization similarity')
     priority_queue = get_verbalization_similarity(
@@ -414,7 +414,7 @@ def _build_verbalizations(edges, include_pattern_count, conc_ex_limit, conc_ex_a
     
     id_verbalizer = lambda obj: obj.get_dr_aug_verbalization(
         PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, include_pattern_count, 
-        conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, use_class_info=use_class_info
+        conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, include_class_info=use_class_info
     )
     return [id_verbalizer(e) for e in edges]
 
@@ -574,7 +574,7 @@ def process_input_query_multi_hop(
             var_name = edge.variable_name
             
             proc_logger.add_step(
-                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, True, conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, use_class_info=use_class_info)}"
+                f"Expanding edge #{idx_str}: {edge.get_dr_aug_verbalization(PROPERTY_ID_MAP, PROPERTY_INFO_MAP, True, True, conc_ex_map=conc_ex_and_constraints_cache, include_concrete_ex=use_conc_ex, include_class_info=use_class_info)}"
             )
 
             # Retrieve next‑hop patterns from the KG.
