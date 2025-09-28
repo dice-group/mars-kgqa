@@ -111,8 +111,8 @@ class NodeEdge:
         
         # Assigning variable name besides subject and object for better clarity    
         class_info = (
-            f"(possible SUBJECT ({subject_var}) classes: {','.join(dom_label_list)}), "
-            f"(possible OBJECT ({object_var}) classes: {','.join(range_label_list)})"
+            f"(possible DOMAIN ({subject_var}) classes: {','.join(dom_label_list)}), "
+            f"(possible RANGE ({object_var}) classes: {','.join(range_label_list)})"
         )
         
         # add pattern count if requested
