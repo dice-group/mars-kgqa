@@ -1,6 +1,7 @@
 from openai import OpenAI
 import requests
 import re
+import copy
 
 def get_opai_client(endpoint=None, api_key=None):
     opai_client = OpenAI(base_url=endpoint, api_key=api_key)
@@ -38,10 +39,32 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
         model_res_text, reasoning_content = remove_think_context(model_res_text)
     return model_res_text, reasoning_content
 
+# TODO: Try to find a better way to truncate automatically
+def _preprocess_input(input_texts, tokenizer, limit):
+    batch_to_encode = []
+    batch_index = []
+    final_texts = copy.deepcopy(input_texts)
+    # Truncate only those that might be bigger
+    for i, input_item in enumerate(input_texts):
+        if len(input_item) * 2 > limit: # arbitrary logic, but should work as an underestimated threshold
+            batch_to_encode.append(input_item)
+            batch_index.append(i)
+    
+    if len(batch_to_encode) > 0:
+        encoded_input = tokenizer(batch_to_encode, padding=True, truncation=True, return_tensors='pt')
+        decoded_texts = tokenizer.batch_decode(encoded_input['input_ids'], skip_special_tokens=True)
+        
+        for ind, dec_text in zip(batch_index, decoded_texts):
+            final_texts[ind] = dec_text
+    
+    return final_texts
+
 def get_embeddings(input_texts, embed_config=None):
+    # preprocess input beforehand
+    prep_input_texts = _preprocess_input(input_texts, embed_config.tokenizer, embed_config.max_len)
     # Compute input embeddings
     embed_endpoint = embed_config.endpoint
-    resp = requests.post(embed_endpoint + '/embeddings', json={'input': input_texts, 'model': embed_config.model_id}).json()
+    resp = requests.post(embed_endpoint + '/embeddings', json={'input': prep_input_texts, 'model': embed_config.model_id}).json()
     return [d['embedding'] for d in resp['data']]
 
 def remove_think_context(llm_response_text):

@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from src.util.llm import get_opai_client
+from src.const.misc import NOMIC_V2_TOKENIZER
 
 
 MAGISTRAL_2509_SYS_PROMPT = """First draft your thinking process (inner monologue) until you arrive at a response. Format your response using Markdown, and use LaTeX for any mathematical equations. Write both your thoughts and the response in the same language as the input.
@@ -10,12 +11,14 @@ Your thinking process must follow the template below:[THINK]Your thoughts or/and
 
 class ModelAPIConfig:
     
-    def __init__(self, model_id, endpoint, api_key, sysprompt=None, postfix=None):
+    def __init__(self, model_id, endpoint, api_key, sysprompt=None, postfix=None, max_len=None, tokenizer=None):
         self.model_id = model_id
         self.endpoint = endpoint
         self.api_key = api_key
         self.sysprompt = sysprompt
         self.postfix = postfix
+        self.max_len = max_len
+        self.tokenizer = tokenizer
         
     def get_static_instance(self):
         if not hasattr(self, 'static_instance'):
@@ -54,7 +57,7 @@ class ChatModel(Enum):
 
 # Embedding model
 class EmbeddingModel(Enum):
-    NOMICV2_CONFIG = ModelAPIConfig("nomic-embed-text-v2-moe", LLM_ENDPOINT, os.environ.get("OWUI"))
+    NOMICV2_CONFIG = ModelAPIConfig("nomic-embed-text-v2-moe", LLM_ENDPOINT, os.environ.get("OWUI"), max_len=512, tokenizer=NOMIC_V2_TOKENIZER)
 
 DEFAULT_CHAT_LLM_CONFIG = ChatModel.GEMMA3.value # can be changed later
 DEFAULT_EMBED_LLM_CONFIG = EmbeddingModel.NOMICV2_CONFIG.value

@@ -4,3 +4,4 @@ requests
 ipykernel
 pandas
 lxml
+transformers[torch]

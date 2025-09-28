@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from transformers import AutoTokenizer
 
 # QALD10_WIKIDATA_EP = "https://skynet.coypu.org/wikidata/" # Dump: https://zenodo.org/records/7496690
 QALD10_WIKIDATA_EP = "https://wikidata-qald10.data.dice-research.org/sparql" # Dump: https://zenodo.org/records/7496690 # virtuoso @ dice
@@ -84,3 +85,5 @@ PREFIX_MAP = _build_prefix_map(PREFIX_BLOCK)
 class EntityAnnotator(Enum):
     # AUG_EL_V0D1 = 'aug_linker_v0.1'
     T5AUG_ERL = 't5_aug'
+
+NOMIC_V2_TOKENIZER = AutoTokenizer.from_pretrained("nomic-ai/nomic-embed-text-v2-moe")
