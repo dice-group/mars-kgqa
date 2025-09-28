@@ -91,11 +91,6 @@ class NodeEdge:
         dom_label_list = [dom_item['label'] for dom_item in prop_info_map[prop_ent_uri]['domains']]
         # get the range label(s)
         range_label_list = [range_item['label'] for range_item in prop_info_map[prop_ent_uri]['ranges']]
-
-        class_info = (
-            f"(possible subject classes: {','.join(dom_label_list)}), "
-            f"(possible object classes: {','.join(range_label_list)})"
-        )
         
         node_prefixed_repr = self.node_id if self.node_is_var else get_prefixed_id(self.node_id)
         
@@ -104,11 +99,21 @@ class NodeEdge:
             verbal_part = f"'{self.node_label}' '{prop_label}' {self.variable_name}"
             # ID part (only if requested)
             id_part = f"\t{node_prefixed_repr} {get_prefixed_id(self.relation_uri)} {self.variable_name}" if include_id else ""
+            subject_var = node_prefixed_repr
+            object_var = self.variable_name
         else:  # EdgeDirection.INCOMING
             # verbal part: "?subject <property_label> <node_label>"
             verbal_part = f"{self.variable_name} '{prop_label}' '{self.node_label}'"
             # ID part (only if requested)
             id_part = f"\t{self.variable_name} {get_prefixed_id(self.relation_uri)} {node_prefixed_repr}" if include_id else ""
+            subject_var = self.variable_name
+            object_var = node_prefixed_repr
+        
+        # Assigning variable name besides subject and object for better clarity    
+        class_info = (
+            f"(possible SUBJECT ({subject_var}) classes: {','.join(dom_label_list)}), "
+            f"(possible OBJECT ({object_var}) classes: {','.join(range_label_list)})"
+        )
         
         # add pattern count if requested
         count_part = f"\tcount={self.pattern_count}" if include_count else ""
@@ -470,9 +475,16 @@ def process_input_query_multi_hop(
     top_triples = _score_and_select_top(
         aug_qtxt, patterns_data_list, proc_logger, top_n=topn_count
     )
-
+    # postfix number for variables to make it unique
+    var_post_num = 1
     # keep accepted edges
-    selected_edges = [t[1] for t in top_triples]
+    selected_edges = []
+    for t in top_triples:
+        cur_edge = t[1]
+        cur_edge.assign_variable_id(var_post_num)
+        var_post_num += 1
+        selected_edges.append(cur_edge)
+    
     
     if mhop_limit == 1:
         proc_logger.add_step("mhop_limit=1 – generating final SPARQL directly")
@@ -492,7 +504,7 @@ def process_input_query_multi_hop(
     
     # Track edges that have already been expanded (by their variable name)
     expanded_edges = set()
-    i = 1
+    # i = 1
     # iterative expansion (max mhop_limit iterations)
     for hop in range(1, mhop_limit + 1):
         proc_logger.start_action("hop_iteration", {"hop": hop})
@@ -545,10 +557,10 @@ def process_input_query_multi_hop(
                 )
                 continue
             
-            cur_edge_id = i
-            i = i+1
-            # give the edge a fresh variable name for the next hop
-            edge.assign_variable_id(cur_edge_id)
+            # cur_edge_id = i
+            # i = i+1
+            # # give the edge a fresh variable name for the next hop
+            # edge.assign_variable_id(cur_edge_id)
 
             # Build constraint with the full path followed so far
             _update_edge_cache(selected_edges, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
@@ -584,7 +596,12 @@ def process_input_query_multi_hop(
             next_top = _score_and_select_top(
                 aug_qtxt, new_patterns, proc_logger, top_n=topn_count
             )
-            selected_edges.extend([t[1] for t in next_top])
+            for nt in next_top:
+                cur_edge = nt[1]
+                cur_edge.assign_variable_id(var_post_num)
+                var_post_num += 1
+                selected_edges.append(cur_edge)
+            #selected_edges.extend([t[1] for t in next_top])
             proc_logger.add_step(
                 f"Added {len(next_top)} new edges after hop {hop}"
             )
