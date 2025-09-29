@@ -477,7 +477,7 @@ def process_input_query_multi_hop(
         filter_entity_dict, wd_ep, proc_logger, use_sleep=use_sleep
     )
     top_triples = _score_and_select_top(
-        aug_qtxt, patterns_data_list, proc_logger, top_n=topn_count
+        aug_qtxt, patterns_data_list, proc_logger, top_n=topn_count, use_class_info=False # No need for class info here
     )
     # postfix number for variables to make it unique
     var_post_num = 1
@@ -492,7 +492,7 @@ def process_input_query_multi_hop(
     
     if mhop_limit == 1:
         proc_logger.add_step("mhop_limit=1 – generating final SPARQL directly")
-        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+        final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep, use_class_info=use_class_info)
         final_sparql = generate_sparql_from_patterns(
             question_text,
             final_verbalizations,
@@ -513,7 +513,7 @@ def process_input_query_multi_hop(
     for hop in range(1, mhop_limit + 1):
         proc_logger.start_action("hop_iteration", {"hop": hop})
 
-        verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+        verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep, use_class_info=use_class_info)
         sparql, indices = generate_sparql_or_expansion_indices(
             question_text,
             verbalizations,
@@ -598,7 +598,7 @@ def process_input_query_multi_hop(
         # Rank the newly discovered patterns and add the top N
         if new_patterns:
             next_top = _score_and_select_top(
-                aug_qtxt, new_patterns, proc_logger, top_n=topn_count
+                aug_qtxt, new_patterns, proc_logger, top_n=topn_count, use_class_info=False # No need for class info here
             )
             for nt in next_top:
                 cur_edge = nt[1]
@@ -620,7 +620,7 @@ def process_input_query_multi_hop(
     proc_logger.add_step(
         f"Reached hop limit ({mhop_limit}) – generating final SPARQL"
     )
-    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep)
+    final_verbalizations = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, conc_ex_and_constraints_cache, wd_ep, use_sleep=use_sleep, use_class_info=use_class_info)
     final_sparql = generate_sparql_from_patterns(
         question_text,
         final_verbalizations,
