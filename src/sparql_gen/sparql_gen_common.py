@@ -152,10 +152,14 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
         question_id = question_item['id']
 
-        # Extract the English question text
+        # Extract the language-specific question text
         question_text = next(
             (q['string'] for q in question_item['question'] if q['language'] == q_lang), None
         )
+        
+        if not question_text:
+            print(f'No "{q_lang}" entry found for Question: {question_id}')
+            continue
         
         # Initialise a logger for this question
         proc_logger = ProcessFlowLogger(
