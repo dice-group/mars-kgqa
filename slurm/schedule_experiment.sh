@@ -37,12 +37,12 @@ CLUSTER_LOG_DIR=$CUR_SCRIPT_DIR/../data_dir/cluster_logs
 mkdir -p "$CLUSTER_LOG_DIR"
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-RUN_NAME="${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}-${LANGUAGE}"
+RUN_NAME="${LANGUAGE}-${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}"
 [[ "$USE_AUG_SIMILARITY" == "true" ]] && RUN_NAME="${RUN_NAME}-augsim"
 [[ "$USE_CLASS_INFO" == "true" ]] && RUN_NAME="${RUN_NAME}-clsinf"
 [[ -n "${CONC_EX_LIMIT:-}" ]] && RUN_NAME="${RUN_NAME}-concelim${CONC_EX_LIMIT}"
 RUN_NAME="${RUN_NAME}-${TIMESTAMP}"
 
 sbatch --job-name="$RUN_NAME" --mem=64G --cpus-per-task=32 --gres=gpu:h100:1 --time=10:00:00 \
-       -o "$CLUSTER_LOG_DIR/%x__slurm-%j.out" \
+       -o "$CLUSTER_LOG_DIR/slurm-%j__%x.out" \
        "$CUR_SCRIPT_DIR/../execute_experiment.sh" $PASSED_ARGS
