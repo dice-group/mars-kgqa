@@ -52,6 +52,12 @@ class KgqaDataset(Enum):
     #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentriswd_qald_test_final.json"
     # }, TENTRIS_WIKIDATA_EP, use_sleep=False)
     
+    ## Fails due to frequent timeouts on pattern retrieval on official endpoint, 500 Internal Server Error on QLever
+    # SPINACH_CURWD =  KgqaDatasetInfo("spinach_curwd", "SPINACH  (Answerset from Official Wikidata)", {
+    #     # DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach/train/curwd_aug_gold.json", # ignoring train set for now
+    #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/qald_test_final.json"
+    # }, CURRENT_WIKIDATA_EP, use_sleep=True)
+    
     ## Obsolete datasets - End
     
     ## Working datasets - Start
@@ -66,9 +72,9 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json"
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
-    SPINACH_CURWD =  KgqaDatasetInfo("spinach_curwd", "SPINACH  (Answerset from Official Wikidata)", {
-        # DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach/train/curwd_aug_gold.json", # ignoring train set for now
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/qald_test_final.json"
-    }, CURRENT_WIKIDATA_EP, use_sleep=True)
+    LCQUAD2_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("lcquad2_tentrisq10", "LC-QuAD2.0 (Updated on QALD 10 Wikidata - Tentris)", {
+        # DatasetSplit.TRAIN: "", # Too large, no point in using this split
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json"
+    }, QALD10_TENTRIS_WIKIDATA_EP)
     
     ## Working datasets - End

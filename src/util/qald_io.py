@@ -9,10 +9,11 @@ from tqdm import tqdm
 from src.kgqa_tool.graph_traversal import fetch_labels
 import re
 
-def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint):
+def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint, use_sleep=False):
     lcquad_data = read_json_file(lcquad2_file_path)
     qald_questions = []
-    copy_keys = ['augmented_seq', 'found_ent', 'found_rel', 'gold_ent', 'gold_rel', 'augmented_ent', 'augmented_rel', 'filtered_ent', 'filtered_rel']
+    copy_keys = ['gold_ent', 'gold_rel']
+    
     for qa_item in tqdm(lcquad_data, desc='Processing Questions'):
         qald_item = {}
         
@@ -23,7 +24,7 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_end
         question_text = para_text if para_text else qa_item['question']
         if not question_text:
             continue
-        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint)
+        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint, use_sleep=use_sleep)
         answer_obj = [sparql_response]
         # Build QALD item dictionary
         qald_item['id'] = str(id) # For uniformity
@@ -34,7 +35,9 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_end
         for key_item in copy_keys:
             if key_item in qa_item:
                 qald_item[key_item] = qa_item[key_item]
-            
+        # Encapsulate augmented sequence and annotations
+        qald_item['augmented_translations'] = {'en': qa_item['augmented_seq']}
+        qald_item['t5_aug'] = {'en': {'entities': qa_item['entities_aug_t5'], 'relations': qa_item['relations_aug_t5']}}
         qald_questions.append(qald_item)
     # Create QALD Dataset    
     qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions' : qald_questions}
