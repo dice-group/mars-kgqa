@@ -9,40 +9,74 @@ from tqdm import tqdm
 from src.kgqa_tool.graph_traversal import fetch_labels
 import re
 
-def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path, sparql_endpoint, use_sleep=False):
+def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path,
+                           sparql_endpoint, use_sleep=False):
+    """
+    Convert LC‑QuAD2.0 JSON to QALD format.
+    """
     lcquad_data = read_json_file(lcquad2_file_path)
     qald_questions = []
+    failed_update_items = []          # SPARQL‑execution failures
+    missing_question_items = []       # No question text
     copy_keys = ['gold_ent', 'gold_rel']
-    
+
     for qa_item in tqdm(lcquad_data, desc='Processing Questions'):
         qald_item = {}
-        
-        id = qa_item['uid']
+
+        q_id = qa_item['uid']
         sparql = qa_item['sparql_wikidata']
-        # Fetch the answer
-        para_text = qa_item['paraphrased_question']
-        question_text = para_text if para_text else qa_item['question']
-        if not question_text:
+
+        # Question text handling
+        para_text = qa_item.get('paraphrased_question')
+        question_text = para_text if para_text else qa_item.get('question')
+        if not question_text or not qa_item.get('augmented_seq'): # missing question string or augmented string
+            missing_question_items.append(qa_item)
             continue
-        formatted_sparql, sparql_response = get_qald_answer_sparql(sparql, sparql_endpoint, use_sleep=use_sleep)
+
+        # SPARQL execution
+        formatted_sparql, sparql_response = get_qald_answer_sparql(
+            sparql, sparql_endpoint, use_sleep=use_sleep
+        )
+
+        # Detect empty / failed answers (same check as update_qald_answers)
+        empty_bind = (
+            'results' in sparql_response and
+            len(sparql_response['results'].get('bindings', [])) == 0
+        )
+        if empty_bind:
+            failed_update_items.append(qa_item)
+            continue
+
         answer_obj = [sparql_response]
-        # Build QALD item dictionary
-        qald_item['id'] = str(id) # For uniformity
+
+        # Build QALD item
+        qald_item['id'] = str(q_id)                     # uniform id type
         qald_item['answers'] = answer_obj
-        qald_item['query'] = { 'sparql': formatted_sparql}
-        qald_item['question'] = [{ "language": "en", "string": question_text}]
-        # Copy augmented fields
+        qald_item['query'] = {'sparql': formatted_sparql}
+        qald_item['question'] = [{'language': 'en', 'string': question_text}]
+
+        # Copy augmented / gold fields
         for key_item in copy_keys:
             if key_item in qa_item:
                 qald_item[key_item] = qa_item[key_item]
-        # Encapsulate augmented sequence and annotations
+
+        # Encapsulate augmented sequence and T5‑augmented data
         qald_item['augmented_translations'] = {'en': qa_item['augmented_seq']}
-        qald_item['t5_aug'] = {'en': {'entities': qa_item['entities_aug_t5'], 'relations': qa_item['relations_aug_t5']}}
+        qald_item['t5_aug'] = {
+            'en': {
+                'entities': qa_item['entities_aug_t5'],
+                'relations': qa_item['relations_aug_t5']
+            }
+        }
+
         qald_questions.append(qald_item)
-    # Create QALD Dataset    
-    qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions' : qald_questions}
-    # Save json
+
+    # Save QALD file
+    qald_dict = {'dataset': {'id': 'LC-QuAD2.0'}, 'questions': qald_questions}
     save_json_file(qald_dict, output_qald_file_path)
+
+    # Return both exclusion lists (mirrors update_qald_answers pattern)
+    return failed_update_items, missing_question_items
     
 
 def get_qald_answer_sparql(sparql, endpoint, use_sleep=False):
