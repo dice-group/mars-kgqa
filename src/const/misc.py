@@ -8,6 +8,7 @@ QALD10_TENTRIS_WIKIDATA_EP = "http://harebell.cs.upb.de:10040/sparql" # Dump: ht
 
 TENTRIS_WIKIDATA_EP = "https://wikidata.data.dice-research.org/sparql" # Dump: https://files.dice-research.org/datasets/Wikidata/wikidata-20240904-truthy-BETA/
 CURRENT_WIKIDATA_EP = "https://query.wikidata.org/sparql"
+#CURRENT_WIKIDATA_EP = "https://qlever.cs.uni-freiburg.de/api/wikidata" # Fails on basic pattern retrieval with 500: Internal Server Error
 
 DEFAULT_WIKIDATA_ENDPOINT_URL = TENTRIS_WIKIDATA_EP
 
