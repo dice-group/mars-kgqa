@@ -2,7 +2,7 @@
 from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns, find_concrete_examples
-from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices
+from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices, estimate_mhop
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP, MAX_MULTI_HOP
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
@@ -454,6 +454,7 @@ def process_input_query_multi_hop(
             "use_class_info": use_class_info,
         }
     )
+    
     use_conc_ex = False
     if conc_ex_limit > 0:
         use_conc_ex = True
@@ -468,6 +469,16 @@ def process_input_query_multi_hop(
     filter_entity_dict = _filter_entities(
         question_text, entity_dict, filter_entities, model_config, proc_logger
     )
+    
+    # resolve mhop-limit
+    if mhop_limit < 0:
+        # call llm for mhop estimation
+        mhop_limit = estimate_mhop(aug_qtxt, 
+            '\n'.join([f"{k}: {v}" for k, v in entity_dict.items()]),
+            '\n'.join([f"{k}: {v}" for k, v in relation_dict.items()]),
+            model_config, proc_logger)
+        proc_logger.add_step(f"Estimate mhop_limit: {mhop_limit}")
+    
     
     if not use_aug_sim:
         aug_qtxt = question_text # overwrite augmented text if it is not required

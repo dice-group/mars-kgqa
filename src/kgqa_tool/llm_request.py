@@ -237,6 +237,58 @@ def sparql_refinement(question_txt, sparql_str, model_config, proc_logger):
     
     return answer_sparql
 
+def estimate_mhop(question_txt,  entity_dict_str, rel_dict_str, model_config, proc_logger):
+    
+    # Log the start of the refinement step
+    proc_logger.start_action(
+        "estimate_mhop",
+        {"question": question_txt, "entity_dict_str": entity_dict_str,  "rel_dict_str": rel_dict_str}
+    ).add_step("Building mhop estimation prompt")
+    
+    llm_prompt = f"""For the given question alongwith augmented context, recognized entities and relations. Estimate the number of hops required in the graph from these entities to generate a SPARQL that answers this question. Strictly follow the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    ### Identified Question Entities:
+    {entity_dict_str}
+    
+    ### Identified Relations:
+    {entity_dict_str}
+
+    ---
+
+    Answer Format:
+
+    MHOP: <place the estimated MHOP integer here, minimum value is 1>
+
+    """
+    # Log the full prompt
+    proc_logger.add_step({"prompt": llm_prompt})
+    
+    llm_resp_text, _ = prompt_chat_llm(
+        llm_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
+    estimated_mhop = 1
+    # Extract the generated MHOP
+    if "MHOP:" in llm_resp_text:
+        try:
+            estimated_mhop = int(llm_resp_text.split("MHOP:")[1].strip())
+        except ValueError:
+            # keep the default value if the cast fails
+            proc_logger.add_step(f'Could not parse LLM response to integer, going forward with the default value: {estimate_mhop}')
+    # Finish logging
+    proc_logger.set_output({"mhop": estimated_mhop}).complete_action()
+    
+    return estimated_mhop
+
 def check_if_answer(question_txt, top_triples, context_list, model_config):
     # Check if the triple contains the answer to the question
 
