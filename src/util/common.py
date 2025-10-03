@@ -4,6 +4,7 @@ import requests
 from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT
 import csv
 import time
+import re
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -107,3 +108,13 @@ def export_csv(output_file, dataset):
 def get_sparql_timeout(use_sleep=False):
     timeout = SPARQL_DEFAULT_TIMEOUT if use_sleep else SPARQL_QUICK_TIMEOUT
     return timeout
+
+def sparql_one_line(query):
+    """
+    Convert a multiline SPARQL string to a single‑line representation.
+    """
+    # 1–2: replace line breaks with a space and strip the ends
+    single = query.strip().replace("\r", " ").replace("\n", " ")
+
+    # 3: collapse any remaining multiple spaces/tabs into one space
+    return re.sub(r"\s+", " ", single)

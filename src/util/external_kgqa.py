@@ -12,6 +12,8 @@ from src.const.llm import ChatModel
 from src.util.qald_io import convert_basic_output
 from src.util.gerbil import create_export_gerbil_experiment
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH
+from src.util.common import read_json_file, create_directory_if_not_exists, sparql_one_line
+from src.sparql_gen.sparql_gen_common import save_answers_as_tsv
 from tqdm import tqdm
 
 _LANG_FILTER_RE: Pattern = re.compile(
@@ -21,10 +23,10 @@ _LANG_FILTER_RE: Pattern = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
-def has_language_filter(sparql_snippet: str) -> bool:
+def has_language_filter(sparql_snippet) -> bool:
     return bool(_LANG_FILTER_RE.search(sparql_snippet))
 
-def qald_to_grasp_jsonl(qald_file: str, jsonl_out: str):
+def qald_to_grasp_jsonl(qald_file, jsonl_out):
     qald_path = Path(qald_file)
     out_path = Path(jsonl_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,7 +55,7 @@ def qald_to_grasp_jsonl(qald_file: str, jsonl_out: str):
             }
             out_f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-def grasp_output_to_tsv(grasp_out: str, tsv_out: str, refine_sparql: bool, model_config):
+def grasp_output_to_tsv(grasp_out, tsv_out, refine_sparql, model_config):
     
     # Initialize logger
     log_dir = os.path.dirname(tsv_out)
@@ -112,6 +114,31 @@ def grasp_output_to_tsv(grasp_out: str, tsv_out: str, refine_sparql: bool, model
         proc_logger.complete_action()
         proc_logger.write_log()
         proc_logger.close()
+
+def generate_mst5_output_tsv(ds_qald_file, mst5_qald_file, output_tsv_file):
+    ds_qald_obj = read_json_file(ds_qald_file)
+    mst5_qald_obj = read_json_file(mst5_qald_file)
+    
+    mst5_sparql_dict = {}
+    # Map question id to pred sparql
+    for question_item in mst5_qald_obj['questions']:
+        q_id = str(question_item["id"]) # for consistency in matching
+        pred_sparql = question_item['query']['sparql']
+        # Ensure the SPARQL query is a single‑line string (remove newlines and extra whitespace)
+        pred_sparql = sparql_one_line(pred_sparql)
+        mst5_sparql_dict[q_id] = pred_sparql
+    
+    final_pred_sparql_dict = {}
+    # Keep all relevant queries
+    for question_item in ds_qald_obj['questions']:
+        q_id = str(question_item["id"]) # for consistency in matching
+        pred_sparql = mst5_sparql_dict.get(q_id, None)
+        final_pred_sparql_dict[q_id] = ""
+        if pred_sparql:
+            final_pred_sparql_dict[q_id] = pred_sparql
+    # save output
+    create_directory_if_not_exists(output_tsv_file)
+    save_answers_as_tsv(final_pred_sparql_dict, output_tsv_file)
 
 def refine_output_sparql(sparql_str, model_config, proc_logger):
     lang_filter = False
