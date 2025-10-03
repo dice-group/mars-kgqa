@@ -26,7 +26,7 @@ _LANG_FILTER_RE: Pattern = re.compile(
 def has_language_filter(sparql_snippet) -> bool:
     return bool(_LANG_FILTER_RE.search(sparql_snippet))
 
-def qald_to_grasp_jsonl(qald_file, jsonl_out):
+def qald_to_grasp_jsonl(qald_file, jsonl_out, lang='en', use_translation=False):
     qald_path = Path(qald_file)
     out_path = Path(jsonl_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,14 +38,21 @@ def qald_to_grasp_jsonl(qald_file, jsonl_out):
     with out_path.open("w", encoding="utf‑8") as out_f:
         for q in questions:
             q_text = ""
-            if isinstance(q.get("question"), list):
+            if not use_translation and isinstance(q.get("question"), list):
                 for entry in q["question"]:
-                    if entry.get("language") == "en":
+                    if entry.get("language") == lang:
                         q_text = entry.get("string", "")
                         break
-            q_text = q_text or q.get("string", "") or q.get("question", "")
+            if use_translation and isinstance(q.get("translations"), Dict):
+                translations = q.get("translations")
+                q_text = translations.get(lang)
+            
+            # ignore question if no text is there
+            if not q_text:
+                continue
+            
             q_id = str(q.get("id"))
-
+            
             entry = {
                 "id": q_id,
                 "question": q_text,
