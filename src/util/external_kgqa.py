@@ -207,8 +207,7 @@ if __name__ == "__main__":
             'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
             'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
             'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
-            #'langs': ['en', 'de', 'ru', 'zh']
-            'langs': ['ru', 'zh']
+            'langs': ['en', 'de', 'ru', 'zh']
         },
         'qald9plus_test': {
             'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
@@ -219,15 +218,15 @@ if __name__ == "__main__":
             'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
             'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
         },
-        # 'lcquad2_test': {
-        #     'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
-        #     'split' : DatasetSplit.TEST,
-        #     'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
-        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
-        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/lcquad2',
-        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/lcquad2',
-        #     'langs': ['en']
-        # },
+        'lcquad2_test': {
+            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
+            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
+            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/lcquad2',
+            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/lcquad2',
+            'langs': ['en']
+        },
     }
 
     for key, ds_info in grasp_info.items():
