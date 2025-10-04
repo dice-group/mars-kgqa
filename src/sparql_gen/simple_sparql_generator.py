@@ -22,6 +22,10 @@ def process_input_query(
     proc_logger.add_step(f"Extracted entities: {entity_dict}")
     proc_logger.add_step(f"Extracted relations: {relation_dict}")
     proc_logger.complete_action()
+    
+    if kwargs.get('use_aug_sim'):
+        proc_logger.add_step(f"Using augmented text instead of question.")
+        question_text = aug_qtxt
 
     # Direct SPARQL generation from question, entities & relations
     proc_logger.start_action("sparql_generation")
