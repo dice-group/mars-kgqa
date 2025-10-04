@@ -35,7 +35,7 @@ def generate_simple_sparql(question_txt, entity_dict_str, relation_dict_str, mod
         }
     ).add_step("Building prompt for simple SPARQL generation")
     
-    llm_prompt = f"""Given a question and a set of extracted Wikdata entities and relations alongside their labels, generate a SPARQL to answer the question. Strictly follow ONLY one of the provided "Answer Format", do not write anything else. 
+    llm_prompt = f"""Given a question and a set of extracted Wikdata entities and relations alongside their labels, generate a SPARQL to answer the question. Do not try to retrieve labels unless explicitly asked. Strictly follow ONLY one of the provided "Answer Format", do not write anything else. 
 
     Question: {question_txt}
 
