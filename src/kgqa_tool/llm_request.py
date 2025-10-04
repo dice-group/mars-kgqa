@@ -2,7 +2,7 @@
 from src.util.llm import prompt_chat_llm
 
 
-def generate_baseline_sparql(question_txt, model_config):
+def old_generate_baseline_sparql(question_txt, model_config):
 
     check_prompt = f"""Given a question generate a Wikidata SPARQL to answer the question. Strictly follow the provided "Answer Format", do not write anything else. 
 
@@ -25,34 +25,25 @@ def generate_baseline_sparql(question_txt, model_config):
         
     return answer_sparql
 
-def generate_simple_sparql(question_txt, top_triples, context_list, model_config):
-    # Check if the triple contains the answer to the question
-    triples_str = ''
-    for triple_tuple in top_triples:
-        triple_item = triple_tuple[1]
-        # Subject details
-        sub_uri = triple_item.subject
-        # Predicate details
-        pred_uri = triple_item.predicate
-        # Object details
-        obj_val = triple_item.object
-        
-        triple_line = f'{sub_uri}\t {pred_uri}\t {obj_val}\t "{triple_item.get_verbalization()}"\n'
-        triples_str+=triple_line
+def generate_simple_sparql(question_txt, entity_dict_str, relation_dict_str, model_config, proc_logger):
+    proc_logger.start_action(
+        "generate_simple_sparql",
+        {
+            "question": question_txt,
+            "entity_dict_str": entity_dict_str,
+            "relation_dict_str": relation_dict_str,
+        }
+    ).add_step("Building prompt for simple SPARQL generation")
     
-    context_str = '\n'.join(context_list)
-
-    check_prompt = f"""Given a question and a table of extracted related triples alongside their verbalization from Wikidata, generate a SPARQL to answer the question. Strictly follow the provided "Answer Format", do not write anything else. 
+    llm_prompt = f"""Given a question and a set of extracted Wikdata entities and relations alongside their labels, generate a SPARQL to answer the question. Strictly follow ONLY one of the provided "Answer Format", do not write anything else. 
 
     Question: {question_txt}
 
-    ### Triples table:
-    subject\t predicate\t object\t verbalization
-    {triples_str}
+    ### Identified Question Entities:
+    {entity_dict_str}
     
-    ### Important context:
-    
-    {context_str}
+    ### Identified Question Relations:
+    {relation_dict_str}
 
     ---
 
@@ -61,16 +52,30 @@ def generate_simple_sparql(question_txt, top_triples, context_list, model_config
     SPARQL: <place the generated SPARQL here in a single line>
 
     """
-    llm_resp_text, _ = prompt_chat_llm(check_prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    # Log the full prompt before sending it to the LLM
+    proc_logger.add_step({"prompt": llm_prompt})
     
-    print(f'LLM Response: {llm_resp_text}')
+    proc_logger.add_step("Calling LLM")
+    llm_resp_text, _ = prompt_chat_llm(
+        llm_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix,
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
     answer_sparql = None
     # Extract the generated SPARQL
     if "SPARQL:" in llm_resp_text:
         answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
-        
+        proc_logger.add_step("Extracted SPARQL from LLM output")
+    
+    # Finish logging and return the result
+    proc_logger.set_output({"sparql": answer_sparql}).complete_action()
     return answer_sparql
-
 
 def generate_sparql_from_patterns(question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str, model_config, proc_logger):
     
