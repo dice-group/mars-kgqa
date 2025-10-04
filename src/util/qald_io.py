@@ -1,5 +1,5 @@
 # Sample usage: bash pylauncher.sh normal src.util.qald_io
-from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file
+from src.util.common import read_json_file, create_directory_if_not_exists, execute_sparql_query, save_json_file, get_sparql_timeout
 from src.const.misc import ANSWER_NOT_FOUND_STR, LITERAL_VAL_PREFIX, DEFAULT_WIKIDATA_ENDPOINT_URL
 import csv
 import os
@@ -126,7 +126,7 @@ def get_qald_answer_sparql(sparql, endpoint, use_sleep=False):
         # Adding hard limit for the results
         formatted_sparql += "\nLIMIT 1000"
     
-    sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False, use_sleep=use_sleep)
+    sparql_response, _ = execute_sparql_query(formatted_sparql, endpoint, get_only_bindings=False, use_sleep=use_sleep, timeout=get_sparql_timeout(use_sleep))
     return formatted_sparql, sparql_response
 
 def update_qald_answers(qald_file_path, output_file_path, sparql_endpoint, ignore_ids=[]):

@@ -85,30 +85,48 @@ def grasp_output_to_tsv(grasp_out, tsv_out, refine_sparql, model_config):
         proc_logger.add_step("Creating output directory")
         out_path.parent.mkdir(parents=True, exist_ok=True)
         
-        proc_logger.add_step("Reading input file and writing TSV output")
+        # Resume logic
+        resume_from = 0                # number of lines already written (excluding header)
+        if out_path.is_file():
+            # Read existing TSV to find how many rows are already present
+            with out_path.open("r", encoding="utf‑8", newline="") as existing_f:
+                reader = csv.reader(existing_f, delimiter="\t")
+                rows = list(reader)
+                if len(rows) > 1:      # header + at least one data row
+                    resume_from = len(rows) - 1   # exclude header
+                    proc_logger.add_step(
+                        f"Resuming from line {resume_from + 1} (already processed {resume_from} entries)"
+                    )
+        
+        # Open output file: write header only if we are starting fresh
+        mode = "a" if resume_from > 0 else "w"
         with inp_path.open(encoding="utf‑8") as in_f, \
-             out_path.open("w", encoding="utf‑8", newline="") as out_f:
-            writer = csv.writer(out_f, delimiter="\t")
-            # header
-            header = ["Question ID", "Answer"]
-            writer.writerow(header)
+             out_path.open(mode, encoding="utf‑8", newline="") as out_f:
             
-            line_count = 0
-            for line in tqdm(in_f, 'TSV Conversion'):
+            writer = csv.writer(out_f, delimiter="\t")
+            if resume_from == 0:
+                # write header for a new file
+                writer.writerow(["Question ID", "Answer"])
+            
+            line_count = resume_from
+            for idx, line in enumerate(tqdm(in_f, 'TSV Conversion')):
+                # Skip lines that were already processed
+                if idx < resume_from:
+                    continue
+                
                 if not line.strip():
                     continue
                 obj = json.loads(line)
                 qid = obj.get("id")
-                output_section = obj.get("output") or {} # setting default get value does not work if the data has "null" mapped to the key
+                output_section = obj.get("output") or {}
                 ans = output_section.get("sparql") or ""
-                # Ensure the SPARQL query is a single‑line string (remove newlines and extra whitespace)
-                ans = " ".join(ans.split())
-                ans = ans.strip()
+                ans = " ".join(ans.split()).strip()
+                
                 proc_logger.start_action(f"Processing: {ans}")
-                if refine_sparql and len(ans) > 0: 
+                if refine_sparql and len(ans) > 0:
                     ans = refine_output_sparql(ans, model_config, proc_logger)
-                row = [qid, ans]
-                writer.writerow(row)
+                
+                writer.writerow([qid, ans])
                 line_count += 1
                 proc_logger.complete_action()
         
@@ -182,33 +200,34 @@ if __name__ == "__main__":
     
     ## Dictionary of input dataset and output path
     grasp_info = {
-        # 'qald10_test': {
-        #     'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
-        #     'split' : DatasetSplit.TEST,
-        #     'input_dir': 'data_dir/external_systems/grasp/input/qald10',
-        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
-        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
-        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
-        #     'langs': ['en', 'de', 'ru', 'zh']
-        # },
-        # 'qald9plus_test': {
-        #     'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
-        #     'split' : DatasetSplit.TEST,
-        #     'input_dir': 'data_dir/external_systems/grasp/input/qald9plus',
-        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald9plus',
-        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald9plus',
-        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
-        #     'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
-        # },
-        'lcquad2_test': {
-            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+        'qald10_test': {
+            'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
             'split' : DatasetSplit.TEST,
-            'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
-            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
-            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/lcquad2',
-            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/lcquad2',
-            'langs': ['en']
+            'input_dir': 'data_dir/external_systems/grasp/input/qald10',
+            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
+            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
+            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
+            #'langs': ['en', 'de', 'ru', 'zh']
+            'langs': ['ru', 'zh']
         },
+        'qald9plus_test': {
+            'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'input_dir': 'data_dir/external_systems/grasp/input/qald9plus',
+            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald9plus',
+            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald9plus',
+            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
+            'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
+        },
+        # 'lcquad2_test': {
+        #     'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+        #     'split' : DatasetSplit.TEST,
+        #     'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
+        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
+        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/lcquad2',
+        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/lcquad2',
+        #     'langs': ['en']
+        # },
     }
 
     for key, ds_info in grasp_info.items():
