@@ -176,26 +176,68 @@ def evaluate_external_system(system_name, kgqa_dataset, split, qald_file_path, e
 # Example usage
 if __name__ == "__main__":
     from src.const.dataset import KgqaDataset, DatasetSplit
-    
-    ds_obj = KgqaDataset.QALD9PLUS_UPDATED_CURWD
-    ds_split = DatasetSplit.TEST
+    from src.const.llm import ChatModel
     
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
-    output_dir = 'data_dir/external_systems/grasp/output'
-    
-    ## Convert input QALD to jsonl for GRASP
-    # ds_path = ds_obj.value.split_dict[ds_split]
-    # qald_to_grasp_jsonl(ds_path, f'data_dir/external_systems/grasp/input/{ds_obj.value.dataset_id}_{ds_split.name.lower()}.jsonl')
-    
-    ## Convert output of GRASP to TSV to be processed
-    tsv_file_path = f'{output_dir}/tsv/gpt-oss-120b/qald9plus_updt_curwd_test_output.tsv'
-    # grasp_output_to_tsv(f'{output_dir}/original/gpt-oss-120b/qald10_test_output.jsonl', tsv_file_path, True, llm_config)
-    
-    ## Generate QALD json and execute gerbil experiment
-    sysname = f'grasp_{llm_config.model_id.lower()}'
-    gerbil_output_dir = f'{output_dir}/gerbil/'
-    
-    evaluate_external_system(sysname, ds_obj, ds_split, tsv_file_path, gerbil_output_dir, 'en')
-    
-    
+    ## Dictionary of input dataset and output path
+    grasp_info = {
+        # 'qald10_test': {
+        #     'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+        #     'split' : DatasetSplit.TEST,
+        #     'input_dir': 'data_dir/external_systems/grasp/input/qald10',
+        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
+        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
+        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
+        #     'langs': ['en', 'de', 'ru', 'zh']
+        # },
+        # 'qald9plus_test': {
+        #     'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+        #     'split' : DatasetSplit.TEST,
+        #     'input_dir': 'data_dir/external_systems/grasp/input/qald9plus',
+        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald9plus',
+        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald9plus',
+        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
+        #     'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
+        # },
+        'lcquad2_test': {
+            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
+            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
+            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/lcquad2',
+            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/lcquad2',
+            'langs': ['en']
+        },
+    }
+
+    for key, ds_info in grasp_info.items():
+        print(f'Processing {key}')
+        ds_obj = ds_info['ds'].value
+        ds_split = ds_info['split']
+        ds_langs = ds_info['langs']
+        # extract the gold qald file path
+        gold_qald_fp = ds_obj.split_dict[ds_split]
+        jsonl_dir = ds_info['input_dir']
+        orig_out_dir = ds_info['orig_out_dir']
+        tsv_out_dir = ds_info['tsv_out_dir']
+        
+        for lang in tqdm(ds_langs, desc='Processing languages'):
+            file_base_name = f'{ds_obj.dataset_id}_{ds_split.name.lower()}_output'
+            jsonl_file_name = f'{lang}_native_{file_base_name}.jsonl'
+            output_jsonl_file_path = os.path.join(orig_out_dir, jsonl_file_name)
+            
+            output_tsv = f'{lang}_native_{file_base_name}.tsv'
+            output_tsv_file_path = os.path.join(tsv_out_dir, output_tsv)
+            
+            # process native file
+            grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+            if lang != "en":
+                print(f'Creating jsonl (translated) for: {lang}')
+                jsonl_file_name = f'{lang}_translated_{file_base_name}.jsonl'
+                output_jsonl_file_path = os.path.join(orig_out_dir, jsonl_file_name)
+                
+                output_tsv = f'{lang}_translated_{file_base_name}.tsv'
+                output_tsv_file_path = os.path.join(tsv_out_dir, output_tsv)
+                # process translated file
+                grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
