@@ -483,3 +483,53 @@ def sparql_filter(sparql_str, has_lang_filter, model_config, proc_logger):
     proc_logger.set_output({"refined_sparql": answer_sparql}).complete_action()
     
     return answer_sparql
+
+
+def mhop_analysis(question_str, sparql_str, gold_ent_str, model_config, proc_logger):
+    
+    # Log the start of the refinement step
+    proc_logger.start_action(
+        "sparql_filter",
+        {"original_sparql": sparql_str}
+    ).add_step("Building refinement prompt")
+    
+    
+    model_prompt = f"""For the given Question SPARQL pair and the gold entity dictionary, write the number of hops needed from the original entities to extract the answer. If the answer uses property patterns with *, write * as MHOP value. Strictly follow the provided "Answer Format", do not write anything else. 
+    
+    Input Question: {question_str}
+    Input SPARQL: {sparql_str}
+    
+    Gold Entity Dict: 
+    {gold_ent_str}
+
+    ---
+
+    Answer Format:
+
+    MHOP: <place the mhop value here>
+
+    """
+    # Log the full prompt
+    proc_logger.add_step({"prompt": model_prompt})
+    
+    llm_resp_text, _ = prompt_chat_llm(
+        model_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
+    mhop_value = None
+    # Extract the generated SPARQL
+    if "MHOP:" in llm_resp_text:
+        mhop_value = llm_resp_text.split("MHOP:")[1].strip()
+        proc_logger.add_step("Extracted MHOP value")
+    
+    # Finish logging
+    proc_logger.set_output({"mhop_value": mhop_value}).complete_action()
+    
+    return mhop_value
