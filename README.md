@@ -5,3 +5,5 @@ bash setup/setup_venv.sh
 ```
 
 <!-- TODO: Write more details here-->
+
+<!-- TODO: Add link to Zenodo resources-->
