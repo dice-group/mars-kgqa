@@ -1,4 +1,3 @@
-data_dir/
 venv_*/
 .vscode/
 **__pycache__**
