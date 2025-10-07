@@ -504,32 +504,62 @@ def reformat_spinach_qald(qald_file_path):
     
 def analyse_qald_mhop(qald_file_path, log_dir, model_config):
     create_directory_if_not_exists(log_dir)
-    
+
     qald_obj = read_json_file(qald_file_path)
     log_file = os.path.splitext(os.path.basename(qald_file_path))[0]
     print(f'log will be saved to: {log_dir} with name {log_file}')
     proc_logger = ProcessFlowLogger(f"log_{log_file}", log_dir, enable_print=False)
-    
+
     # Log input information
     proc_logger.log_input_info({
         "input_file": qald_file_path,
     })
-    
-    mhop_map = {}
-    
+    prog_path = os.path.join(log_dir, f"progress_{log_file}.json")
+    if os.path.exists(prog_path):
+        with open(prog_path, "r") as f:
+            prog_data = json.load(f)
+        mhop_map = prog_data.get("mhop_map", {})
+        processed_ids = set(prog_data.get("processed_ids", []))
+    else:
+        mhop_map = {}
+        processed_ids = set()
+
     proc_logger.start_action("Analysis QALD file for Multi-Hop Questions")
-    # For each id in the qald_gold
+    _counter = 0
+
     for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        q_id = question_item.get('id')
+        if q_id in processed_ids:
+            continue
+
         en_entry = next(
-                (entry for entry in question_item.get('question', [])
-                 if entry.get('language') == 'en'), None)
+            (entry for entry in question_item.get('question', [])
+             if entry.get('language') == 'en'), None)
         gold_sparql = question_item['query']['sparql']
         ent_dict = {e['label']: e['uri'] for e in question_item['gold_ent']}
         ent_dict_str = '\n'.join([f"{k}: {v}" for k, v in ent_dict.items()])
-        mhop_value = mhop_analysis(en_entry, gold_sparql, ent_dict_str, model_config, proc_logger)
-        if mhop_value not in mhop_map:
-            mhop_map[mhop_value] = 0
-        mhop_map[mhop_value] += 1
+        mhop_value = mhop_analysis(en_entry, gold_sparql, ent_dict_str,
+                                   model_config, proc_logger)
+
+        mhop_map[mhop_value] = mhop_map.get(mhop_value, 0) + 1
+        processed_ids.add(q_id)
+        _counter += 1
+
+        # save every 10 questions
+        if _counter % 10 == 0:
+            with open(prog_path, "w") as f:
+                json.dump({
+                    "mhop_map": mhop_map,
+                    "processed_ids": list(processed_ids)
+                }, f)
+    # final save in case total questions isn’t a multiple of 10
+    if _counter % 10 != 0:
+        with open(prog_path, "w") as f:
+            json.dump({
+                "mhop_map": mhop_map,
+                "processed_ids": list(processed_ids)
+            }, f)
+
     return mhop_map
 
 if __name__ == "__main__":
@@ -612,16 +642,16 @@ if __name__ == "__main__":
     
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
     ds_info_dict = {
-        # 'qald10_test': {
-        #     'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
-        #     'split' : DatasetSplit.TEST,
-        #     'log_dir': 'data_dir/analysis/mhop/qald10',
-        # },
-        # 'qald9plus_test': {
-        #     'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
-        #     'split' : DatasetSplit.TEST,
-        #     'log_dir': 'data_dir/analysis/mhop/qald9plus'
-        # },
+        'qald10_test': {
+            'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'log_dir': 'data_dir/analysis/mhop/qald10',
+        },
+        'qald9plus_test': {
+            'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'log_dir': 'data_dir/analysis/mhop/qald9plus'
+        },
         'lcquad2_test': {
             'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
             'split' : DatasetSplit.TEST,

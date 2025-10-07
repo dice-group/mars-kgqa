@@ -512,7 +512,7 @@ def mhop_analysis(question_str, sparql_str, gold_ent_str, model_config, proc_log
     # Log the full prompt
     proc_logger.add_step({"prompt": model_prompt})
     
-    llm_resp_text, _ = prompt_chat_llm(
+    llm_resp_text, think_content = prompt_chat_llm(
         model_prompt,
         None,
         model_config.get_static_instance(),
@@ -522,7 +522,8 @@ def mhop_analysis(question_str, sparql_str, gold_ent_str, model_config, proc_log
     
     # Log the raw LLM output
     proc_logger.add_step({"LLM Response": llm_resp_text})
-    
+    if think_content:
+        proc_logger.add_step({"LLM Reasoning": think_content})
     mhop_value = None
     # Extract the generated SPARQL
     if "MHOP:" in llm_resp_text:
