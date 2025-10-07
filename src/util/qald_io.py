@@ -8,6 +8,9 @@ import ast
 from tqdm import tqdm
 from src.kgqa_tool.graph_traversal import fetch_labels
 import re
+from src.util.process_flow_logger import ProcessFlowLogger
+
+from src.kgqa_tool.llm_request import mhop_analysis
 
 def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path,
                            sparql_endpoint, use_sleep=False):
@@ -498,6 +501,66 @@ def reformat_spinach_qald(qald_file_path):
         os.rename(qald_file_path, backup_path)
     # Save json
     save_json_file(qald_obj, qald_file_path)
+    
+def analyse_qald_mhop(qald_file_path, log_dir, model_config):
+    create_directory_if_not_exists(log_dir)
+
+    qald_obj = read_json_file(qald_file_path)
+    log_file = os.path.splitext(os.path.basename(qald_file_path))[0]
+    print(f'log will be saved to: {log_dir} with name {log_file}')
+    proc_logger = ProcessFlowLogger(f"log_{log_file}", log_dir, enable_print=False)
+
+    # Log input information
+    proc_logger.log_input_info({
+        "input_file": qald_file_path,
+    })
+    prog_path = os.path.join(log_dir, f"progress_{log_file}.json")
+    if os.path.exists(prog_path):
+        with open(prog_path, "r") as f:
+            prog_data = json.load(f)
+        mhop_map = prog_data.get("mhop_map", {})
+        processed_ids = set(prog_data.get("processed_ids", []))
+    else:
+        mhop_map = {}
+        processed_ids = set()
+
+    proc_logger.start_action("Analysis QALD file for Multi-Hop Questions")
+    _counter = 0
+
+    for question_item in tqdm(qald_obj['questions'], desc='Processing questions'):
+        q_id = question_item.get('id')
+        if q_id in processed_ids:
+            continue
+
+        en_entry = next(
+            (entry for entry in question_item.get('question', [])
+             if entry.get('language') == 'en'), None)
+        gold_sparql = question_item['query']['sparql']
+        ent_dict = {e['label']: e['uri'] for e in question_item['gold_ent']}
+        ent_dict_str = '\n'.join([f"{k}: {v}" for k, v in ent_dict.items()])
+        mhop_value = mhop_analysis(en_entry, gold_sparql, ent_dict_str,
+                                   model_config, proc_logger)
+
+        mhop_map[mhop_value] = mhop_map.get(mhop_value, 0) + 1
+        processed_ids.add(q_id)
+        _counter += 1
+
+        # save every 10 questions
+        if _counter % 10 == 0:
+            with open(prog_path, "w") as f:
+                json.dump({
+                    "mhop_map": mhop_map,
+                    "processed_ids": list(processed_ids)
+                }, f)
+    # final save in case total questions isn’t a multiple of 10
+    if _counter % 10 != 0:
+        with open(prog_path, "w") as f:
+            json.dump({
+                "mhop_map": mhop_map,
+                "processed_ids": list(processed_ids)
+            }, f)
+
+    return mhop_map
 
 if __name__ == "__main__":
     ## Sample convert_basic_output call for Graph Traversal approach
@@ -542,34 +605,66 @@ if __name__ == "__main__":
     
     # fetch_qald9_multilingual_strings(qald9_dir, qald9plus_test, qald9plus_train)
     
-    from src.const.dataset import KgqaDataset, DatasetSplit
-    qald_dict = {
-        # Train dataset not needed - ent-rel linkers might have bias
-        # 'qald9plus_train': {
-        #     'file_path': 'data_dir/processed_kgqa_ds/qald9plus/train/qald_9_filtered.json',
-        #     'name': 'QALD-9-plus - Train',
-        #     'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
-        #     'split': DatasetSplit.TRAIN
-        # },
-        'qald9plus_test': {
-            'file_path': 'data_dir/processed_kgqa_ds/qald9plus/test/qald_9_augmented_final.json',
-            'name': 'QALD-9-plus - Test',
-            'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
-            'split': DatasetSplit.TEST
-        },
-        'qald10_test': {
-            'file_path': 'data_dir/processed_kgqa_ds/qald10/test/qald_10_augmented_final.json',
-            'name': 'QALD-10 - Test',
-            'kgqa_ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
-            'split': DatasetSplit.TEST,
-            'ignore_ids': [92, 203] # qald10 question that crashes tentris endpoint (better to avoid queries with sum)
-        }
-    }
+    # from src.const.dataset import KgqaDataset, DatasetSplit
+    # qald_dict = {
+    #     # Train dataset not needed - ent-rel linkers might have bias
+    #     # 'qald9plus_train': {
+    #     #     'file_path': 'data_dir/processed_kgqa_ds/qald9plus/train/qald_9_filtered.json',
+    #     #     'name': 'QALD-9-plus - Train',
+    #     #     'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+    #     #     'split': DatasetSplit.TRAIN
+    #     # },
+    #     'qald9plus_test': {
+    #         'file_path': 'data_dir/processed_kgqa_ds/qald9plus/test/qald_9_augmented_final.json',
+    #         'name': 'QALD-9-plus - Test',
+    #         'kgqa_ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+    #         'split': DatasetSplit.TEST
+    #     },
+    #     'qald10_test': {
+    #         'file_path': 'data_dir/processed_kgqa_ds/qald10/test/qald_10_augmented_final.json',
+    #         'name': 'QALD-10 - Test',
+    #         'kgqa_ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+    #         'split': DatasetSplit.TEST,
+    #         'ignore_ids': [92, 203] # qald10 question that crashes tentris endpoint (better to avoid queries with sum)
+    #     }
+    # }
         
-    from src.util.qald_io import update_qald_gold_info
-    from src.const.misc import WIKIDATA_PROP_INFO_CACHE_FILEPATH
-    for qald_ds in qald_dict:
-        print(f'Processing: {qald_ds}')
-        ds_dict = qald_dict[qald_ds]
-        kgqa_ds_obj = ds_dict['kgqa_ds'].value
-        update_qald_gold_info(ds_dict['file_path'], kgqa_ds_obj.preferred_wd_endpoint, WIKIDATA_PROP_INFO_CACHE_FILEPATH)
+    # from src.util.qald_io import update_qald_gold_info
+    # from src.const.misc import WIKIDATA_PROP_INFO_CACHE_FILEPATH
+    # for qald_ds in qald_dict:
+    #     print(f'Processing: {qald_ds}')
+    #     ds_dict = qald_dict[qald_ds]
+    #     kgqa_ds_obj = ds_dict['kgqa_ds'].value
+    #     update_qald_gold_info(ds_dict['file_path'], kgqa_ds_obj.preferred_wd_endpoint, WIKIDATA_PROP_INFO_CACHE_FILEPATH)
+    
+    from src.const.dataset import KgqaDataset, DatasetSplit
+    from src.const.llm import ChatModel
+    
+    llm_config = ChatModel.GPTOSS120B.value # LLM to use
+    ds_info_dict = {
+        'qald10_test': {
+            'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'log_dir': 'data_dir/analysis/mhop/qald10',
+        },
+        'qald9plus_test': {
+            'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'log_dir': 'data_dir/analysis/mhop/qald9plus'
+        },
+        'lcquad2_test': {
+            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+            'split' : DatasetSplit.TEST,
+            'log_dir': 'data_dir/analysis/mhop/lcquad2'
+        },
+    }
+    
+    for key, ds_info in ds_info_dict.items():
+        print(f'Processing {key}')
+        ds_obj = ds_info['ds'].value
+        ds_split = ds_info['split']
+        # extract the gold qald file path
+        gold_qald_fp = ds_obj.split_dict[ds_split]
+        log_dir = ds_info['log_dir']
+        mhop_map = analyse_qald_mhop(gold_qald_fp, log_dir, llm_config)
+        print(f'{key} mhop map: {mhop_map}')
