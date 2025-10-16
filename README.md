@@ -35,6 +35,6 @@ bash execute_experiment.sh --gpu 0 --approach PBSG_MHOP \
     --use-aug-similarity --language en --conc-ex-limit 2 --use-class-info
 ```
 
-**Note**: At the moment, MARS used pre-annotated data in QALD format (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). We will integrate on-the-fly annotating logic soon.
+**Note**: At the moment, MARS uses pre-annotated data in QALD format (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). We will integrate on-the-fly entity/relationss annotating logic soon.
 
 For SLURM-based setup, look into the scripts provided in: [slurm/](slurm/).
