@@ -1,7 +1,23 @@
-data_dir/
+data_dir/**
 venv_*/
 .vscode/
 **__pycache__**
 *.out
 *.sif
 old*.*/
+src/notebook/data_dir/**
+# unignore these files
+!data_dir/
+!data_dir/processed_kgqa_ds/
+!data_dir/processed_kgqa_ds/lcquad2/
+!data_dir/processed_kgqa_ds/lcquad2/test/
+!data_dir/processed_kgqa_ds/qald9plus/
+!data_dir/processed_kgqa_ds/qald9plus/test/
+!data_dir/processed_kgqa_ds/qald9plus/train/
+!data_dir/processed_kgqa_ds/qald10/
+!data_dir/processed_kgqa_ds/qald10/test/
+
+!data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json
+!data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json
+!data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json
+!data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json
