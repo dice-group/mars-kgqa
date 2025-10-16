@@ -23,6 +23,8 @@ GPU_DEVICE='"device=0"' bash setup/llama_swap_control.sh start 9292
 ```
 and then downloading the required models using the *llama-swap* ui: http://localhost:9292/ui/models or you can manually download the models to this directory using the `llama-cli` tool: https://github.com/ggml-org/llama.cpp?tab=readme-ov-file#obtaining-and-quantizing-models.
 
+Look into [llama_swap_config.yml](setup/llama_swap_config.yml) to find the models used. You do not need to download all of the mentioned models, just downloading the ones you need is sufficient.
+
 ### Running Experiments
 
 Here's a sample command to run MARS pipeline for QALD10 dataset:
@@ -36,7 +38,3 @@ bash execute_experiment.sh --gpu 0 --approach PBSG_MHOP \
 **Note**: At the moment, MARS used pre-annotated data in QALD format (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). We will integrate on-the-fly annotating logic soon.
 
 For SLURM-based setup, look into the scripts provided in: [slurm/](slurm/).
-
-<!-- TODO: Write more details here-->
-
-<!-- TODO: Add link to Zenodo resources-->
