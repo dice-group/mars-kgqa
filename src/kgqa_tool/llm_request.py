@@ -151,13 +151,13 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
 
     ---
 
-    Answer Format (SPARQL Generation):
+    Answer Format 1 (SPARQL Generation):
 
     SPARQL: <place the generated SPARQL here in a single line>
     
     ---
 
-    Answer Format (Path Expansion Selection):
+    Answer Format 2 (Path Expansion Selection):
 
     Indices: <place the comma-separated 0-index values of the paths to expand further for the answers, put atleast one value. Do not pick too many.>
 

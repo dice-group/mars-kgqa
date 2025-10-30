@@ -164,6 +164,20 @@ models:
       --top-k -1
       --top-p 0.95
     ttl: 300
+  granite-4.0-h-small:
+    cmd: |
+      ${server_base}
+      --hf-repo unsloth/granite-4.0-h-small-GGUF:UD-Q8_K_XL
+      --jinja
+      --ctx-size 131072
+      --n-predict 131072
+      --n-gpu-layers 99
+      --seed 3407
+      --prio 2
+      --temp 0.0
+      --top-k 0
+      --top-p 1.0
+    ttl: 300
 groups:
   nomic-embed-text-v2-moe:
     persistent: true
