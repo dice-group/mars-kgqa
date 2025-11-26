@@ -140,7 +140,7 @@ def grasp_output_to_tsv(grasp_out, tsv_out, refine_sparql, model_config):
         proc_logger.write_log()
         proc_logger.close()
 
-def generate_mst5_output_tsv(ds_qald_file, mst5_qald_file, output_tsv_file):
+def generate_qald_output_tsv(ds_qald_file, mst5_qald_file, output_tsv_file):
     ds_qald_obj = read_json_file(ds_qald_file)
     mst5_qald_obj = read_json_file(mst5_qald_file)
     
