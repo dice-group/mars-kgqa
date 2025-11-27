@@ -25,6 +25,62 @@ def old_generate_baseline_sparql(question_txt, model_config):
         
     return answer_sparql
 
+def generate_sparql_from_subgraph(question_txt, entity_dict_str, relation_dict_str, subgraph, model_config, proc_logger):
+    proc_logger.start_action(
+        "generate_sparql_using_subgraph",
+        {
+            "question": question_txt,
+            "entity_dict_str": entity_dict_str,
+            "relation_dict_str": relation_dict_str,
+            "subgraph": subgraph
+        }
+    ).add_step("Building prompt for SPARQL generation using pruned subgraphs as context")
+    
+    llm_prompt = f"""Given a question and a set of extracted Wikdata entities and relations alongside their labels, generate a SPARQL to answer the question. Do not try to retrieve labels unless explicitly asked. Strictly follow ONLY one of the provided "Answer Format", do not write anything else. 
+
+    Question: {question_txt}
+
+    ### Identified Question Entities:
+    {entity_dict_str}
+    
+    ### Identified Question Relations:
+    {relation_dict_str}
+
+    ### Pruned Subgraphs:
+    {subgraph}
+
+    ---
+
+    Answer Format:
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    # Log the full prompt before sending it to the LLM
+    proc_logger.add_step({"prompt": llm_prompt})
+    
+    proc_logger.add_step("Calling LLM")
+    llm_resp_text, _ = prompt_chat_llm(
+        llm_prompt,
+        None,
+        model_config.get_static_instance(),
+        model_config.model_id,
+        model_config.postfix,
+    )
+    
+    # Log the raw LLM output
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
+    answer_sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        answer_sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted SPARQL from LLM output")
+    
+    # Finish logging and return the result
+    proc_logger.set_output({"sparql": answer_sparql}).complete_action()
+    return answer_sparql
+
 def generate_simple_sparql(question_txt, entity_dict_str, relation_dict_str, model_config, proc_logger):
     proc_logger.start_action(
         "generate_simple_sparql",

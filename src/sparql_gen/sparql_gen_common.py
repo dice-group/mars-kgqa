@@ -117,7 +117,10 @@ def get_analysis_dir(approach_name: str, input_file_path: str) -> str:
     organization, e.g. <...>/prediction/<input‑file>/analysis/<approach_name>.
     """
     base_analysis_dir = _build_leaf_dir(input_file_path, 'analysis')
-    return os.path.join(base_analysis_dir, approach_name)
+    analysis_dir = os.path.join(base_analysis_dir, approach_name)
+    
+    os.makedirs(analysis_dir, exist_ok=True)
+    return analysis_dir
 
 def get_question_pf_name(question_id):
     return f"question_{question_id}"

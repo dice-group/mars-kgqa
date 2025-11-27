@@ -77,4 +77,10 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json"
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
+    TRIAL =  KgqaDatasetInfo("qald9_test_single", "QALD-9 Test single question for trial", {
+        # DatasetSplit.TRAIN: "", # Too large, no point in using this split
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold_try.json"
+    }, QALD10_TENTRIS_WIKIDATA_EP)
+
+
     ## Working datasets - End
