@@ -196,6 +196,72 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
     proc_logger.set_output({"sparql": sparql, "indices": indices}).complete_action()
     return sparql, indices
 
+
+def verify_update_generated_sparql(generated_sparql, output_literal, question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str,
+                                 model_config, proc_logger):
+
+    proc_logger.start_action(
+        "verify_update_generated_sparql"
+    ).add_step("Building prompt for SPARQL verification and update")
+    
+    patterns_str = '\n'.join(top_verbalized_patterns)
+
+    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, verify if the generated Wikidata SPARQL for the question and its corresponding retrieved formatted answers is what the question expected. If yes, use the answer format 1. If not, then update the given SPARQL query accordingly utilizing answer format 2 alongside the relevant provided IDs that answers the question. Do not try to retrieve labels unless explicitly asked.
+    Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
+
+    Question: {question_txt}
+    
+    ### Identified Question Entities:
+    {entity_dict_str}
+
+    ### Triple Patterns:
+    {patterns_str}
+    
+    ### Generated SPARQL:
+    {generated_sparql}
+
+    ### SPARQL Output (formatted):
+    {output_literal}
+    
+    ---
+
+    Answer Format 1 (No changes required):
+
+    No Changes Required
+    
+    ---
+
+    Answer Format 2 (SPARQL Generation):
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+    
+    # Log the prompt (full text) before sending it to the LLM
+    #proc_logger.add_step("Prompt built – logging prompt")
+    proc_logger.add_step({"prompt": gen_prompt})
+    
+    proc_logger.add_step("Calling LLM")
+    
+    llm_resp_text, think_content = prompt_chat_llm(gen_prompt, model_config.sysprompt,
+                                    model_config.get_static_instance(),
+                                    model_config.model_id, model_config.postfix)
+    
+    # proc_logger.add_step("LLM response received")
+    if think_content:
+        proc_logger.add_step({"LLM Reasoning": think_content})
+        
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+    
+    sparql = None
+    # Extract the generated SPARQL
+    if "SPARQL:" in llm_resp_text:
+        sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted SPARQL from LLM output")
+
+    proc_logger.set_output({"sparql": sparql}).complete_action()
+    return sparql
+
 def sparql_refinement(question_txt, sparql_str, model_config, proc_logger):
     
     # Log the start of the refinement step

@@ -40,6 +40,7 @@ Options:
   --language <CODE>             Language code for the questions (default: en)
   --conc-ex-limit <N>           Number of concrete examples to use for each pattern (default: 0)
   --use-class-info              Use class (domain/range) information in verbalizations
+  --verify-update-sparql        Use the results from the generated SPARQL to verify if it returns a seemingly expected answer. Update the SPARQL one last time if it does not.
   -h, --help                    Show this help message
 EOF
   exit 1
@@ -63,6 +64,7 @@ USE_AUG_SIMILARITY="false"
 LANGUAGE="en"
 CONC_EX_LIMIT=""      # optional, only added if user supplies a value
 USE_CLASS_INFO="false"
+VERIFY_UPDATE_SPARQL="false"
 
 
 # Parse arguments
@@ -86,6 +88,7 @@ while [[ $# -gt 0 ]]; do
     --language)             LANGUAGE="${2:?Missing value for --language}"; shift 2 ;;
     --conc-ex-limit) CONC_EX_LIMIT="${2:?Missing value for --conc-ex-limit}"; shift 2 ;;
     --use-class-info)       USE_CLASS_INFO="true"; shift ;;
+    --verify-update-sparql) VERIFY_UPDATE_SPARQL="true"; shift ;;
     -h|--help)       usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
@@ -168,6 +171,7 @@ RUN_ARGS=(
 [[ -n "$LANGUAGE" ]]                   && RUN_ARGS+=(--language "$LANGUAGE")
 [[ -n "$CONC_EX_LIMIT" ]]              && RUN_ARGS+=(--conc-ex-limit "$CONC_EX_LIMIT")
 [[ "$USE_CLASS_INFO" == "true" ]]      && RUN_ARGS+=(--use-class-info)
+[[ "$VERIFY_UPDATE_SPARQL" == "true" ]] && RUN_ARGS+=(--verify-update-sparql)
 
 # Launch experiment via pylauncher.sh
 echo "Launching experiment via pylauncher.sh ($MODE)..."

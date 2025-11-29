@@ -3,11 +3,73 @@ from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import TRIPLE_VERBALIZATION_LENGTH_LIMIT
 from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file
+from src.util.qald_io import get_qald_answer_sparql
 import csv
 from tqdm import tqdm
 import os
 import json
 from src.util.process_flow_logger import ProcessFlowLogger
+from src.kgqa_tool.graph_traversal import get_node_label
+
+def construct_results_literal(sparql_response, wd_ep, use_sleep, results_lim=10):
+    # Prepare a list that will hold each result row as a dict
+    rows = []
+
+    # Handle ASK queries – the response contains a top‑level "boolean" key.
+    if "boolean" in sparql_response:
+        # Return a simple string (kept consistent with the original “Empty Result” style)
+        return f"{sparql_response['boolean']}"
+
+    # The SPARQL JSON results contain a list of bindings (one dict per result row)
+    bindings = sparql_response.get('results', {}).get('bindings', [])
+    if not bindings:
+        return "Empty Result"
+
+    # Iterate over each result row (limit to first results_lim for brevity)
+    for idx, bind in enumerate(bindings):
+        if idx >= results_lim:
+            break
+
+        # Build a dict for this row; keys are column names
+        row = {} 
+
+        # Each key in the binding corresponds to a column name
+        for col, val_dict in bind.items():
+            # Preserve the original SPARQL value (e.g., literal, number, etc.)
+            value = val_dict.get('value')
+            row[col] = value  # store raw value
+
+            # If the value is a URI that starts with the Wikidata entity prefix,
+            # fetch its human‑readable label via get_node_label().
+            if val_dict.get('type') == 'uri' and value.startswith('http://www.wikidata.org/entity/'):
+                # `get_node_label` should accept the entity URI, the endpoint, and the
+                # `use_sleep` flag that throttles requests.
+                label = get_node_label(value, wd_ep, "en", use_sleep)
+                # Store the fetched label under a parallel key, e.g. “character_label”.
+                row["label"] = label  # add label entry
+
+        rows.append(row)  # add completed row to the list
+
+    # If there were more than ten rows, indicate that the output is truncated.
+    if len(bindings) > results_lim:
+        rows.append(f"... {len(bindings) - results_lim} more results")  # simple truncation marker
+
+    # Return the combined string as a Python‑list representation.
+    return repr(rows)
+
+def verify_update_sparql(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other_args):
+    # Execute and the fetch the results
+    _, sparql_response = get_qald_answer_sparql(gen_sparql, wd_ep, use_sleep)
+    # Get output query literal
+    output_literal = construct_results_literal(sparql_response, wd_ep, use_sleep)
+    # TODO: Remove filewriting logic after debugging
+    with open('output_literals.out','a') as out:
+        out.write(other_args[0] + '\t' + gen_sparql + '\t' + output_literal + '\n')
+    # Call the verification reasoner function
+    ver_res = verif_reasoner_fn(gen_sparql, output_literal, *other_args)
+    if ver_res is not None:
+        gen_sparql = ver_res
+    return gen_sparql
 
 
 def get_verbalization_similarity(query_text, data_list, verbalizer, batch_size = 512):
@@ -124,7 +186,7 @@ def get_question_pf_name(question_id):
             
 def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
                     llm_config, use_gold_entrel, log_dir, filter_entities, topn_count,
-                    mhop_limit, include_pattern_count, refine_sparql, ent_annot, use_aug_sim, q_lang, use_sleep, conc_ex_limit, use_class_info):
+                    mhop_limit, include_pattern_count, refine_sparql, ent_annot, use_aug_sim, q_lang, use_sleep, conc_ex_limit, use_class_info, verify_update_sparql):
     # Output directory
     output_path = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_path)
@@ -232,7 +294,8 @@ def process_dataset(proc_name, qald_file_path, output_path, process_fn, wd_ep,
             use_aug_sim,
             use_sleep,
             conc_ex_limit,
-            use_class_info
+            use_class_info,
+            verify_update_sparql
         )
         
         # Cache the generated output

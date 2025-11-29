@@ -9,9 +9,10 @@ set -eu
 PASSED_ARGS="$@"
 CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-USE_GOLD="pred_ent" # default value for run name to indicate that the predicted entites are to be used
+USE_GOLD="pred_ent"          # default value for run name to indicate that the predicted entites are to be used
 USE_AUG_SIMILARITY="false"
 USE_CLASS_INFO="false"
+VERIFY_UPDATE_SPARQL="false"
 LANGUAGE="en"
 
 # Iterate over all passed flags
@@ -29,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     --language)          LANGUAGE="${2:?Missing value for --language}"; shift 2 ;;
     --conc-ex-limit)     CONC_EX_LIMIT="$2"; shift 2 ;;
     --use-class-info)    USE_CLASS_INFO="true"; shift 1 ;;
+    --verify-update-sparql) VERIFY_UPDATE_SPARQL="true"; shift 1 ;;
     *)                    shift ;;   # ignore unknown args
   esac
 done
@@ -40,6 +42,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 RUN_NAME="${LANGUAGE}-${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}"
 [[ "$USE_AUG_SIMILARITY" == "true" ]] && RUN_NAME="${RUN_NAME}-augsim"
 [[ "$USE_CLASS_INFO" == "true" ]] && RUN_NAME="${RUN_NAME}-clsinf"
+[[ "$VERIFY_UPDATE_SPARQL" == "true" ]] && RUN_NAME="${RUN_NAME}-verupdt"
 [[ -n "${CONC_EX_LIMIT:-}" ]] && RUN_NAME="${RUN_NAME}-concelim${CONC_EX_LIMIT}"
 RUN_NAME="${RUN_NAME}-${TIMESTAMP}"
 
