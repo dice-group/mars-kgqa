@@ -57,7 +57,7 @@ def construct_results_literal(sparql_response, wd_ep, use_sleep, results_lim=10)
     # Return the combined string as a Python‑list representation.
     return repr(rows)
 
-def verify_update_sparql(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other_args):
+def apply_sparql_verupdt(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other_args):
     # Execute and the fetch the results
     _, sparql_response = get_qald_answer_sparql(gen_sparql, wd_ep, use_sleep)
     # Get output query literal

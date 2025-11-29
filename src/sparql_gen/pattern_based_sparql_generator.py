@@ -1,5 +1,5 @@
 # Sample usage: python -m src.sparql_gen.pattern_based_sparql_generator
-from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir, verify_update_sparql
+from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir, apply_sparql_verupdt
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns, find_concrete_examples
 from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices, estimate_mhop, verify_update_generated_sparql
@@ -520,7 +520,7 @@ def process_input_query_multi_hop(
         if refine_sparql:
             final_sparql = sparql_refinement(question_text, final_sparql, model_config, proc_logger)
         if verify_update_sparql:
-            final_sparql = verify_update_sparql(
+            final_sparql = apply_sparql_verupdt(
                 final_sparql, wd_ep, use_sleep,
                 verify_update_generated_sparql, 
                 question_text,
@@ -555,7 +555,7 @@ def process_input_query_multi_hop(
             if refine_sparql:
                 sparql = sparql_refinement(question_text, sparql, model_config, proc_logger)
             if verify_update_sparql:
-                sparql = verify_update_sparql(
+                sparql = apply_sparql_verupdt(
                     sparql, wd_ep, use_sleep,
                     verify_update_generated_sparql, 
                     question_text,
@@ -671,7 +671,7 @@ def process_input_query_multi_hop(
         final_sparql = sparql_refinement(question_text, final_sparql, model_config, proc_logger)
     # SPARQL verification and update
     if verify_update_sparql:
-        final_sparql = verify_update_sparql(
+        final_sparql = apply_sparql_verupdt(
             final_sparql, wd_ep, use_sleep,
             verify_update_generated_sparql, 
             question_text,
