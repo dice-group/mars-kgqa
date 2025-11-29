@@ -559,7 +559,7 @@ def process_input_query_multi_hop(
                     sparql, wd_ep, use_sleep,
                     verify_update_generated_sparql, 
                     question_text,
-                    final_verbalizations,
+                    verbalizations,
                     ent_dict_str,
                     rel_dict_str,
                     model_config,
