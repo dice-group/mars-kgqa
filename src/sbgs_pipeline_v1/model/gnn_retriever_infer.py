@@ -8,7 +8,11 @@ import tempfile
 from typing import Dict, Any, List, Optional, Tuple
 import torch
 from tqdm import tqdm
-from src.sbgs_pipeline_v1.model.gnn_retriever_train import CBDJsonDataset, TextEncoder, GNNRetriever, DEFAULT_MODEL
+
+try:
+    from src.sbgs_pipeline_v1.model.gnn_retriever_train import CBDJsonDataset, TextEncoder, GNNRetriever, DEFAULT_MODEL
+except:
+    from model.gnn_retriever_train import CBDJsonDataset, TextEncoder, GNNRetriever, DEFAULT_MODEL
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

@@ -54,7 +54,7 @@ def main():
     parser.add_argument("--input", help="Path to input JSON file")
     parser.add_argument("--lang", default="en", help="Language (e.g., en, EN, eng, english). Defaults to en")
     parser.add_argument("--out", help="Optional path to write the extracted JSON. Prints to stdout if omitted.")
-    parser.add_argument("--hops", type=int, default=1, help="CBD hops (default: 1)")
+    parser.add_argument("--hops", type=int, default=2, help="CBD hops (default: 2)")
     # Inference step (optional)
     # parser.add_argument("--infer", action="store_true", help="Run GNN inference to predict/prune triples")
     parser.add_argument("--ckpt", help="Path to trained checkpoint (required if --infer)")
@@ -93,6 +93,7 @@ def main():
             cached_used += 1
         else:
             pending.append(q)
+            print(f"Question not present in cache, processing Q = {q_text[:80]}")
 
     if cached_used:
         print(f"Cache hits: {cached_used} | Pending: {len(pending)}")
@@ -102,10 +103,13 @@ def main():
         for question in pending:
             start = time.perf_counter()
             entities = question.get("entities") or []
+            print(f"Entities:{entities}")
             # dedupe and normalize to Q/P ids
             qids = { e.get("uri") for e in entities if e.get("uri") }
+            print(f"QIDS:{qids}")
 
-            futures = { pool.submit(retrieve_cbd, qid): qid for qid in qids }
+            # futures = { pool.submit(retrieve_cbd, qid): qid for qid in qids }
+            futures = { pool.submit(retrieve_cbd, qid, hops=args.hops): qid for qid in qids }
             cbd_all = []
             triples = 0
             for fut in as_completed(futures):
