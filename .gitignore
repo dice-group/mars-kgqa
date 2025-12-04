@@ -21,3 +21,7 @@ src/notebook/data_dir/**
 !data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json
 !data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json
 !data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json
+
+!data_dir/gerbil_results
+!data_dir/figures/
+!data_dir/figures/mars-kgqa-overview.png
