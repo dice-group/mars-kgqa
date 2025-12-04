@@ -20,7 +20,7 @@ In multilingual real‑world scenarios, large language models (LLMs) are being i
 ## Local Setup
 
 ### Prerequisites
-Make sure you have Docker <https://docs.docker.com/> and Python (>=3.12.3) installed.
+Make sure you have Docker (<https://docs.docker.com/>) and Python (>=3.12.3) installed.
 
 ### Dependencies Installation
 To install the dependencies, run:
@@ -94,7 +94,7 @@ For SLURM-based setup, look into the scripts provided in: [`slurm/`](slurm/).
 ## Resources
 
 ### Error Analysis Pipeline
-Our automated error analysis pipeline is already integrated in our experiments. Some examples of the final compiled analysis can be found at: [`data_dir/analysis`](data_dir/analysis).
+Our automated error analysis pipeline is already integrated in our experiments. Some examples of the final compiled analysis can be found at: [`data_dir/analysis/`](data_dir/analysis/).
 
 ### Gerbil Results
-Links to all the gerbil results from our experiments can be found at:  [`data_dir/gerbil_results`](data_dir/gerbil_results).
+Links to all the gerbil results from our experiments can be found at:  [`data_dir/gerbil_results/`](data_dir/gerbil_results/).
