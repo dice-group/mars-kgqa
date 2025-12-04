@@ -10,7 +10,7 @@ A semantic-parsing based KGQA system that generates ([Wikidata](https://www.wiki
        style="max-width:100%; height:auto; display:block; margin:0 auto;">
   <figcaption style="margin-top:0.4rem; font-size:0.9rem; color:#666;">
     An overview of our MARS pipeline on an example question:
-    “When was the creator of Saturday Night Live born?” (from the QALD‑10 dataset).
+    <i>"When was the creator of Saturday Night Live born?"</i> (from the QALD‑10 dataset).
   </figcaption>
 </figure>
 
