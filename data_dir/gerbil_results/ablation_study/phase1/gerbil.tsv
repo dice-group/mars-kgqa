@@ -1,0 +1,6 @@
+dataset	lang	system	gerbil_result
+qald10_tentrisq10_train	en	en__PBSG_MHOP__t20-h1-gld-enrl__gptoss120b	https://gerbil-qa.aksw.org/gerbil/experiment?id=202509290000
+qald10_tentrisq10_train	en	en__PBSG_MHOP__t5-h1-gld-enrl__gemma3	https://gerbil-qa.aksw.org/gerbil/experiment?id=202509290001
+qald10_tentrisq10_train	en	en__PBSG_MHOP__t10-h1-gld-enrl__gptoss120b	https://gerbil-qa.aksw.org/gerbil/experiment?id=202509290002
+qald10_tentrisq10_train	en	en__PBSG_MHOP__t5-h1-gld-enrl__gptoss120b	https://gerbil-qa.aksw.org/gerbil/experiment?id=202509290003
+qald10_tentrisq10_train	en	en__PBSG_MHOP__t5-h1-gld-enrl__qwen3	https://gerbil-qa.aksw.org/gerbil/experiment?id=202509290004

@@ -25,3 +25,5 @@ src/notebook/data_dir/**
 !data_dir/gerbil_results
 !data_dir/figures/
 !data_dir/figures/mars-kgqa-overview.png
+!data_dir/gerbil_results/
+!data_dir/gerbil_results/**
