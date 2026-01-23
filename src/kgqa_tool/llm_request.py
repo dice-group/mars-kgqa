@@ -495,6 +495,16 @@ def compile_analyses(analyses_content, model_config):
     
     return llm_resp_text, think_content
 
+def check_early_stop(analysis_content, model_config):
+    
+    prompt = f"""You are given an analysis excerpt for a question that the system failed to answer. Check if the analysis points to the fact that the system stopped expansion before reaching the required triple pattern to generate the correct SPARQL. Output Y if it the search was terminated early otherwise output N. Do no write anything other than Y or N.
+    \nAnalysis content:\n
+    {analysis_content}"""
+    
+    llm_resp_text, think_content = prompt_chat_llm(prompt, None, model_config.get_static_instance(), model_config.model_id, model_config.postfix)
+    
+    return llm_resp_text, think_content
+
 
 def sparql_filter(sparql_str, has_lang_filter, model_config, proc_logger):
     
