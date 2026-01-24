@@ -79,7 +79,7 @@ The complete list of models used by MARS is defined in [`setup/llama_swap_config
 
 ## Running Experiments
 
-> **Note**: At the moment, MARS uses pre-annotated entity data appended directly within the QALD‑formatted dataset files (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). The annotations were generated using [entity_linking_tool](entity_linking_tool/) and were then processed using [qald_unil.ipynb](src/notebook/qald_util.ipynb) notebook. We will integrate an end-to-end entity/relations annotating logic soon.
+> **Note**: At the moment, MARS uses pre-annotated entity data appended directly within the QALD‑formatted dataset files (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). The annotations were generated using [entity_linking_tool](entity_linking_tool/) and were then processed using [qald_util.ipynb](src/notebook/qald_util.ipynb) notebook. We will integrate an end-to-end entity/relations annotating logic soon.
 
 Here's a sample command to run MARS pipeline for QALD10 dataset:
 ```bash
