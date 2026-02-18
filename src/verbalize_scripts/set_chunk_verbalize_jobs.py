@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List
 from src.util.common import create_directory_if_not_exists
 
-## Sample usage: bash pylauncher.sh normal src.verbalize_scripts.set_chunk_verbalize_jobs --chunk_root_dir /scratch/hpc-prf-merlin/project_data/wikidata_qald10_dump/2000_chunks --log_dir data_dir/verbalization/logs --data_dir data_dir/verbalization --output_script launch_chunks.sh 
+## Sample usage: bash pylauncher.sh normal src.verbalize_scripts.set_chunk_verbalize_jobs --chunk_root_dir /scratch/hpc-prf-merlin/project_data/wikidata_qald10_dump/2000_chunks --log_dir data_dir/verbalization/logs --data_dir data_dir/verbalization --output_script launch_chunks_verbalization.sh 
 
 # For a given directory with file chunks, spawn a slurm job for each file found in it
 # Slurm command: sbatch -N 1 -n 1 -c 2 -t 02:00:00 -o {log_dir}/{chunk_dir_name}/%j_{chunk_file_name}.log --partition normal --mem 80G pylauncher.sh normal src.verbalize_scripts.verbalize_nt_chunk {chunk_root_dir}/{chunk_dir_name}/{chunk_file_name}.{chunk_file_extension} data_dir/verbalization/label_map.pkl -o data_dir/verbalization/{chunk_dir_name}/{chunk_file_name}.txt
@@ -24,6 +24,7 @@ def _build_sbatch_command(
     chunk_dir: Path,
     chunk_file: Path,
     data_dir: Path,
+    begin_offset_seconds: int = 0,
 ) -> List[str]:
     """
     Construct the SBATCH command (as a list suitable for ``subprocess``).
@@ -61,6 +62,7 @@ def _build_sbatch_command(
         "-o", str(log_path),
         "--partition", "normal",
         "--mem", "80G",
+        *(["--begin", f"now+{begin_offset_seconds}"] if begin_offset_seconds else []),
         "pylauncher.sh",
         "normal",
         "src.verbalize_scripts.verbalize_nt_chunk",
@@ -140,14 +142,21 @@ def main() -> None:
         script_fh = open(args.output_script, "w", encoding="utf-8")
         script_fh.write("#!/usr/bin/env bash\n\n")
 
+    job_counter = 0
+
     for chunk_path in chunk_files:
         chunk_dir = chunk_path.parent
+
+        # Compute delay: after each block of 10 jobs, add 30 s per block
+        delay_seconds = (job_counter // 100) * 120   # 0 for first 10, 30 for next 10, ...
+
         cmd_list = _build_sbatch_command(
             log_dir=args.log_dir,
             chunk_root_dir=args.chunk_root_dir,
             chunk_dir=chunk_dir,
             chunk_file=chunk_path,
             data_dir=args.data_dir,
+            begin_offset_seconds=delay_seconds,
         )
         # Render the command as a shell‑safe string for printing / script writing
         cmd_str = " ".join(shlex.quote(tok) for tok in cmd_list)
@@ -165,6 +174,8 @@ def main() -> None:
                 print(f"Failed to submit {chunk_path.name}:\n{result.stderr}")
             else:
                 print(f"Submitted {chunk_path.name}: {result.stdout.strip()}")
+        
+        job_counter += 1
 
     if script_fh:
         script_fh.close()

@@ -19,17 +19,19 @@ def get_last_uri_fragment(uri):
 def create_directory_if_not_exists(directory_path, logger=None, quiet=True):
     # Convert the path to an absolute path
     directory_path = os.path.abspath(directory_path)
-    
-    # Check if the path is a file path and extract the parent directory
+
+    # If a file path was given, use its parent directory
     if not os.path.isdir(directory_path):
         directory_path = os.path.dirname(directory_path)
-    
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+
+    try:
+        # exist_ok=True tells makedirs to ignore the error if the dir already exists
+        os.makedirs(directory_path, exist_ok=True)
         message = f"Directory '{directory_path}' created."
-    else:
+    except FileExistsError:
+        # This can happen on a tiny race window; treat it as “already exists”
         message = f"Directory '{directory_path}' already exists."
-    
+
     if not quiet:
         if logger:
             logger.debug(message)

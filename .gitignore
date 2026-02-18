@@ -30,3 +30,5 @@ src/notebook/data_dir/**
 
 !data_dir/analysis/
 !data_dir/analysis/*.md
+
+launch_chunks_verbalization.sh
