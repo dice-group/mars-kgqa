@@ -7,10 +7,7 @@ from src.util.common import create_directory_if_not_exists
 
 ## Sample usage: bash pylauncher.sh normal src.verbalize_scripts.verbalize_nt_chunk /scratch/hpc-prf-merlin/project_data/wikidata_qald10_dump/2000_chunks/dataset_chunk_0926.nt data_dir/verbalization/label_map.pkl -o data_dir/verbalization/2000_chunks/dataset_chunk_0926.txt
 
-LABEL_EXTENSION = {'description': 'description@en'} # Accomodate http://schema.org/description
-
-# TODO: Store the triples alongside the verbalizations, mapping the verbalized string to the triple tuple, store the map as a pickle file
-# TODO: Output the verbalization (unique keys) from the map as line separated string to a txt file in the end
+LABEL_EXTENSION = {'description': 'description@en'}  # Accomodate http://schema.org/description
 
 def _parse_nt_line(line: str):
     """
@@ -52,17 +49,14 @@ def _parse_nt_line(line: str):
 
 def _extract_label(label_map, uri):
     """Return a dict {lang: label_text} for the given URI (using last‑part key)."""
-    # label_map was built with only the last part of the URI as the key.
     key = _uri_last_part(uri)
     raw = label_map.get(key, [])
     result = {}
     for entry in raw:
-        # entry may already contain "@lang"
         if "@" in entry:
             txt, lang = entry.rsplit("@", 1)
             result[lang] = txt
         else:
-            # fallback – treat as language‑agnostic
             result[""] = entry
     return result
 
@@ -79,7 +73,6 @@ def _strip_literal_lang(lit):
     """
     if not lit.startswith('"'):
         return lit, ""
-    # Find closing quote that terminates the literal value.
     end = lit.rfind('"')
     value = lit[1:end]
     rest = lit[end + 1 :].strip()
@@ -89,32 +82,43 @@ def _strip_literal_lang(lit):
     return value, lang
 
 
-# Core verbalization logic
+# Core verbalisation generator
 def verbalize(
     nt_path: str,
     label_map_path: str,
     buffer_gb: float = 1.0,
     progress: bool = True,
 ):
-    """Yield verbalized sentences for each eligible triple."""
-    print('Loading labels map..', flush=True)
-    # Load label map (pickled dict)
+    """
+    Yield **(sentence, triple)** tuples.
+
+    * ``sentence`` – the human‑readable verbalisation string.
+    * ``triple``  – a ``(subject_uri, predicate_uri, object_raw)`` tuple
+      that produced the sentence.
+
+    The function ensures that each distinct sentence appears only once
+    (duplicates are filtered by the caller’s ``sentence_map``).
+    """
+    print("Loading labels map..", flush=True)
+
+    # Load the pickled label map
     with open(label_map_path, "rb") as f:
         label_map = pickle.load(f)
-        # extend label map with LABEL_EXTENSION
-        for ext_key, ext_label in LABEL_EXTENSION.items():
-            existing = label_map.get(ext_key)
-            if existing is None:
-                label_map[ext_key] = [ext_label]
-            else:
-                if ext_label not in existing:
-                    existing.append(ext_label)
 
-    # Convert buffer size to bytes (same helper as label_map_gen)
+    # Extend label map with the hard‑coded LABEL_EXTENSION entries
+    for ext_key, ext_label in LABEL_EXTENSION.items():
+        existing = label_map.get(ext_key)
+        if existing is None:
+            label_map[ext_key] = [ext_label]
+        else:
+            if ext_label not in existing:
+                existing.append(ext_label)
+
+    # Convert requested buffer size (GB) to a safe byte count
     MAX_INT = 2_147_483_647
     buffer_bytes = max(1, min(int(buffer_gb * (1024 ** 3)), MAX_INT))
 
-    # First pass to know total lines for tqdm (optional)
+    # Optional total line count for tqdm progress bar
     total = None
     if progress:
         with open(nt_path, "r", buffering=buffer_bytes, encoding="utf-8") as cnt_f:
@@ -127,45 +131,40 @@ def verbalize(
             if not s_uri:
                 continue
 
-            # Retrieve label dictionaries for subject & predicate
             s_labels = _extract_label(label_map, s_uri)
             p_labels = _extract_label(label_map, p_uri)
 
-            # Case 1: object is a URI (non‑literal), need its label too
+            # Object is another URI (non‑literal)
             if not _is_literal(o_raw):
                 o_uri = o_raw.strip("<>")
                 o_labels = _extract_label(label_map, o_uri)
 
-                # Need all three languages to intersect
                 common_langs = set(s_labels) & set(p_labels) & set(o_labels)
                 for lang in common_langs:
-                    s_lab = s_labels[lang]
-                    p_lab = p_labels[lang]
-                    o_lab = o_labels[lang]
-                    yield f"{s_lab} {p_lab} {o_lab}."
+                    sentence = f"{s_labels[lang]} {p_labels[lang]} {o_labels[lang]}."
+                    triple = (s_uri, p_uri, o_raw)
+                    yield sentence, triple
 
+            # Object is a literal
             else:
-                # Object is a literal, we only need subject & predicate
                 lit_val, lit_lang = _strip_literal_lang(o_raw)
                 lit_val = _decode_escaped(lit_val)
 
-                # Two sub‑cases:
-                # 2.1: s, p, and literal share the same language tag
-                # 2.2: s and p share a language, literal language is ignored
-                # We respect the explicit language when present.
-                # Sub‑case 2.1 – match literal language if it exists
-                if lit_lang:
-                    if lit_lang in s_labels and lit_lang in p_labels:
-                        yield f"{s_labels[lit_lang]} {p_labels[lit_lang]} {lit_val}."
-                    # else fall back to sub‑case 2.2
-                # Sub‑case 2.2 – any common language between s and p
+                # 2.1 – literal language matches subject/predicate language
+                if lit_lang and lit_lang in s_labels and lit_lang in p_labels:
+                    sentence = f"{s_labels[lit_lang]} {p_labels[lit_lang]} {lit_val}."
+                    triple = (s_uri, p_uri, o_raw)
+                    yield sentence, triple
+
+                # 2.2 – any common language between subject and predicate
                 common_sp = set(s_labels) & set(p_labels)
                 for lang in common_sp:
-                    # avoid double‑emitting the same sentence if we already emitted
-                    # it in 2.1 (i.e., when lit_lang == lang)
                     if lit_lang and lang == lit_lang:
+                        # already emitted in case 2.1; skip duplicate
                         continue
-                    yield f"{s_labels[lang]} {p_labels[lang]} {lit_val}."
+                    sentence = f"{s_labels[lang]} {p_labels[lang]} {lit_val}."
+                    triple = (s_uri, p_uri, o_raw)
+                    yield sentence, triple
 
 
 def main():
@@ -197,28 +196,57 @@ def main():
         action="store_true",
         help="Disable tqdm progress bar",
     )
+    parser.add_argument(
+        "-m",
+        "--map-output",
+        help=(
+            "Path to store the sentence‑to‑triple pickle map. "
+            "If omitted, defaults to <output>.map.pkl (or <nt_chunk>.map.pkl)."
+        ),
+    )
     args = parser.parse_args()
-    
+
+    # Ensure target directory exists (if an output file is requested)
     create_directory_if_not_exists(args.output)
 
-    out_f = open(args.output, "w", encoding="utf-8", errors="replace") if args.output else sys.stdout
+    # Collect sentences and the mapping in a single pass
+    sentence_map: dict[str, tuple[str, str, str]] = {}
 
-    for sentence in verbalize(
+    for sentence, triple in verbalize(
         args.nt_chunk,
         args.label_map,
         buffer_gb=args.buffer_gb,
         progress=not args.no_progress,
     ):
+        # Keep only the first occurrence of a sentence (unique keys)
+        sentence_map.setdefault(sentence, triple)
+    
+    # Once all sentences are collected as unique map keys
+    out_f = (
+        open(args.output, "w", encoding="utf-8", errors="replace")
+        if args.output
+        else sys.stdout
+    )
+    for sentence in sentence_map:    
         try:
             out_f.write(sentence + "\n")
-        except Exception as e:
-            # Print the problematic sentence to stderr and re‑raise
-            import sys
+        except Exception:
             print(f"Error while processing sentence: {sentence!r}", file=sys.stderr)
-            raise  # Preserve the original traceback
+            raise
 
     if args.output:
         out_f.close()
+
+    # Determine where to write the pickle map
+    map_path = args.map_output
+    if not map_path:
+        base = args.output if args.output else args.nt_chunk
+        map_path = f"{base}.map.pkl"
+
+    with open(map_path, "wb") as mf:
+        pickle.dump(sentence_map, mf)
+
+    print(f"Verbalisation map written to: {map_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
