@@ -16,21 +16,28 @@ FILE_NAME=wikidata.nt
 
 # Full path to the input file
 INPUT_PATH="${FILE_DIR}/${FILE_NAME}"
-
-# Output directory (can be the same as input directory or another location)
 OUTPUT_DIR="${FILE_DIR}/${K_VAL}_chunks"
 
 echo "=== split_ntriples.sh started ==="
-echo "Chunk size (lines per file):  $K_VAL"
+echo "Requested # of chunks:       $K_VAL"
 echo "Input file:                 $INPUT_PATH"
 echo "Output directory:           $OUTPUT_DIR"
 
-mkdir -p $OUTPUT_DIR
+mkdir -p "$OUTPUT_DIR"
 echo "Created output directory (if it didn't exist)."
 
-# Split the file into numbered chunks with the .nt suffix, placing them in $OUTPUT_DIR
+# Count total lines in the source file
+TOTAL_LINES=$(wc -l < "$INPUT_PATH")
+echo "Total lines in input file: $TOTAL_LINES"
+
+# Compute lines‑per‑chunk (ceil division)
+#   ceil(a/b) = (a + b - 1) / b   (integer arithmetic)
+LINES_PER_CHUNK=$(( (TOTAL_LINES + K_VAL - 1) / K_VAL ))
+echo "Lines per chunk (rounded up): $LINES_PER_CHUNK"
+
+# Split the file by the computed line count
 echo "Running split command..."
-split -d -n "${K_VAL}" --additional-suffix=.nt "${INPUT_PATH}" "${OUTPUT_DIR}/dataset_chunk_"
+split -d -a 4 -l "$LINES_PER_CHUNK" --additional-suffix=.nt "$INPUT_PATH" "${OUTPUT_DIR}/dataset_chunk_"
 echo "Split complete. Chunks are stored in $OUTPUT_DIR."
 
 echo "=== split_ntriples.sh finished ==="

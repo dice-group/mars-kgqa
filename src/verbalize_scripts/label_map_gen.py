@@ -9,7 +9,7 @@ from tqdm import tqdm
 ## Sample usage:  bash pylauncher.sh normal src.verbalize_scripts.label_map_gen data_dir/verbalization/rdf_labels.nt -o data_dir/verbalization/label_map.pkl -b 80
 ## Slurm: sbatch -N 1 -n 1 -c 4 -t 05:00:00 --partition normal --mem 200G 
 
-# Last run 18.02.2026: 0:14:27 : Building mapping: 100%|██████████| 510188728/510188728 [12:47<00:00, 664610.20it/s]
+# Last run 18.02.2026: 0:25:34 : Building mapping: 100%|██████████| 510188728/510188728 [20:52<00:00, 407366.10it/s] 
 
 def _decode_escaped(label: str) -> str:
     """
@@ -74,10 +74,22 @@ def _calc_buffer_bytes(gb: float) -> int:
     # Ensure we never pass 0 (which means unbuffered) and never exceed C int.
     return max(1, min(raw, MAX_INT))
 
+def _uri_last_part(uri: str) -> str:
+    """
+    Return the terminal component of a URI, i.e. the substring after the
+    last '/' or '#'.  If neither separator is present, return the original
+    string.
+    """
+    if not uri:
+        return uri
+    # Find the last separator.
+    sep_index = max(uri.rfind("/"), uri.rfind("#"))
+    return uri[sep_index + 1 :] if sep_index != -1 else uri
+
 def build_mapping(input_path: str, buffer_bytes: int) -> dict:
     """
     Stream‑read *input_path* using *buffer_bytes* and return a dict:
-    {subject_uri: [label@lang, …]}.
+    {uri_last_part: [label@lang, …]}.
     """
     mapping = defaultdict(list)
 
@@ -93,7 +105,9 @@ def build_mapping(input_path: str, buffer_bytes: int) -> dict:
                 continue
             subj, label = _parse_line(line)
             if subj and label:
-                mapping[subj].append(label)
+                # Use only the last part of the URI as the dictionary key.
+                key = _uri_last_part(subj)
+                mapping[key].append(label)
 
     return dict(mapping)  # cast to plain dict for serialization
 
