@@ -8,8 +8,9 @@ shift 2
 
 if [ "${ENV_PRELOADED:-}" != "true" ]; then
     # Determine the directory of the current script
-    CUR_SCRIPT_PATH=$(realpath "$0")
-    CUR_SCRIPT_DIR=$(dirname "$CUR_SCRIPT_PATH") # This will get overridden at our next source call
+    # CUR_SCRIPT_PATH=$(realpath "$0")
+    # CUR_SCRIPT_DIR=$(dirname "$CUR_SCRIPT_PATH") # This will get overridden at our next source call
+    CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # This will get overriden at our next source call
 
     # Loading environment variables (also loads slurm specific config if needed)
     source "$CUR_SCRIPT_DIR/setup/env.sh"
