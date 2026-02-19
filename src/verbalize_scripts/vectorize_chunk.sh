@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
+## Needs around 60 gigabytes of memory, 1 gpu, 4 cpus and 10 hours
 ## Sample usage: bash src/verbalize_scripts/vectorize_chunk.sh data_dir/verbalization/2000_chunks/dataset_chunk_0107.txt data_dir/verbalization/2000_chunks/
 
 # Default mode (run) – can be overridden with --debug

@@ -15,12 +15,16 @@ def vectorize_chunk_file(input_path: str, output_dir: str, batch_size: int = 32)
     base_name = os.path.basename(input_path)
     out_path = os.path.join(output_dir, f"{base_name}.embeddings")
 
+    with open(input_path, "r", encoding="utf-8") as f:
+        total_lines = sum(1 for _ in f)
+
     with open(input_path, "r", encoding="utf-8") as inp, \
          open(out_path, "w", encoding="utf-8") as out:
         batch = []
         line_refs = []  # retain original lines for matching results
 
-        for line in inp:
+        # Wrap the line iterator with tqdm, using the pre‑computed total
+        for line in tqdm(inp, total=total_lines, desc="Vectorizing", unit="line"):
             line = line.rstrip("\n")
             if not line:
                 # Preserve empty lines with an empty embedding
@@ -80,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=1024,
+        default=51200,
         help="Number of lines to process per embedding request (default: 32)."
     )
 
