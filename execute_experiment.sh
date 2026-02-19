@@ -108,13 +108,13 @@ fi
 # Choose a free port if none supplied
 if [[ -z "$PORT" ]]; then
   for i in {1..10}; do
-    PORT=$(shuf -i 9200-9300 -n 1)
+    PORT=$(shuf -i 10000-11000 -n 1)
     if ! ss -ltnp | grep -q ":$PORT "; then
       break
     fi
     PORT=""
   done
-  : ${PORT:?"Failed to find a free port in 9200‑9300"}
+  : ${PORT:?"Failed to find a free port in 10000-11000"}
 fi
 
 export GPU_DEVICE
