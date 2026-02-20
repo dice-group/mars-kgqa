@@ -7,9 +7,11 @@ import codecs
 from tqdm import tqdm
 
 ## Sample usage:  bash pylauncher.sh normal src.verbalize_scripts.label_map_gen data_dir/verbalization/rdf_labels.nt -o data_dir/verbalization/label_map.pkl -b 80
-## Slurm: sbatch -N 1 -n 1 -c 4 -t 05:00:00 -o data_dir/verbalization/logs/%j_label_map_gen.log  --partition normal --mem 200G 
+## Slurm: sbatch -N 1 -n 1 -c 4 -t 01:00:00 -o data_dir/verbalization/logs/%j_label_map_gen.log  --partition normal --mem 200G 
 
 # Last run 18.02.2026: 0:25:34 : Building mapping: 100%|██████████| 510188728/510188728 [20:52<00:00, 407366.10it/s] 
+
+LANG_FILTER = {'en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk', 'zh'}
 
 def _decode_escaped(label: str) -> str:
     """
@@ -59,6 +61,8 @@ def _parse_line(line: str):
         remainder = obj[end_quote + 1 :].strip()
         if remainder.startswith("@"):
             lang = remainder[1:].split()[0]  # take up to next whitespace
+            if lang not in LANG_FILTER:
+                return None, None
             label = f"{label}@{lang}"
         # (If a datatype (^^) appears we ignore it; only language is kept.)
     else:
