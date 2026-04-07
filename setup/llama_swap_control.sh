@@ -80,7 +80,7 @@ else
     -v "$LLAMA_CACHE":/models \
     -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
     --env LLAMA_CACHE=/models \
-    --restart on-failure \
+    --restart always \
     --name "$CONTAINER_NAME" \
     ghcr.io/mostlygeek/llama-swap:cuda
 fi

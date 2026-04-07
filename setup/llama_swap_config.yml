@@ -23,20 +23,6 @@ models:
       --ubatch-size 8192
       --n-gpu-layers 99
     ttl: 300
-  gemma-3-27b-it:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/gemma-3-27b-it-GGUF:Q8_0
-      --jinja
-      --ctx-size 131072
-      --n-predict 131072
-      --n-gpu-layers 99
-      --flash-attn on
-      --temp 1.0
-      --top-k 64
-      --top-p 0.95
-      --min-p 0.01
-    ttl: 300
   gpt-oss-120b:
     cmd: |
       ${server_base}
@@ -52,132 +38,48 @@ models:
       --min-p 0.0
     # Note: Flash Attention not supported yet, causes segfault
     ttl: 300
-  glm-4.5-air:
+  qwen3.5-122B-a10b:
     cmd: |
       ${server_base}
-      --hf-repo unsloth/GLM-4.5-Air-GGUF:Q4_0
+      --hf-repo unsloth/Qwen3.5-122B-A10B-GGUF:MXFP4_MOE
       --jinja
-      --ctx-size 32768
+      --ctx-size 65536
       --n-predict 32768
       --n-gpu-layers 99
       --flash-attn on
-      --temp 0.7
-      --top-k 64
-      --top-p 0.95
-      --min-p 0.01
-    ttl: 300
-  qwen3-32b:
-    cmd: |
-      ${server_base}
-      --model /models/Qwen3-32B-Q8_0.gguf
-      --jinja
-      --ctx-size 131072
-      --n-predict 131072
-      --n-gpu-layers 99
-      --flash-attn on
       --temp 0.6
       --top-k 20
       --top-p 0.95
-      --min-p 0.00
-    ttl: 300
-  mistral-small-3.2-24b:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q8_0
-      --jinja
-      --ctx-size 131072
-      --n-predict 131072
-      --n-gpu-layers 99
-      --flash-attn on
-      --temp 0.15
-      --top-k -1
-      --top-p 1.00
+      --presence-penalty 0.0
+      --repetition_penalty 1.0
       --min-p 0.0
     ttl: 300
-  # https://docs.unsloth.ai/basics/qwen3-coder-how-to-run-locally#recommended-settings
-  qwen3-coder-30b-a3b:
+  nemotron-3-super-120B-a12b:
     cmd: |
       ${server_base}
-      --hf-repo unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
-      --jinja
-      --ctx-size 131072
-      --n-predict 131072
-      --n-gpu-layers 99
-      --flash-attn on
-      --temp 0.7
-      --top-k 20
-      --top-p 0.8
-      --min-p 0.0
-    ttl: 300
-  deepseek-r1-0528-qwen3-8b:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF
-      --jinja
-      --ctx-size 16384
-      --n-predict 16384
-      --n-gpu-layers 99
-      --flash-attn on
-      --temp 0.6
-      --top-p 0.95
-      --min-p 0.01
-    ttl: 300
-  llama-3_3-nemotron-super-49b-v1_5:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/Llama-3_3-Nemotron-Super-49B-v1_5-GGUF:Q4_0
+      --hf-repo unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF:UD-IQ4_NL
       --jinja
       --ctx-size 65536
-      --n-predict 65536
+      --n-predict 32768
       --n-gpu-layers 99
       --flash-attn on
       --temp 0.6
       --top-p 0.95
-      --min-p 0.00
     ttl: 300
-  llama-4-scout-17b-16e-instruct:
+  gemma-4-31b:
     cmd: |
       ${server_base}
-      --hf-repo unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_XL
+      --hf-repo unsloth/gemma-4-31B-it-GGUF:UD-Q8_K_XL
       --jinja
-      --ctx-size 131072
-      --n-predict 131072
+      --ctx-size 262144
+      --n-predict 32768
       --n-gpu-layers 99
       --flash-attn on
-      --temp 0.6
-      --top-p 0.9
-      --min-p 0.01
-    ttl: 300
-  magistral-small-2509:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/Magistral-Small-2509-GGUF:Q8_0
-      --jinja
-      --ctx-size 40960
-      --n-predict 40960
-      --n-gpu-layers 99
-      --flash-attn on
-      --prio 2
-      --temp 0.7
-      --repeat-penalty 1.0
-      --min-p 0.01
-      --top-k -1
+      --temp 1.0
       --top-p 0.95
+      --top_k 64
     ttl: 300
-  granite-4.0-h-small:
-    cmd: |
-      ${server_base}
-      --hf-repo unsloth/granite-4.0-h-small-GGUF:UD-Q8_K_XL
-      --jinja
-      --ctx-size 131072
-      --n-predict 131072
-      --n-gpu-layers 99
-      --seed 3407
-      --prio 2
-      --temp 0.0
-      --top-k 0
-      --top-p 1.0
-    ttl: 300
+  
 groups:
   nomic-embed-text-v2-moe:
     persistent: true
