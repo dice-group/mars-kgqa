@@ -22,6 +22,7 @@ Requirements:
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -104,6 +105,11 @@ PS_P13046_B   = b"<http://www.wikidata.org/prop/statement/P13046>"
 RANK_PRED_B   = b"<http://wikiba.se/ontology#rank>"
 DEPRECATED_B  = b"<http://wikiba.se/ontology#DeprecatedRank>"
 
+# ── Regex to match Q, P, and L entity IDs ──
+# Matches the entity ID portion after the Wikidata entity prefix.
+# Handles direct entity URIs and statement URIs.
+_ENTITY_ID_RE = re.compile(rb"^([QPL]\d+)")
+
 
 def load_config(yaml_path: str) -> tuple[set[str], bool]:
     """
@@ -146,29 +152,42 @@ def build_uri_set(qids: set[str]) -> set[bytes]:
 
 
 def owning_entity_bytes(line: bytes) -> bytes | None:
+    """
+    Extract the owning entity ID (Q/P/L) from a subject URI.
+
+    Handles:
+      <http://www.wikidata.org/entity/Q123>          → Q123
+      <http://www.wikidata.org/entity/statement/Q123-...> → Q123
+      <http://www.wikidata.org/entity/P31>            → P31
+      <http://www.wikidata.org/entity/L123>           → L123
+
+    Returns None for non-entity subjects (values, references, ontology, etc).
+    """
     if not line.startswith(WD_ENTITY_PREFIX):
         return None
     rest = line[len(WD_ENTITY_PREFIX):]
+    # Strip the statement/ prefix to get to the entity ID
     if rest.startswith(b"statement/"):
         rest = rest[10:]
-    end = 0
-    while end < len(rest) and rest[end:end + 1] not in (b">", b"-", b"/", b" "):
-        end += 1
-    qid = rest[:end]
-    if qid.startswith(b"Q") and qid[1:].isdigit():
-        return qid
-    return None
+    m = _ENTITY_ID_RE.match(rest)
+    return m.group(1) if m else None
 
 
 def make_classifier(scholarly_uris: set[bytes], use_p13046: bool):
     """Return an is_scholarly(triples) function closed over the config."""
 
     def is_scholarly_fast(triples: list[bytes]) -> bool:
+        # Pass 1: collect deprecated statement subjects using field-based parsing
         deprecated: set[bytes] = set()
         for line in triples:
-            if RANK_PRED_B in line and DEPRECATED_B in line:
-                deprecated.add(line.split(None, 1)[0])
+            parts = line.split(None, 2)
+            if len(parts) < 3:
+                continue
+            s, p, rest = parts
+            if p == RANK_PRED_B and rest.rstrip().rstrip(b".").strip() == DEPRECATED_B:
+                deprecated.add(s)
 
+        # Pass 2: check classification predicates
         for line in triples:
             parts = line.split(None, 2)
             if len(parts) < 3:
@@ -260,7 +279,7 @@ def process_chunk(chunk_path: str, outdir: str, is_scholarly):
 
     current_entity: bytes | None = None
     buffer: list[bytes] = []
-    stats = {"main": 0, "scholarly": 0, "triples": 0}
+    stats = {"main": 0, "scholarly": 0, "triples": 0, "shared": 0}
 
     # ── Progress bar ──
     est_total = estimate_chunk_size(chunk_path)
@@ -299,9 +318,17 @@ def process_chunk(chunk_path: str, outdir: str, is_scholarly):
             continue
 
         entity = owning_entity_bytes(stripped)
+
         if entity is None:
+            # Non-entity triples (values, references, ontology, etc.)
+            # must go to BOTH outputs — they are shared infrastructure
+            # that both subgraphs need.  This matches the official Spark
+            # job which explicitly joins value/reference triples into
+            # every partition.
             main_out.write(raw_line)
+            sch_out.write(raw_line)
             stats["triples"] += 1
+            stats["shared"] += 1
             continue
 
         if entity != current_entity:
@@ -339,7 +366,8 @@ def process_chunk(chunk_path: str, outdir: str, is_scholarly):
     print(
         f"Chunk {idx}: {stats['triples']:,} triples, "
         f"{stats['main']:,} main entities, "
-        f"{stats['scholarly']:,} scholarly entities",
+        f"{stats['scholarly']:,} scholarly entities, "
+        f"{stats['shared']:,} shared triples (duplicated to both)",
         file=sys.stderr,
     )
 

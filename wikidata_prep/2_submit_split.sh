@@ -14,6 +14,13 @@
 #============================================================================
 set -euo pipefail
 
+CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" 
+
+# Loading environment variables
+source "$CUR_SCRIPT_DIR/../setup/env.sh"
+# Environment must be loaded in the calling script
+source $PROJ_VENV_DIR/bin/activate
+
 OUTDIR="${1:?Usage: $0 <output_dir> [config.yaml]}"
 CONFIG="${2:-}"
 
@@ -62,14 +69,12 @@ JOB_ID=$(sbatch --parsable <<SBATCH
 #SBATCH --job-name=wd-split
 #SBATCH --array=0-${MAX_IDX}%50
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=4G
+#SBATCH --mem=12G
 #SBATCH --time=04:00:00
 #SBATCH --output=${LOG_DIR}/split_%a.out
 #SBATCH --error=${LOG_DIR}/split_%a.err
 
 set -euo pipefail
-
-pip install --quiet tqdm pyyaml 2>/dev/null || true
 
 python3 "${SCRIPT_DIR}/wikidata_split_worker.py" \
     --chunk-dir "${CHUNK_DIR}" \

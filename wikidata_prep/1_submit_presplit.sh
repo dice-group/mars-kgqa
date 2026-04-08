@@ -3,24 +3,24 @@
 # 1_submit_presplit.sh — Phase 1: Submit the pre-split as a SLURM job.
 #
 # Usage:
-#   ./1_submit_presplit.sh <input.nt.gz> <output_dir> [num_chunks]
+#   ./1_submit_presplit.sh <input.nt.gz> <output_dir> [chunk_size_gb]
 #
 # Example:
-#   ./1_submit_presplit.sh /data/wikidata/latest-all.nt.gz /scratch/wd_split 200
+#   ./1_submit_presplit.sh /data/wikidata/latest-all.nt.gz /scratch/wd_split 10
 #============================================================================
 set -euo pipefail
 
-CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # This will get overriden at our next source call
+CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" 
 
-# Loading environment variables (also loads slurm specific config if needed)
+# Loading environment variables
 source "$CUR_SCRIPT_DIR/../setup/env.sh"
-
 # Environment must be loaded in the calling script
 source $PROJ_VENV_DIR/bin/activate
 
-INPUT="${1:?Usage: $0 <input.nt.gz> <output_dir> [num_chunks]}"
-OUTDIR="${2:?Usage: $0 <input.nt.gz> <output_dir> [num_chunks]}"
-NUM_CHUNKS="${3:-200}"
+INPUT="${1:?Usage: $0 <input.nt.gz> <output_dir> [chunk_size_gb]}"
+OUTDIR="${2:?Usage: $0 <input.nt.gz> <output_dir> [chunk_size_gb]}"
+# Default to 10GB per chunk if not provided
+CHUNK_SIZE="${3:-10}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CHUNK_DIR="${OUTDIR}/chunks"
@@ -29,9 +29,9 @@ LOG_DIR="${OUTDIR}/logs"
 mkdir -p "$CHUNK_DIR" "$LOG_DIR"
 
 echo "Phase 1: Pre-split"
-echo "  Input:    $INPUT"
-echo "  Chunks:   $NUM_CHUNKS"
-echo "  Chunk dir: $CHUNK_DIR"
+echo "  Input:       $INPUT"
+echo "  Chunk Size:  $CHUNK_SIZE GB"
+echo "  Chunk dir:   $CHUNK_DIR"
 echo ""
 
 JOB_ID=$(sbatch --parsable <<SBATCH
@@ -48,9 +48,11 @@ set -euo pipefail
 pip install --quiet tqdm 2>/dev/null || true
 
 echo "Starting pre-split: \$(date)"
+
+# Changed --chunks to --chunk-size
 python3 "${SCRIPT_DIR}/wikidata_presplit.py" \
     "${INPUT}" \
-    --chunks ${NUM_CHUNKS} \
+    --chunk-size ${CHUNK_SIZE} \
     --outdir "${CHUNK_DIR}"
 
 echo "Pre-split finished: \$(date)"
