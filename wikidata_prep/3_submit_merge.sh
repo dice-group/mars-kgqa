@@ -41,9 +41,9 @@ echo ""
 JOB_ID=$(sbatch --parsable <<SBATCH
 #!/bin/bash
 #SBATCH --job-name=wd-merge
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=8G
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=${LOG_DIR}/merge.out
 #SBATCH --error=${LOG_DIR}/merge.err
 

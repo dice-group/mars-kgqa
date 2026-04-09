@@ -320,15 +320,15 @@ def process_chunk(chunk_path: str, outdir: str, is_scholarly):
         entity = owning_entity_bytes(stripped)
 
         if entity is None:
-            # Non-entity triples (values, references, ontology, etc.)
-            # must go to BOTH outputs — they are shared infrastructure
-            # that both subgraphs need.  This matches the official Spark
-            # job which explicitly joins value/reference triples into
-            # every partition.
-            main_out.write(raw_line)
-            sch_out.write(raw_line)
-            stats["triples"] += 1
-            stats["shared"] += 1
+            if current_entity is not None:
+                # Still part of the current entity (sitelinks, EntityData metadata)
+                buffer.append(raw_line)
+            else:
+                # Preamble before any entity (ontology/dump header) — shared
+                main_out.write(raw_line)
+                sch_out.write(raw_line)
+                stats["triples"] += 1
+                stats["shared"] += 1
             continue
 
         if entity != current_entity:
