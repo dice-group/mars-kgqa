@@ -2,6 +2,7 @@
 import io
 import json
 import logging
+import re
 import time
 import urllib.parse
 from pathlib import Path
@@ -107,20 +108,43 @@ class Gerbil:
             logger.error("Failed to submit experiment: %s", err)
             return None
 
-    def export_results(self, output_file: str, max_retry: int = 10) -> None:
+    def export_results(self, output_dir: str, max_retry: int = 10) -> None:
         """
-        Download the HTML results page, clean it and write a CSV.
+        Download the HTML results page, extract the JSON-LD object,
+        parse it into a DataFrame and write a CSV named after the
+        experiment ID.
+
         If the experiment is still running after ``max_retry`` attempts,
         a placeholder CSV containing only the experiment ID is written.
         """
         html = self._poll_experiment_results(max_retry)
         if html:
-            df = self._parse_results_html(html)
-            Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-            df.to_csv(output_file, index=False)
-            logger.info("Experiment results saved to %s", output_file)
+            jsonld = self._extract_jsonld(html)
+            if jsonld is not None:
+                out_dir = Path(output_dir)
+                out_dir.mkdir(parents=True, exist_ok=True)
+
+                # Save raw JSON-LD
+                jsonld_path = out_dir / f"{self.experiment_id}.jsonld"
+                with open(jsonld_path, "w", encoding="utf-8") as f:
+                    json.dump(jsonld, f, indent=2, ensure_ascii=False)
+                logger.info("JSON-LD saved to %s", jsonld_path)
+
+                # Save CSV
+                df = self._parse_jsonld_results(jsonld)
+                csv_path = out_dir / f"{self.experiment_id}.csv"
+                df.to_csv(csv_path, index=False)
+                logger.info("Experiment results saved to %s", csv_path)
+            else:
+                logger.warning("No JSON-LD found in experiment page; falling back to HTML table parsing.")
+                df = self._parse_results_html(html)
+                output_path = Path(output_dir) / f"{self.experiment_id}.csv"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                df.to_csv(output_path, index=False)
+                logger.info("Experiment results saved to %s", output_path)
         else:
-            export_csv(output_file, [["gerbil experiment id"], [self.experiment_id]])
+            output_path = Path(output_dir) / f"{self.experiment_id}.csv"
+            export_csv(str(output_path), [["gerbil experiment id"], [self.experiment_id]])
             logger.warning("Could not retrieve results; placeholder CSV written.")
 
     # ------------------------------------------------------------------- #
@@ -222,8 +246,132 @@ class Gerbil:
         return "The experiment is still running." in content
 
     @staticmethod
+    def _extract_jsonld(html: str) -> Optional[dict]:
+        """
+        Extract the JSON-LD object embedded in a
+        ``<script type="application/ld+json">`` tag from the Gerbil
+        experiment results page.
+        """
+        pattern = r'<script\s+type=["\']application/ld\+json["\']\s*>(.*?)</script>'
+        match = re.search(pattern, html, re.DOTALL)
+        if not match:
+            return None
+        raw = match.group(1).strip()
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as err:
+            logger.error("Failed to parse JSON-LD from experiment page: %s", err)
+            return None
+
+    @staticmethod
+    def _parse_jsonld_results(jsonld: dict) -> pd.DataFrame:
+        """
+        Convert a Gerbil JSON-LD object into a tidy DataFrame.
+
+        The ``@graph`` contains:
+        * One ``gerbil:Experiment`` node (experiment metadata).
+        * Several ``qb:Observation`` nodes – the *task-level* results
+          that have ``qb:dataset`` pointing back at the experiment, plus
+          metric values like ``microF1``, ``macroF1``, etc.
+        * Per-question ``qb:Observation`` nodes that additionally carry
+          a ``datasetElement`` key – these are fine-grained and are
+          **excluded** from the summary CSV.
+
+        Annotator / dataset / language IRIs are shortened to their
+        local names for readability.
+        """
+        nodes = jsonld.get("@graph", [jsonld] if isinstance(jsonld, dict) else jsonld)
+
+        # ---- Identify task-level observation nodes ----
+        # Task-level observations have metric keys (e.g. microF1) and
+        # belong to the experiment (qb:dataset) but do NOT have a
+        # ``datasetElement`` key (which marks per-question rows).
+        _metric_keys = {
+            "microF1", "microPrecision", "microRecall",
+            "macroF1", "macroPrecision", "macroRecall",
+            "Macro_F1_QALD",
+        }
+
+        # Helper: extract the local name from an IRI and turn the
+        # ``_(uploaded)`` suffix into `` (uploaded)`` for readability.
+        def _strip_iri(iri: str) -> str:
+            local = iri.rsplit("/", 1)[-1] if "/" in iri else iri
+            return local.replace("_(uploaded)", " (uploaded)")
+
+        rows: list[dict] = []
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            # Skip per-question observations
+            if "datasetElement" in node:
+                continue
+            # Must have at least one metric key to be a result row
+            if not _metric_keys.intersection(node.keys()):
+                continue
+
+            row: dict = {}
+
+            # --- Annotator (strip IRI prefix) ---
+            # NOTE: In the JSON-LD the ``annotator`` IRI points to
+            # the answer/prediction file while ``dataset`` points to
+            # the gold corpus – the reverse of the HTML table.  We
+            # swap them here so the CSV matches the HTML display.
+            ds_iri = node.get("annotator", "")
+            ann_iri = node.get("dataset", "")
+            row["Annotator"] = _strip_iri(ann_iri)
+            row["Dataset"] = _strip_iri(ds_iri)
+
+            # --- Language ---
+            lang = node.get("language", "")
+            row["Language"] = lang.rsplit("/", 1)[-1] if "/" in lang else lang
+
+            # --- Sub-experiment type (from @id suffix like _0 = C2KB) ---
+            node_id = node.get("@id", "")
+            # The main task has no underscore suffix after the task id;
+            # sub-tasks have _0, _1, _2, etc.
+            id_tail = node_id.rsplit("experimentTask_", 1)[-1] if "experimentTask_" in node_id else ""
+            row["Benchmark"] = id_tail if "_" in id_tail else ""
+
+            # --- Metrics ---
+            row["Micro F1"] = node.get("microF1")
+            row["Micro Precision"] = node.get("microPrecision")
+            row["Micro Recall"] = node.get("microRecall")
+            row["Macro F1"] = node.get("macroF1")
+            row["Macro Precision"] = node.get("macroPrecision")
+            row["Macro Recall"] = node.get("macroRecall")
+            row["Macro F1 QALD"] = node.get("Macro_F1_QALD")
+            row["Error Count"] = node.get("errorCount")
+            row["Timestamp"] = node.get("timestamp")
+
+            rows.append(row)
+            break # we only need the first result
+
+        if not rows:
+            logger.warning("No task-level observation nodes found in JSON-LD.")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rows)
+
+        # Convert metric columns to float where possible
+        metric_cols = [
+            "Micro F1", "Micro Precision", "Micro Recall",
+            "Macro F1", "Macro Precision", "Macro Recall",
+            "Macro F1 QALD", "Error Count",
+        ]
+        for col in metric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
+
+    @staticmethod
     def _parse_results_html(html: str) -> pd.DataFrame:
-        """Transform the HTML results table into a clean DataFrame."""
+        """
+        Fallback: transform the HTML results table into a clean
+        DataFrame (legacy behaviour kept for robustness).
+        """
         df = pd.read_html(html)[0].rename(columns={"Unnamed: 3": "Benchmark"})
         # Keep only rows without a benchmark (these are the actual result rows)
         df = df[df["Benchmark"].isna()] if "Benchmark" in df.columns else df
@@ -250,7 +398,7 @@ def create_export_gerbil_experiment(
     system_label: str,
     pred_file_path: str,
     language: str,
-    export_file_path: str,
+    export_dir: str,
     gerbil_exp_info_path: str,
 ) -> None:
     """
@@ -258,7 +406,8 @@ def create_export_gerbil_experiment(
     1. Prepare a Gerbil client,
     2. Submit the experiment,
     3. Record the experiment URL,
-    4. Export the results to CSV.
+    4. Export the results to a CSV named ``<experiment_id>.csv``
+       inside *export_dir*.
     """
     gerbil = Gerbil()
     gerbil.add_ref_file(gold_file_label, gold_file_path)
@@ -271,5 +420,5 @@ def create_export_gerbil_experiment(
         with open(gerbil_exp_info_path, "a", encoding="utf-8") as f:
             f.write(f"{gold_file_label}\t{language}\t{system_label}\t{exp_url}\n")
 
-    create_directory_if_not_exists(export_file_path)
-    gerbil.export_results(export_file_path)
+    create_directory_if_not_exists(export_dir)
+    gerbil.export_results(export_dir)

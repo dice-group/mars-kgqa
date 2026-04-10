@@ -82,5 +82,5 @@ else
     --env LLAMA_CACHE=/models \
     --restart always \
     --name "$CONTAINER_NAME" \
-    ghcr.io/mostlygeek/llama-swap:v197-cuda-b8248
+    ghcr.io/mostlygeek/llama-swap:v197-cuda-b8248 # TODO: Update the llama.cpp version to b8748 when available, to resolve the issue https://github.com/ggml-org/llama.cpp/issues/20650 solved by https://github.com/ggml-org/llama.cpp/pull/21216
 fi
