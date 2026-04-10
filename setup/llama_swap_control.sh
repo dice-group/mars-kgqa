@@ -75,12 +75,12 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
     >"$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
 else
-  docker run --gpus "$GPU_DEVICE" -d -it --runtime nvidia \
+  docker run --gpus all -d -it \
     -p "$HOST_PORT":8080 \
     -v "$LLAMA_CACHE":/models \
     -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
     --env LLAMA_CACHE=/models \
     --restart always \
     --name "$CONTAINER_NAME" \
-    ghcr.io/mostlygeek/llama-swap:cuda
+    ghcr.io/mostlygeek/llama-swap:v197-cuda-b8248
 fi

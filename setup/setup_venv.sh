@@ -14,7 +14,10 @@ source $SETUP_DIR/env.sh
 python -m venv $PROJ_VENV_DIR
 source $PROJ_VENV_DIR/bin/activate
 
-pip install -r $SETUP_DIR/requirements.txt
+export TMPDIR="${SETUP_DIR}/../.tmp"
+mkdir $TMPDIR
+
+pip install --no-cache-dir -r $SETUP_DIR/requirements.txt
 
 ipython kernel install --user --name=$PROJ_VENV_NAME
 
