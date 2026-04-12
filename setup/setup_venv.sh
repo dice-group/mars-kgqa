@@ -15,7 +15,7 @@ python -m venv $PROJ_VENV_DIR
 source $PROJ_VENV_DIR/bin/activate
 
 export TMPDIR="${SETUP_DIR}/../.tmp"
-mkdir $TMPDIR
+mkdir -p $TMPDIR
 
 pip install --no-cache-dir -r $SETUP_DIR/requirements.txt
 
