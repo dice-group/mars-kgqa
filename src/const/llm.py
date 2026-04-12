@@ -39,7 +39,9 @@ class ModelAPIConfig:
         }
     
 
-LLM_ENDPOINT = os.environ.get("LLAMA_SWAP_OPENAI_ENDPOINT")
+LLAMA_SERVER_ENDPOINT = os.environ.get("LLAMA_SERVER_ENDPOINT")
+LLM_ENDPOINT = os.environ.get("LLAMA_SERVER_OPENAI_ENDPOINT")
+
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        
 class ChatModel(Enum):
     # All models are using Q8
@@ -55,6 +57,7 @@ class ChatModel(Enum):
     LLAMA4_SCOUT_17B16E = ModelAPIConfig("llama-4-scout-17b-16e-instruct", LLM_ENDPOINT, os.environ.get("OWUI"), "If a format is given, stick to it strictly and do NOT add any explanation to it. The outputs for provided formats will be machine processed and require strict adherence to match pattern.") # Adding system prompt to stop this model from writing extra explanations
     MAGISTRAL_SMALL_2509 = ModelAPIConfig("magistral-small-2509", LLM_ENDPOINT, os.environ.get("OWUI"), MAGISTRAL_2509_SYS_PROMPT)
     GRANITE_4H_SM = ModelAPIConfig("granite-4.0-h-small", LLM_ENDPOINT, os.environ.get("OWUI"), "If a format is given, stick to it strictly and do NOT add anything outside the format. If there are multiple formats, strictly follow only one, do NOT add multiple formats together.")
+    NEMOTRON3SUPER = ModelAPIConfig("nemotron-3-super-120B-a12b", LLM_ENDPOINT, os.environ.get("OWUI")) # WIP
 
 # Embedding model
 class EmbeddingModel(Enum):

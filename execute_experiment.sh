@@ -119,37 +119,65 @@ fi
 
 export GPU_DEVICE
 
-# Start llama‑swap container (and ensure it stops on script exit)
-bash setup/llama_swap_control.sh start "$PORT"
+# # Start llama‑swap container (and ensure it stops on script exit)
+# bash setup/llama_swap_control.sh start "$PORT"
 
+# # Register a trap to stop the container when the script exits or is interrupted
+# cleanup() {
+#   echo "Cleaning up processes..."
+#   # Prevent the trap from firing again (e.g., when EXIT follows INT)
+#   trap - EXIT INT TERM
+#   bash setup/llama_swap_control.sh stop "$PORT" 2>/dev/null || true
+# }
+# trap cleanup EXIT INT TERM
+
+# # Wait for llama‑swap to become reachable
+# echo "Waiting for llama‑swap to become reachable..."
+# up=0
+# for i in {1..60}; do
+#   if curl -s "http://127.0.0.1:$PORT/v1/models" > /dev/null 2>&1; then
+#     echo "Llama‑swap is up."
+#     up=1
+#     break
+#   fi
+#   sleep 1
+# done
+
+# # If the loop finished without a successful curl, exit with an error
+# if [[ $up -ne 1 ]]; then
+#   echo "Error: Llama‑swap did not start." >&2
+#   exit 1
+# fi
+
+# Start llama‑server container (and ensure it stops on script exit)
+bash setup/llama_server_control.sh start "$PORT"
 # Register a trap to stop the container when the script exits or is interrupted
 cleanup() {
   echo "Cleaning up processes..."
   # Prevent the trap from firing again (e.g., when EXIT follows INT)
   trap - EXIT INT TERM
-  bash setup/llama_swap_control.sh stop "$PORT" 2>/dev/null || true
+  bash setup/llama_server_control.sh stop "$PORT" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
-
-# Wait for llama‑swap to become reachable
-echo "Waiting for llama‑swap to become reachable..."
+# Wait for llama‑server to become reachable
+echo "Waiting for llama‑server to become reachable..."
 up=0
 for i in {1..60}; do
   if curl -s "http://127.0.0.1:$PORT/v1/models" > /dev/null 2>&1; then
-    echo "Llama‑swap is up."
+    echo "Llama‑server is up."
     up=1
     break
   fi
   sleep 1
 done
-
 # If the loop finished without a successful curl, exit with an error
 if [[ $up -ne 1 ]]; then
-  echo "Error: Llama‑swap did not start." >&2
+  echo "Error: Llama‑server did not start." >&2
   exit 1
 fi
 
-export LLAMA_SWAP_OPENAI_ENDPOINT="http://127.0.0.1:${PORT}/v1"
+export LLAMA_SERVER_ENDPOINT="http://127.0.0.1:${PORT}"
+export LLAMA_SERVER_OPENAI_ENDPOINT="${LLAMA_SERVER_ENDPOINT}/v1"
 export OWUI=""
 
 # Build the argument list for run.py

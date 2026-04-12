@@ -2,10 +2,10 @@
 set -eu
 
 ## Sample usage:
-# To start on default port:   bash setup/llama_swap_control.sh start
-# To start on custom port:    bash setup/llama_swap_control.sh start 9393
-# To stop a specific port:    bash setup/llama_swap_control.sh stop 9393
-# To restart a specific port: bash setup/llama_swap_control.sh restart 9393
+# To start on default port:   bash setup/llama_server_control.sh start
+# To start on custom port:    bash setup/llama_server_control.sh start 9393
+# To stop a specific port:    bash setup/llama_server_control.sh stop 9393
+# To restart a specific port: bash setup/llama_server_control.sh restart 9393
 
 CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -18,7 +18,7 @@ ACTION="${1:-start}"
 # $2 = host port; defaults to $DEFAULT_PORT
 HOST_PORT="${2:-$DEFAULT_PORT}"
 # Container/instance name is derived from the port so each instance is unique
-CONTAINER_NAME="llama-swap-$HOST_PORT"
+CONTAINER_NAME="llama-server-$HOST_PORT"
 
 # GPU device selection
 # Use GPU_DEVICE env‑var if set; otherwise default to "all"
@@ -34,12 +34,14 @@ fi
 
 # TODO: Improve the hacky solution for apptainer deployment
 # Define where we keep the background PID for each port
-LOG_DIR="data_dir/llama-swap-logs"
+LOG_DIR="data_dir/llama-server-logs"
+
+mkdir -p $LOG_DIR
 
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 
-PID_FILE="${LOG_DIR}/llama-swap-${HOST_PORT}.pid"
-LOG_FILE="${LOG_DIR}/llama-swap-${HOST_PORT}-${TIMESTAMP}.log"
+PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}.pid"
+LOG_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.log"
 
 # Stop logic – handles both Docker and Apptainer
 if [[ "$ACTION" == "stop" ]]; then
@@ -67,20 +69,22 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
   nohup apptainer run --nv \
     --env LD_LIBRARY_PATH='"$LD_LIBRARY_PATH:/app"' \
     -B "$LLAMA_CACHE":/models \
-    -B "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
+    -B "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
     --env LLAMA_CACHE=/models \
     --env LD_LIBRARY_PATH=/app/ \
-    llama-swap_cuda.sif \
+    llama-server_cuda.sif \
     --listen localhost:$HOST_PORT \
+    --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 \
     >"$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
 else
-  docker run --gpus all -d -it \
+  docker run --gpus all -d -it --rm \
     -p "$HOST_PORT":8080 \
     -v "$LLAMA_CACHE":/models \
-    -v "$CUR_SCRIPT_DIR/llama_swap_config.yml":/app/config.yaml \
+    -v "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
     --env LLAMA_CACHE=/models \
-    --restart always \
+    --env LLAMA_SET_ROWS=1 \
     --name "$CONTAINER_NAME" \
-    ghcr.io/mostlygeek/llama-swap:v199-cuda-b8667 # TODO: Update the llama.cpp version to b8748 when available, to resolve the issue https://github.com/ggml-org/llama.cpp/issues/20650 solved by https://github.com/ggml-org/llama.cpp/pull/21216
+    ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763 \
+    --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1
 fi
