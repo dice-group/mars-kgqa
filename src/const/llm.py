@@ -38,8 +38,6 @@ class ModelAPIConfig:
             'postfix': self.postfix
         }
     
-
-LLAMA_SERVER_ENDPOINT = os.environ.get("LLAMA_SERVER_ENDPOINT")
 LLM_ENDPOINT = os.environ.get("LLAMA_SERVER_OPENAI_ENDPOINT")
 
 # Chat models enum to keep a single (iterable) collection and prevent reassignment        

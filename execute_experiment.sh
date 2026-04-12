@@ -19,6 +19,9 @@ export ENV_PRELOADED=true
 # Assign system name
 export RUN_SYS_NAME="${CLUSTER_NAME:-$(hostname)}"
 
+# Maximum context size for the models
+export LLAMA_CTX=32768
+
 # Helper: print usage
 usage() {
   cat <<EOF
@@ -148,7 +151,7 @@ export GPU_DEVICE
 #   echo "Error: Llama‑swap did not start." >&2
 #   exit 1
 # fi
-
+LLAMA_CONTAINER_NAME="llama-server-$PORT"
 # Start llama‑server container (and ensure it stops on script exit)
 bash setup/llama_server_control.sh start "$PORT"
 # Register a trap to stop the container when the script exits or is interrupted
@@ -157,6 +160,7 @@ cleanup() {
   # Prevent the trap from firing again (e.g., when EXIT follows INT)
   trap - EXIT INT TERM
   bash setup/llama_server_control.sh stop "$PORT" 2>/dev/null || true
+  docker rm -f $LLAMA_CONTAINER_NAME
 }
 trap cleanup EXIT INT TERM
 # Wait for llama‑server to become reachable

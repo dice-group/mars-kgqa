@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from transformers import AutoTokenizer
+import os
 
 # QALD10_WIKIDATA_EP = "https://skynet.coypu.org/wikidata/" # Dump: https://zenodo.org/records/7496690
 QALD10_WIKIDATA_EP = "https://wikidata-qald10.data.dice-research.org/sparql" # Dump: https://zenodo.org/records/7496690 # virtuoso @ dice
@@ -88,3 +89,6 @@ class EntityAnnotator(Enum):
     T5AUG_ERL = 't5_aug'
 
 NOMIC_V2_TOKENIZER = AutoTokenizer.from_pretrained("nomic-ai/nomic-embed-text-v2-moe")
+
+LLAMA_SERVER_ENDPOINT = os.environ.get("LLAMA_SERVER_ENDPOINT")
+LLAMA_MAX_CTX = int(os.environ.get("LLAMA_CTX"))

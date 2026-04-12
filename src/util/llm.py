@@ -2,42 +2,83 @@ from openai import OpenAI
 import requests
 import re
 import copy
+import time
+import json
+from src.const.misc import LLAMA_SERVER_ENDPOINT, LLAMA_MAX_CTX
 
 def get_opai_client(endpoint=None, api_key=None):
     opai_client = OpenAI(base_url=endpoint, api_key=api_key)
     return opai_client
 
 # Function to send batches to OpenAI API
-def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=None):
+def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=None, max_retries=3):
     message_list = []
     if sys_prompt:
         message_list.append({"role": "system", "content": sys_prompt})
     message_list.append({"role": "user", "content": f'{user_prompt} {postfix}' if postfix else user_prompt})
-    try:
-        # Call the OpenAI API
-        completion = client_instance.chat.completions.create(
-            model=model_id,
-            messages=message_list,
-            extra_body={
-                "seed":42,
-                "cache_prompt":False
-            }
-        )
-    except Exception as e:
-        # Write the prompt to a temporary file if an exception occurs
-        print('Failed for message: {message_list}')
-        raise e
-    # Extract the analysis from theresponse
     
+    # check tokens
+    message_str = " ".join([str(item) for item in message_list])
+    tokens = tokenize_content(message_str, model_id, LLAMA_SERVER_ENDPOINT)
+    total_len = len(tokens)
+    print(f'Total tokens in the message: {total_len}')
+    
+    if total_len > LLAMA_MAX_CTX:
+        print(f'Context size exceeded for message: {message_list}')
+        print('Returning empty values!')
+        return " ", " "
+
+    last_exception = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Call the OpenAI API
+            completion = client_instance.chat.completions.create(
+                model=model_id,
+                messages=message_list,
+                extra_body={
+                    "seed": 42,
+                    "cache_prompt": False
+                }
+            )
+            break  # Success — exit the retry loop
+        except Exception as e:
+            last_exception = e
+            print(f'Attempt {attempt}/{max_retries} failed for message: {message_list}')
+            if attempt < max_retries:
+                wait = 2 ** attempt  # Exponential backoff: 2s, 4s, 8s...
+                print(f'Retrying in {wait}s...')
+                time.sleep(wait)
+            else:
+                print('All retries exhausted.')
+                raise last_exception
+
+    # Extract the analysis from the response
     model_msg = completion.choices[0].message
-    
     model_res_text = model_msg.content
-    
+
     # Extract reasoning or thinking context separately
     reasoning_content = model_msg.model_extra.get('reasoning_content')
     if not reasoning_content:
         model_res_text, reasoning_content = remove_think_context(model_res_text)
     return model_res_text, reasoning_content
+
+def tokenize_content(content, model_id, llama_server_ep):
+    
+    payload = json.dumps({
+        "content": content,
+        "model": model_id
+    })
+    
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.post(llama_server_ep + '/tokenize', headers=headers, data=payload)
+    # Raise an exception for 4xx or 5xx status codes
+    response.raise_for_status() 
+    
+    data = response.json()
+    return data.get("tokens")
 
 # TODO: Try to find a better way to truncate automatically
 def _preprocess_input(input_texts, tokenizer, limit):
