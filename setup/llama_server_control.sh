@@ -37,17 +37,20 @@ if [[ "$ACTION" == "restart" ]]; then
 fi
 
 # Define where we keep logs for each port
-LOG_DIR="data_dir/llama-server-logs"
+JOB_ID=${SLURM_JOB_ID:-}
+LOG_DIR="data_dir/llama-server-logs/${JOB_ID}"
 mkdir -p "$LOG_DIR"
 
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.pid"
 LOG_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.log"
+SENTINEL_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.stop"
 
 # Stop logic
 if [[ "$ACTION" == "stop" ]]; then
   echo "Stopping $LLAMA_CONTAINER_NAME ..."
   if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+    touch "$SENTINEL_FILE"   # Signal to the retry loop: don't restart
     apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
     echo "Apptainer instance stopped."
   else
@@ -56,11 +59,14 @@ if [[ "$ACTION" == "stop" ]]; then
   exit 0
 fi
 
+## Important Note: We are running the containers in way that they will be restarted if they were forced to exit from our python script. We do this because llama-server has an issue where it repeatedly throws Internal Server Error for certain inputs (we don't know why) and then any request to that LLM will fail afterwards. However, it does not shutdown the container on its own, so we have to do it manually and then restart it.
+
 # Start logic
 echo "Starting $LLAMA_CONTAINER_NAME on host port $HOST_PORT ..."
+rm -f "$SENTINEL_FILE"
 
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
-  # NOTE: Build the apptainer SIF from OCI beforehand.
+  # NOTE: Build the apptainer SIF from OCI beforehand: "apptainer build llama-cpp-server.sif docker://ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763"
   # Use `apptainer instance run` so the container's runscript (entrypoint) is
   # executed, not the startscript. Arguments after the instance name are
   # forwarded to the runscript.
@@ -75,26 +81,28 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
         --env LLAMA_SET_ROWS=1 \
         llama-cpp-server-cuda12-b8763.sif \
         "$LLAMA_CONTAINER_NAME" \
-        --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE"
+        --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --verbose
 
-      # Poll until the instance disappears (i.e. it has exited)
+      # Poll until the instance disappears
       while apptainer instance list | grep -q "$LLAMA_CONTAINER_NAME"; do
         sleep 5
       done
 
-      exit_code=$?
-      [ "$exit_code" -eq 0 ] && break
+      apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
+
+      if [ -f "$SENTINEL_FILE" ]; then
+        echo "[$(date)] Sentinel found — intentional stop, not restarting." | tee -a "$LOG_FILE"
+        rm -f "$SENTINEL_FILE"
+        exit 0
+      fi
 
       attempt=$(( attempt + 1 ))
-      echo "[$(date)] Instance exited with code $exit_code. Retry $attempt/$MAX_RETRIES..." | tee -a "$LOG_FILE"
-      apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
+      echo "[$(date)] Instance exited unexpectedly. Retry $attempt/$MAX_RETRIES..." | tee -a "$LOG_FILE"
       sleep 2
     done
 
-    if [ "$attempt" -ge "$MAX_RETRIES" ]; then
-      echo "[$(date)] All $MAX_RETRIES retries exhausted. Giving up." | tee -a "$LOG_FILE"
-      exit 1
-    fi
+    echo "[$(date)] All $MAX_RETRIES retries exhausted. Giving up." | tee -a "$LOG_FILE"
+    exit 1
   ) >> "$LOG_FILE" 2>&1 &
 
   echo $! > "$PID_FILE"
