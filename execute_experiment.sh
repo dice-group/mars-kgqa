@@ -160,7 +160,9 @@ cleanup() {
   # Prevent the trap from firing again (e.g., when EXIT follows INT)
   trap - EXIT INT TERM
   bash setup/llama_server_control.sh stop "$PORT" 2>/dev/null || true
-  docker rm -f $LLAMA_CONTAINER_NAME
+  if [[ "${SLURM_ACTIVE:-false}" == "false" ]]; then
+    docker rm -f $LLAMA_CONTAINER_NAME
+  fi
 }
 trap cleanup EXIT INT TERM
 # Wait for llama‑server to become reachable
