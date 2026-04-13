@@ -151,7 +151,7 @@ export GPU_DEVICE
 #   echo "Error: Llama‑swap did not start." >&2
 #   exit 1
 # fi
-LLAMA_CONTAINER_NAME="llama-server-$PORT"
+export LLAMA_CONTAINER_NAME="llama-server-$PORT"
 # Start llama‑server container (and ensure it stops on script exit)
 bash setup/llama_server_control.sh start "$PORT"
 # Register a trap to stop the container when the script exits or is interrupted

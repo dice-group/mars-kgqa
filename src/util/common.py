@@ -5,6 +5,7 @@ from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIME
 import csv
 import time
 import re
+import subprocess
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -120,3 +121,18 @@ def sparql_one_line(query):
 
     # 3: collapse any remaining multiple spaces/tabs into one space
     return re.sub(r"\s+", " ", single)
+
+def kill_container(container_name: str, signal: str = "SIGKILL", use_apptainer: bool = False) -> int:
+    if use_apptainer:
+        cmd = ["apptainer", "instance", "stop", "--signal", signal, container_name]
+    else:
+        cmd = ["docker", "kill", "--signal", signal, container_name]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to kill container '{container_name}': {result.stderr.strip()}")
+
+    runtime = "Apptainer instance" if use_apptainer else "Docker container"
+    print(f"{runtime} '{container_name}' killed with {signal}.")
+    return result.returncode

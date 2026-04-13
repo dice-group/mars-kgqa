@@ -14,7 +14,7 @@ from src.util.qald_io import convert_basic_output, clean_qald_gerbil_json, _get_
 from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compiled_analysis
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
 
-from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP
+from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP, RUN_STATS
 import time
 import os
 
@@ -207,6 +207,8 @@ def main() -> None:
     args.filter_entities, args.topn_count, args.mhop_limit, args.include_pattern_count, args.refine_sparql, ent_annot, args.use_aug_similarity, q_lang, kgqa_ds.use_sleep, args.conc_ex_limit, args.use_class_info, args.verify_update_sparql)
     
     print(f"[TIME] Prediction on dataset took {time.time() - start:.2f}s")
+    
+    print(f"[STATS] Run statistics: {RUN_STATS}")
     
     cur_start = time.time()
     

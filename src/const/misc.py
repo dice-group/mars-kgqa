@@ -92,3 +92,7 @@ NOMIC_V2_TOKENIZER = AutoTokenizer.from_pretrained("nomic-ai/nomic-embed-text-v2
 
 LLAMA_SERVER_ENDPOINT = os.environ.get("LLAMA_SERVER_ENDPOINT")
 LLAMA_MAX_CTX = int(os.environ.get("LLAMA_CTX"))
+LLAMA_CONTAINER_NAME = os.environ.get("LLAMA_CONTAINER_NAME")
+SLURM_ACTIVE = bool(os.environ.get("SLURM_ACTIVE"))
+
+RUN_STATS = {'failure_count': 0}

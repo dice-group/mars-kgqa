@@ -27,7 +27,7 @@ LLAMA_ARG_CTX_SIZE="${LLAMA_CTX:-49152}"
 GPU_DEVICE="${GPU_DEVICE:-all}"
 
 # Max restart attempts on failure
-MAX_RETRIES="${MAX_RETRIES:-3}"
+MAX_RETRIES="${MAX_RETRIES:-50}"
 
 # Restart logic
 if [[ "$ACTION" == "restart" ]]; then
@@ -45,7 +45,7 @@ mkdir -p $LOG_DIR
 
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 
-PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}.pid"
+PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.pid"
 LOG_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.log"
 
 # Stop logic – handles both Docker and Apptainer
@@ -53,9 +53,9 @@ if [[ "$ACTION" == "stop" ]]; then
   echo "Stopping $LLAMA_CONTAINER_NAME ..."
   if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
     # Apptainer: kill the background process started with `run`
-    if [[ -f "$PID_FILE" ]]; then
-      kill -TERM "$(cat "$PID_FILE")" && rm -f "$PID_FILE"
-      echo "Apptainer process stopped."
+    if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+      apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
+      echo "Apptainer instance stopped."
     else
       echo "No PID file found; nothing to stop."
     fi
@@ -71,43 +71,72 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
   mkdir -p $LOG_DIR
   # NOTE: Build the apptainer SIF from OCI beforehand
   # Apptainer run in background via nohup with a restart-on-failure wrapper
-  nohup bash -c '
+  (
     attempt=0
-    while [ $attempt -lt '"$MAX_RETRIES"' ]; do
-      apptainer run --nv \
+    while [ $attempt -lt "$MAX_RETRIES" ]; do
+      apptainer instance start --nv \
         --env LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/app" \
-        -B "'"$LLAMA_CACHE"'":/models \
-        -B "'"$CUR_SCRIPT_DIR/llama_server_models.ini"'":/app/models.ini \
+        -B "$LLAMA_CACHE":/models \
+        -B "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
         --env LLAMA_CACHE=/models \
         --env LLAMA_SET_ROWS=1 \
         --env LD_LIBRARY_PATH=/app/ \
         llama-server_cuda.sif \
-        --listen localhost:'"$HOST_PORT"' \
-        --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1  --ctx-size $LLAMA_ARG_CTX_SIZE
+        "$LLAMA_CONTAINER_NAME" \
+        --listen localhost:"$HOST_PORT" \
+        --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE"
+
+      # Wait for the instance to finish
+      apptainer instance list | grep -q "$LLAMA_CONTAINER_NAME" && \
+        tail --pid=$(apptainer instance list | awk "/$LLAMA_CONTAINER_NAME/ {print \$2}") -f /dev/null
+
       exit_code=$?
-      if [ $exit_code -eq 0 ]; then
-        break
-      fi
+      [ $exit_code -eq 0 ] && break
+
       attempt=$((attempt + 1))
-      echo "[$(date)] Process exited with code $exit_code. Retry $attempt/'"$MAX_RETRIES"'..." >&2
+      echo "[$(date)] Instance exited with code $exit_code. Retry $attempt/$MAX_RETRIES..." | tee -a "$LOG_FILE"
+      apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
       sleep 2
     done
-    if [ $attempt -ge '"$MAX_RETRIES"' ]; then
-      echo "[$(date)] All '"$MAX_RETRIES"' retries exhausted. Giving up." >&2
+
+    if [ $attempt -ge "$MAX_RETRIES" ]; then
+      echo "[$(date)] All $MAX_RETRIES retries exhausted. Giving up." | tee -a "$LOG_FILE"
       exit 1
     fi
-  ' >"$LOG_FILE" 2>&1 &
+  ) >> "$LOG_FILE" 2>&1 &
+
   echo $! > "$PID_FILE"
 else
-  # --restart on-failure is mutually exclusive with --rm, so --rm is removed
-  docker run --gpus all -d -it \
-    --restart "on-failure:$MAX_RETRIES" \
-    -p "$HOST_PORT":8080 \
-    -v "$LLAMA_CACHE":/models \
-    -v "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
-    --env LLAMA_CACHE=/models \
-    --env LLAMA_SET_ROWS=1 \
-    --name "$LLAMA_CONTAINER_NAME" \
-    ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763 \
-    --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size $LLAMA_ARG_CTX_SIZE
+  run_container() {
+    docker rm -f "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
+    docker run --gpus $GPU_DEVICE -d -it \
+      -p "$HOST_PORT":8080 \
+      -v "$LLAMA_CACHE":/models \
+      -v "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
+      --env LLAMA_CACHE=/models \
+      --env LLAMA_SET_ROWS=1 \
+      --name "$LLAMA_CONTAINER_NAME" \
+      ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763 \
+      --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE"
+  }
+
+  (
+    attempt=0
+    while [ "$attempt" -lt "$MAX_RETRIES" ]; do
+      run_container
+      exit_code=$(docker wait "$LLAMA_CONTAINER_NAME")
+
+      [ "$exit_code" -eq 0 ] && break
+
+      attempt=$(( attempt + 1 ))
+      echo "[$(date)] Container exited with code $exit_code. Retry $attempt/$MAX_RETRIES..." | tee -a "$LOG_FILE"
+      sleep 2
+    done
+
+    if [ "$attempt" -ge "$MAX_RETRIES" ]; then
+      echo "[$(date)] All $MAX_RETRIES retries exhausted. Giving up." | tee -a "$LOG_FILE"
+    fi
+  ) >> "$LOG_FILE" 2>&1 &
+
+  echo $! > "$PID_FILE"
 fi
