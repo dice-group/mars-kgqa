@@ -1,7 +1,8 @@
 import json
 import os
 import requests
-from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT, SPARQL_LOG_FILEHANDLE
+from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT
+import src.const.misc as misc_consts
 import csv
 import time
 import re
@@ -53,7 +54,7 @@ def save_json_file(json_obj, output_file_path):
         
 def log_sparql_query(sparql_query):
     ol_query = sparql_one_line(sparql_query)
-    SPARQL_LOG_FILEHANDLE.write(ol_query + '\n')
+    misc_consts.sparql_log_filehandle.write(ol_query + '\n')
 
 def execute_sparql_query(query, endpoint_url, get_only_bindings=True, timeout=600, use_sleep=False):
     headers = {
@@ -121,13 +122,20 @@ def get_sparql_timeout(use_sleep=False):
 
 def sparql_one_line(query):
     """
-    Convert a multiline SPARQL string to a single‑line representation.
+    Convert a multiline SPARQL string to a single-line representation.
     """
-    # 1–2: replace line breaks with a space and strip the ends
-    single = query.strip().replace("\r", " ").replace("\n", " ")
+    no_comments = re.sub(
+        r'(?s:"""(?:[^\\]|\\.)*?""")|'     # triple-double-quoted string (DOTALL)
+        r"(?s:'''(?:[^\\]|\\.)*?''')|"      # triple-single-quoted string (DOTALL)
+        r'"(?:[^"\\]|\\.)*"|'              # double-quoted string
+        r"'(?:[^'\\]|\\.)*'|"             # single-quoted string
+        r'(<[^>]*>)'                       # URI ref
+        r'|(#.*)',                          # stops at newline
+        lambda m: m.group(0) if not m.group(2) else '',
+        query,
+    )
 
-    # 3: collapse any remaining multiple spaces/tabs into one space
-    return re.sub(r"\s+", " ", single)
+    return re.sub(r'\s+', ' ', no_comments).strip()
 
 def kill_container(container_name: str, signal: str = "SIGKILL", use_apptainer: bool = False) -> int:
     if use_apptainer:

@@ -97,4 +97,4 @@ SLURM_ACTIVE = bool(os.environ.get("SLURM_ACTIVE"))
 
 RUN_STATS = {'failure_count': 0}
 
-SPARQL_LOG_FILEHANDLE = None # will get a value assigned in run.py
+sparql_log_filehandle = None # will get a value assigned in run.py
