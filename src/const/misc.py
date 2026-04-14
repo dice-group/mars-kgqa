@@ -96,3 +96,5 @@ LLAMA_CONTAINER_NAME = os.environ.get("LLAMA_CONTAINER_NAME")
 SLURM_ACTIVE = bool(os.environ.get("SLURM_ACTIVE"))
 
 RUN_STATS = {'failure_count': 0}
+
+SPARQL_LOG_FILEHANDLE = None # will get a value assigned in run.py

@@ -15,6 +15,7 @@ from src.analysis.pf_answer_analysis import analyse_mismatches, generate_compile
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH, EntityAnnotator
 
 from src.const.misc import MAX_MULTI_HOP, TRIPLE_PATTERN_N_TOP, RUN_STATS
+import src.const.misc as misc_consts
 import time
 import os
 
@@ -194,6 +195,10 @@ def main() -> None:
     
     tsv_output_path = generate_output_path(run_name, gold_qald_path, 'tsv')
     
+    # SPARQL common logs
+    sparql_log_fp = os.path.join('./data_dir/sparql_logs', f"run_name.txt")
+    misc_consts.SPARQL_LOG_FILEHANDLE = open(sparql_log_fp, 'a', buffering=1) # buffering=1 for line-buffering
+    
     # Generate a log directory path
     log_dir = get_log_dir(run_name, gold_qald_path)
     # call the aux init
@@ -235,6 +240,9 @@ def main() -> None:
     create_export_gerbil_experiment(gold_dataset_label, gerbilready_gold_json_path, system_label, gerbilready_pred_json_path, q_lang, gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
     
     print(f"[TIME] Gerbil evaluation took {time.time() - cur_start:.2f}s")
+    
+    # closing sparql log file handle
+    misc_consts.SPARQL_LOG_FILEHANDLE.close()
     
     cur_start = time.time()
     

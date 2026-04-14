@@ -1,7 +1,7 @@
 import json
 import os
 import requests
-from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT
+from src.const.misc import PREFIX_MAP, SPARQL_DEFAULT_TIMEOUT, SPARQL_QUICK_TIMEOUT, SPARQL_LOG_FILEHANDLE
 import csv
 import time
 import re
@@ -50,6 +50,10 @@ def save_json_file(json_obj, output_file_path):
     # Write qald_obj to output_file_path
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         json.dump(json_obj, outfile, ensure_ascii=False, indent=4)
+        
+def log_sparql_query(sparql_query):
+    ol_query = sparql_one_line(sparql_query)
+    SPARQL_LOG_FILEHANDLE.write(ol_query + '\n')
 
 def execute_sparql_query(query, endpoint_url, get_only_bindings=True, timeout=600, use_sleep=False):
     headers = {
@@ -57,6 +61,9 @@ def execute_sparql_query(query, endpoint_url, get_only_bindings=True, timeout=60
         # Identify the client as Firefox (optional version string)
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0"
     }
+    
+    # Log the query
+    log_sparql_query(query)
     
     req_failed = False
 
