@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from src.const.misc import QALD10_WIKIDATA_EP, CURRENT_WIKIDATA_EP, TENTRIS_WIKIDATA_EP, QALD10_TENTRIS_WIKIDATA_EP
+from src.const.misc import QALD10_WIKIDATA_EP, CURRENT_WIKIDATA_EP, TENTRIS_WIKIDATA_EP, QALD10_TENTRIS_WIKIDATA_EP, TENTRIS_MAIN_WIKIDATA_EP
 
 class DatasetSplit(Enum):
     TRAIN = auto()
@@ -78,3 +78,22 @@ class KgqaDataset(Enum):
     }, QALD10_TENTRIS_WIKIDATA_EP)
     
     ## Working datasets - End
+    
+    ## New Working datasets - Start
+    
+    QALD9PLUS_UPDATED_TENTRISMAIN =  KgqaDatasetInfo("qald9plus_tentrismain", "QALD-9-plus (Updated on Wikidata Main Split from 22.01.2026 - Tentris)", {
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrismain_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentrismain_aug_gold.json"
+    }, TENTRIS_MAIN_WIKIDATA_EP)
+    
+    QALD10_UPDATED_TENTRISMAIN =  KgqaDatasetInfo("qald10_tentrismain", "QALD-10  (Updated on Wikidata Main Split from 22.01.2026 - Tentris)", {
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrismain_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study,
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrismain_aug_gold.json"
+    }, TENTRIS_MAIN_WIKIDATA_EP)
+    
+    LCQUAD2_UPDATED_TENTRISMAIN =  KgqaDatasetInfo("lcquad2_tentrismain", "LC-QuAD2.0 (Updated on Wikidata Main Split from 22.01.2026 - Tentris)", {
+        # DatasetSplit.TRAIN: "", # Too large, no point in using this split
+        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/tentrismain_aug_gold.json"
+    }, TENTRIS_MAIN_WIKIDATA_EP)
+    
+    ## New Working datasets - End
