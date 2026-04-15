@@ -1,0 +1,21 @@
+datastore-path = "wikidata_main_22012026_db"
+[serve]
+io-threads = 64
+query-eval-threads = 64
+query-eval-stream-serialization-chunk-size-start = 1024
+query-eval-stream-serialization-chunk-size = 4194304
+query-eval-stream-serialization-chunk-growth-steps = 4
+garbage-threshold = 1000000
+read-only = true
+auto-repair = true
+default-graph-mode = "standalone"
+default-online-update-mode = "strict"
+limit-query-and-update-request-body-size = 8290304
+limit-graph-store-request-body-size = "unlimited"
+limit-sparql-response-body-size = 4294967296
+limit-query-duration-secs = 180
+limit-concurrent-requests = "auto"
+limit-versions = "unlimited"
+limit-snapshots = 1
+ui-header-html = ""
+bind-address = "[::]:9080"

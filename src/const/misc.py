@@ -8,6 +8,7 @@ QALD10_WIKIDATA_EP = "https://wikidata-qald10.data.dice-research.org/sparql" # D
 QALD10_TENTRIS_WIKIDATA_EP = "http://harebell.cs.upb.de:10040/sparql" # Dump: https://zenodo.org/records/7496690 # tentris @ dice
 
 TENTRIS_WIKIDATA_EP = "https://wikidata.data.dice-research.org/sparql" # Dump: https://files.dice-research.org/datasets/Wikidata/wikidata-20240904-truthy-BETA/
+TENTRIS_MAIN_WIKIDATA_EP = "http://enexa1.cs.uni-paderborn.de:9080/sparql" # Dump: Main split from all wikidata 22.01.2026
 CURRENT_WIKIDATA_EP = "https://query.wikidata.org/sparql"
 #CURRENT_WIKIDATA_EP = "https://qlever.cs.uni-freiburg.de/api/wikidata" # Fails on basic pattern retrieval with 500: Internal Server Error
 
@@ -91,9 +92,9 @@ class EntityAnnotator(Enum):
 NOMIC_V2_TOKENIZER = AutoTokenizer.from_pretrained("nomic-ai/nomic-embed-text-v2-moe")
 
 LLAMA_SERVER_ENDPOINT = os.environ.get("LLAMA_SERVER_ENDPOINT")
-LLAMA_MAX_CTX = int(os.environ.get("LLAMA_CTX"))
+LLAMA_MAX_CTX = int(os.environ.get("LLAMA_CTX", 0))
 LLAMA_CONTAINER_NAME = os.environ.get("LLAMA_CONTAINER_NAME")
-SLURM_ACTIVE = bool(os.environ.get("SLURM_ACTIVE"))
+SLURM_ACTIVE = bool(os.environ.get("SLURM_ACTIVE", False))
 
 RUN_STATS = {'failure_count': 0}
 

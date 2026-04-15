@@ -4,7 +4,10 @@ from src.util.common import execute_sparql_query, create_directory_if_not_exists
 from src.const.misc import WIKIDATA_PROP_INFO_CACHE_FILEPATH
 from tqdm import tqdm
 import json
+import os
 import time
+import src.const.misc as misc_consts
+from datetime import datetime
 
 def extract_relation_info(endpoint_url, lang='en', limit=5000, offset=0):
     
@@ -130,7 +133,14 @@ def save_relations_to_json(relations_dict, file_path):
 
 
 if __name__ == "__main__":
-    endpoint = "https://query.wikidata.org/sparql" # This has to be done on official endpoint, it does not work on Tentris
+    # endpoint = "https://query.wikidata.org/sparql" # This has to be done on official endpoint, it does not work on Tentris
+    endpoint = "http://enexa1.cs.uni-paderborn.de:9080/sparql" # Tentris endpoint with main split
+    # init sparql logger
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    sparql_log_fp = os.path.join('./data_dir/sparql_logs', f"wikidata_rel_caching_{timestamp}.txt")
+    create_directory_if_not_exists(sparql_log_fp)
+    misc_consts.sparql_log_filehandle = open(sparql_log_fp, 'a', buffering=1) # buffering=1 for line-buffering
     # collect everything (the function handles pagination internally)
     relations_dict = collect_all_relations(endpoint, lang='en')
     # store to JSON
@@ -140,4 +150,6 @@ if __name__ == "__main__":
     ## Obsolete run (11.08.2025): Saved 7493 properties to wikidata_relations.json
     ## Obsolete run (14.08.2025): Saved 10569 properties to data_dir/cache/wikidata_relations.json
     ## Last run (14.08.2025): Saved 12779 properties to data_dir/cache/wikidata_relations.json
+    ## Last run (15.04.2026): Saved 13162 properties to data_dir/cache/wikidata_relations.json
     print(f"Saved {len(relations_dict)} properties to {output_file}")
+    misc_consts.sparql_log_filehandle.close()
