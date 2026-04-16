@@ -66,6 +66,8 @@ echo "Starting $LLAMA_CONTAINER_NAME on host port $HOST_PORT ..."
 rm -f "$SENTINEL_FILE"
 
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+  export APPTAINER_CONFIGDIR="data_dir/apptainer-config-dir/${JOB_ID}"
+  mkdir -p "$APPTAINER_CONFIGDIR"
   # NOTE: Build the apptainer SIF from OCI beforehand: "apptainer build llama-cpp-server.sif docker://ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763"
   # Use `apptainer instance run` so the container's runscript (entrypoint) is
   # executed, not the startscript. Arguments after the instance name are
