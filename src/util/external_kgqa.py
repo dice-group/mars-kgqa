@@ -259,3 +259,88 @@ if __name__ == "__main__":
                 output_tsv_file_path = os.path.join(tsv_out_dir, output_tsv)
                 # process translated file
                 grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+
+def qald_to_deeppavlov2_jsonl(
+    qald_file: str,
+    jsonl_out: str,
+    lang: str = "en",
+    use_translation: bool = False,
+):
+    create_directory_if_not_exists(jsonl_out)
+
+    data = read_json_file(qald_file)
+
+    questions: Iterable[Dict[str, Any]] = data.get("questions", [])
+
+    with open(jsonl_out, "w", encoding="utf-8") as out_f:
+        for q in questions:
+            q_text = ""
+
+            if use_translation:
+                translations = q.get("translations")
+                if isinstance(translations, dict):
+                    q_text = translations.get(lang, "") or ""
+            else:
+                question_entries = q.get("question")
+                if isinstance(question_entries, list):
+                    for entry in question_entries:
+                        if entry.get("language") == lang:
+                            q_text = entry.get("string", "") or ""
+                            break
+
+            if not q_text:
+                continue
+
+            record = {
+                "id": str(q.get("id")),
+                "question": q_text,
+                "sparql": "",
+                "paraphrases": [],
+                "info": {},
+            }
+            out_f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def deeppavlov2_output_to_tsv(responses_jsonl: str, tsv_out: str):
+    create_directory_if_not_exists(tsv_out)
+
+    with open(responses_jsonl, "r", encoding="utf-8") as in_f, \
+         open(tsv_out, "w", encoding="utf-8") as out_f:
+
+        for line in in_f:
+            line = line.strip()
+            if not line:
+                continue
+
+            rec = json.loads(line)
+            q_id = rec.get("id", "")
+            sparql = _extract_sparql(rec.get("response"))
+
+            # Use common utility for consistent one-lining
+            sparql = sparql_one_line(sparql)
+
+            out_f.write(f"{q_id}\t{sparql}\n")
+
+
+def _extract_sparql(response: Any):
+    if response is None:
+        return ""
+
+    # Handle the list wrapper [ {...} ]
+    if isinstance(response, list):
+        if not response:
+            return ""
+        response = response[0]
+
+    # Target only 'sparql_query'
+    if isinstance(response, dict):
+        value = response.get("sparql_query")
+        
+        # Handle case where sparql_query is a list [ "query..." ]
+        if isinstance(value, list) and value:
+            value = value[0]
+            
+        if isinstance(value, str) and value.strip():
+            return value
+
+    return ""
