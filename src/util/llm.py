@@ -45,7 +45,7 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
         RUN_STATS["failure_count"] += 1
         kill_container(LLAMA_CONTAINER_NAME, use_apptainer=SLURM_ACTIVE)
         print(f'Waiting for llama-server to restart...')
-        time.sleep(10)
+        time.sleep(30)
         # raise e
         return " ", " "
     # Extract the analysis from theresponse
