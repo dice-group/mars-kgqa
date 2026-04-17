@@ -21,7 +21,7 @@ SPARQL_LOG_DIR = "data_dir/sparql_logs"
 
 DEEPPAVLOV2_INFO: Dict[str, Dict[str, Any]] = {
     "qald10_test": {
-        "ds": KgqaDataset.QALD10_UPDATED_TENTRISQ10,
+        "ds": KgqaDataset.QALD10_UPDATED_TENTRISMAIN,
         "split": DatasetSplit.TEST,
         "input_dir":     "data_dir/external_systems/deeppavlov2/input/qald10",
         "tsv_out_dir":   "data_dir/external_systems/deeppavlov2/output/tsv/qald10",
@@ -30,7 +30,7 @@ DEEPPAVLOV2_INFO: Dict[str, Dict[str, Any]] = {
         "translated_langs": ["de", "ru", "zh"],
     },
     "qald9plus_test": {
-        "ds": KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
+        "ds": KgqaDataset.QALD9PLUS_UPDATED_TENTRISMAIN,
         "split": DatasetSplit.TEST,
         "input_dir":     "data_dir/external_systems/deeppavlov2/input/qald9plus",
         "tsv_out_dir":   "data_dir/external_systems/deeppavlov2/output/tsv/qald9plus",
@@ -39,7 +39,7 @@ DEEPPAVLOV2_INFO: Dict[str, Dict[str, Any]] = {
         "translated_langs": ["de", "fr", "ba", "be", "es", "hy", "ru", "uk"],
     },
     "lcquad2_test": {
-        "ds": KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+        "ds": KgqaDataset.LCQUAD2_UPDATED_TENTRISMAIN,
         "split": DatasetSplit.TEST,
         "input_dir":     "data_dir/external_systems/deeppavlov2/input/lcquad2",
         "tsv_out_dir":   "data_dir/external_systems/deeppavlov2/output/tsv/lcquad2",
