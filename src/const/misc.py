@@ -12,7 +12,7 @@ TENTRIS_MAIN_WIKIDATA_EP = "http://enexa1.cs.uni-paderborn.de:9080/sparql" # Dum
 CURRENT_WIKIDATA_EP = "https://query.wikidata.org/sparql"
 #CURRENT_WIKIDATA_EP = "https://qlever.cs.uni-freiburg.de/api/wikidata" # Fails on basic pattern retrieval with 500: Internal Server Error
 
-DEFAULT_WIKIDATA_ENDPOINT_URL = TENTRIS_WIKIDATA_EP
+DEFAULT_WIKIDATA_ENDPOINT_URL = TENTRIS_MAIN_WIKIDATA_EP
 
 SPARQL_HARD_LIMIT = 10000
 

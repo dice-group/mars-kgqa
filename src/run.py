@@ -20,7 +20,7 @@ from src.util.common import create_directory_if_not_exists
 import time
 import os
 
-def parse_args() -> argparse.Namespace:
+def parse_args(approach_enum) -> argparse.Namespace:
     """Define and parse CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Run a specific processing approach on a dataset split."
@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
         "--approach",
         type=str,
         required=True,
-        choices=[a.name for a in Approach],
+        choices=[a.name for a in approach_enum],
         help="Identifier of the processing approach to run."
     )
     parser.add_argument(
@@ -123,23 +123,11 @@ def parse_args() -> argparse.Namespace:
     # NOTE: If new arguments are added, update execute_experiment.sh and slurm/schedule_experiment.sh with new arguments as well.
     return parser.parse_args()
 
-
-def main() -> None:
+def get_approach_name(args, app_id):
     
-    args = parse_args()
-
-    approach_enum = Approach[args.approach]
-    
-    approach_id = approach_enum.name
-    processor_fn = approach_enum.processor
-    aux_init_fn  = approach_enum.aux_init
-    llm_config = ChatModel[args.llm].value
-    llm_name = ChatModel[args.llm].name
-    kgqa_ds = KgqaDataset[args.dataset].value
-    split_conf = DatasetSplit[args.split]
+    approach_id = app_id
     # entity_annotator
     ent_annot = EntityAnnotator[args.entity_annotator]
-    q_lang = args.language
     
     use_goldentrel = args.use_gold
     
@@ -179,6 +167,26 @@ def main() -> None:
     
     # adding config info to approach name
     approach_name += approach_suffix
+    return approach_name
+
+def main() -> None:
+    
+    args = parse_args(Approach)
+    approach_enum = Approach[args.approach]
+    
+    processor_fn = approach_enum.processor
+    aux_init_fn  = approach_enum.aux_init
+    llm_config = ChatModel[args.llm].value
+    llm_name = ChatModel[args.llm].name
+    kgqa_ds = KgqaDataset[args.dataset].value
+    split_conf = DatasetSplit[args.split]
+    # entity_annotator
+    ent_annot = EntityAnnotator[args.entity_annotator]
+    q_lang = args.language
+    use_goldentrel = args.use_gold
+    
+    # adding config info to approach name
+    approach_name= get_approach_name(args, approach_enum.name)
     
     # read system name from env: RUN_SYS_NAME
     run_sys_name = os.environ.get("RUN_SYS_NAME")

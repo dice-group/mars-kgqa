@@ -5,3 +5,4 @@ ipykernel
 pandas
 lxml
 transformers[torch]
+dspy
