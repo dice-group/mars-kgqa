@@ -59,7 +59,7 @@ if [[ "$ACTION" == "stop" ]]; then
   exit 0
 fi
 
-## Important Note: We are running the containers in way that they will be restarted if they were forced to exit from our python script. We do this because llama-server has an issue where it repeatedly throws Internal Server Error for certain inputs (we don't know why) and then any request to that LLM will fail afterwards. However, it does not shutdown the container on its own, so we have to do it manually and then restart it.
+## Important Note: We are running the containers in way that they will be restarted if they were forced to exit from our python script. We do this because llama-server has an issue where it repeatedly throws Internal Server Error for certain inputs (maybe because: https://github.com/ggml-org/llama.cpp/issues/21289) and then any request to that LLM will fail afterwards. However, it does not shutdown the container on its own, so we have to do it manually and then restart it.
 
 # Start logic
 echo "Starting $LLAMA_CONTAINER_NAME on host port $HOST_PORT ..."
@@ -119,7 +119,7 @@ else
       --env LLAMA_CACHE=/models \
       --env LLAMA_SET_ROWS=1 \
       --name "$LLAMA_CONTAINER_NAME" \
-      ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763 \
+      ghcr.io/ggml-org/llama.cpp:server-cuda12-b8562 \
       --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE"
   }
 
