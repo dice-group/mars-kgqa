@@ -5,6 +5,43 @@ import os
 import json
 from src.util.process_flow_logger import ProcessFlowLogger
 from src.sparql_gen.sparql_gen_common import get_question_pf_name
+import dspy
+from typing import Iterable
+from src.util.common import execute_sparql_query
+
+def _normalize(items: Iterable) -> set:
+    """Coerce whatever execute_sparql_query returns into a comparable set."""
+    return {str(x).strip() for x in (items or [])}
+
+
+def answer_f1(gold: set, pred: set) -> float:
+    if not gold and not pred:
+        return 1.0
+    if not gold or not pred:
+        return 0.0
+    tp = len(gold & pred)
+    if tp == 0:
+        return 0.0
+    precision = tp / len(pred)
+    recall    = tp / len(gold)
+    return 2 * precision * recall / (precision + recall)
+
+
+def sparql_f1_metric(example: dspy.Example, prediction: dspy.Prediction,
+                     trace=None) -> float:
+    """DSPy metric signature: (example, prediction, trace) -> float in [0, 1]."""
+    gold_answers = _normalize(example.expected_answerset)
+    pred_sparql  = getattr(prediction, "sparql", None)
+    if not pred_sparql:
+        return 0.0
+    try:
+        pred_answers = _normalize(
+            execute_sparql_query(pred_sparql, example.wd_endpoint)
+        )
+    except Exception:
+        # Malformed SPARQL, endpoint timeout, etc. — score as 0.
+        return 0.0
+    return answer_f1(gold_answers, pred_answers)
             
 def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
                     llm_config, use_gold_entrel, log_dir, filter_entities, topn_count,
@@ -31,6 +68,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     qald_json = read_json_file(qald_file_path)
     
     ent_linker = ent_annot.value
+    devset = []
 
     # For each question
     for question_item in tqdm(qald_json['questions'], desc='Processing Questions'):
@@ -99,8 +137,45 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
             f"Prepared input – aug_text length: {len(aug_text)}, "
             f"entities: {len(ent_dict)}, relations: {len(rel_dict)}"
         )
+        ent_dict_str = "\n".join(f"{k}: {v}" for k, v in ent_dict.items())
+        rel_dict_str = "\n".join(f"{k}: {v}" for k, v in rel_dict.items())
+
+        # Create a DSPy Example
+        # We include everything the metric and the generator need
+        example = dspy.Example(
+            question=aug_text,
+            entities=ent_dict_str,
+            relations=rel_dict_str,
+            expected_answerset=set(question_item['answer']['answerset']), # Assuming this structure in QALD
+            wd_endpoint=wd_ep
+        ).with_inputs("question", "entities", "relations")
         
-    # TODO: Initialize generator
-    # TODO: Generate devset
-    # TODO: Initialize evaluator
-    # TODO: Call evaluator on generator
+        devset.append(example)
+        
+    # --- Initialize generator ---
+    generator = pe_generator(top_n=topn_count)
+
+    # --- Initialize evaluator ---
+    evaluator = dspy.Evaluate(
+        devset=devset,
+        metric=sparql_f1_metric,
+        num_threads=4,
+        display_progress=True,
+        display_table=5,
+    )
+
+    # --- Call evaluator on generator ---
+    # We can pass additional arguments to the generator via a wrapper or by 
+    # ensuring the generator handles the defaults. 
+    # Note: dspy.Evaluate calls generator(question=..., entities=..., relations=...)
+    result = evaluator(generator)
+    
+    # Save results
+    final_results = {
+        "proc_name": proc_name,
+        "score": result.score,
+        "metrics": result.metrics if hasattr(result, 'metrics') else {}
+    }
+    save_json_file(final_results, output_path)
+    
+    return result

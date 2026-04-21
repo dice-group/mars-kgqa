@@ -11,7 +11,8 @@ Assumes available in your codebase:
       returning the answer set (URIs/literals) produced by running the query.
 """
 
-from typing import Literal, Optional, Iterable
+from typing import Literal, Optional
+from src.prompt_eng.pe_common import sparql_f1_metric
 
 import dspy
 
@@ -28,7 +29,6 @@ from src.kgqa_tool.graph_traversal import find_next_hop_patterns
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, TRIPLE_PATTERN_N_TOP
 
 
-from src.util.common import execute_sparql_query
 from src.util.process_flow_logger import ProcessFlowLogger
 
 PROC_LOGGER = ProcessFlowLogger(
@@ -214,44 +214,6 @@ class PatternBasedSparqlGenerator(dspy.Module):
         if refine:
             sparql = self.refine(question=question, sparql=sparql).refined_sparql
         return dspy.Prediction(sparql=sparql, hops_used=mhop_limit, trajectory=final_verbs)
-
-
-# --------------------------------------------------------------------------
-# 4.  Metric:  answer-set F1 via your execute_sparql_query
-# --------------------------------------------------------------------------
-def _normalize(items: Iterable) -> set:
-    """Coerce whatever execute_sparql_query returns into a comparable set."""
-    return {str(x).strip() for x in (items or [])}
-
-
-def answer_f1(gold: set, pred: set) -> float:
-    if not gold and not pred:
-        return 1.0
-    if not gold or not pred:
-        return 0.0
-    tp = len(gold & pred)
-    if tp == 0:
-        return 0.0
-    precision = tp / len(pred)
-    recall    = tp / len(gold)
-    return 2 * precision * recall / (precision + recall)
-
-
-def sparql_f1_metric(example: dspy.Example, prediction: dspy.Prediction,
-                     trace=None) -> float:
-    """DSPy metric signature: (example, prediction, trace) -> float in [0, 1]."""
-    gold_answers = _normalize(example.expected_answerset)
-    pred_sparql  = getattr(prediction, "sparql", None)
-    if not pred_sparql:
-        return 0.0
-    try:
-        pred_answers = _normalize(
-            execute_sparql_query(pred_sparql, example.wd_endpoint)
-        )
-    except Exception:
-        # Malformed SPARQL, endpoint timeout, etc. — score as 0.
-        return 0.0
-    return answer_f1(gold_answers, pred_answers)
 
 
 # --------------------------------------------------------------------------
