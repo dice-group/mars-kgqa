@@ -24,6 +24,7 @@ from src.sparql_gen.pattern_based_sparql_generator import (
     _build_cache_key,
     extract_patterns_data,
     initialize_aux_values,
+    PROPERTY_ID_MAP,
 )
 from src.kgqa_tool.graph_traversal import find_next_hop_patterns
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, TRIPLE_PATTERN_N_TOP
@@ -36,8 +37,7 @@ PROC_LOGGER = ProcessFlowLogger(
     output_dir="data_dir/dspy_logs/"
 )
 
-def find_entities_and_relations(text):
-    return text, {}, {} 
+from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 
 
 # --------------------------------------------------------------------------
@@ -108,6 +108,7 @@ class MhopEstimate(dspy.Signature):
 class PatternBasedSparqlGenerator(dspy.Module):
     def __init__(self, top_n: int = TRIPLE_PATTERN_N_TOP, max_hops: int = 3):
         super().__init__()
+        initialize_aux_values()
         self.top_n = top_n
         self.max_hops = max_hops
 
@@ -139,8 +140,8 @@ class PatternBasedSparqlGenerator(dspy.Module):
             next_raw = find_next_hop_patterns(constraint_tp, edge.variable_name,
                                               wd_ep, use_sleep=use_sleep)
             extracted, _ = extract_patterns_data(edge.variable_name,
-                                                 edge.variable_name,
-                                                 next_raw, None)  # pass PROPERTY_ID_MAP in practice
+                                                  edge.variable_name,
+                                                  next_raw, PROPERTY_ID_MAP)
             expanded_edges.add(edge.variable_name)
             new_patterns.extend(extracted)
         return new_patterns
@@ -148,13 +149,22 @@ class PatternBasedSparqlGenerator(dspy.Module):
     # ------------------------------------------------------------------
     # Main entry
     # ------------------------------------------------------------------
-    def forward(self, question: str, wd_ep: str = DEFAULT_WIKIDATA_ENDPOINT_URL,
+    def forward(self, question: str, entities: str = None, relations: str = None, 
+                wd_ep: str = DEFAULT_WIKIDATA_ENDPOINT_URL,
                 mhop_limit: int = -1, refine: bool = True, use_sleep: bool = False):
 
-        # KG/retrieval work (not LM) — call your existing function directly.
-        aug_qtxt, entity_dict, relation_dict = find_entities_and_relations(question)
-        ent_dict_str = "\n".join(f"{k}: {v}" for k, v in entity_dict.items())
-        rel_dict_str = "\n".join(f"{k}: {v}" for k, v in relation_dict.items())
+        if entities and relations:
+            aug_qtxt = question
+            ent_dict_str = entities
+            rel_dict_str = relations
+            # Parse strings back to dicts for KG traversal
+            entity_dict = {line.split(': ')[0]: line.split(': ')[1] for line in entities.split('\n') if ': ' in line}
+            relation_dict = {line.split(': ')[0]: line.split(': ')[1] for line in relations.split('\n') if ': ' in line}
+        else:
+            aug_qtxt, entity_dict, relation_dict = find_entities_and_relations(question)
+            ent_dict_str = "\n".join(f"{k}: {v}" for k, v in entity_dict.items())
+            rel_dict_str = "\n".join(f"{k}: {v}" for k, v in relation_dict.items())
+
 
         if mhop_limit < 0:
             mhop_limit = max(1, int(self.estimate_hop(

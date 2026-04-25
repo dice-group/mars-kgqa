@@ -24,7 +24,7 @@ def answer_f1(gold: set, pred: set) -> float:
         return 0.0
     precision = tp / len(pred)
     recall    = tp / len(gold)
-    return 2 * precision * recall / (precision + recall)
+    return 2 * precision * recall / (precision + recall) # harmonic mean
 
 
 def sparql_f1_metric(example: dspy.Example, prediction: dspy.Prediction,
@@ -143,17 +143,33 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
         # Create a DSPy Example
         # We include everything the metric and the generator need
         example = dspy.Example(
+            question_id=question_id,
             question=aug_text,
             entities=ent_dict_str,
             relations=rel_dict_str,
             expected_answerset=set(question_item['answer']['answerset']), # Assuming this structure in QALD
             wd_endpoint=wd_ep
         ).with_inputs("question", "entities", "relations")
+
         
         devset.append(example)
         
     # --- Initialize generator ---
     generator = pe_generator(top_n=topn_count)
+
+    # --- Generate and save individual predictions ---
+    cur_answers_dict = {}
+    for ex in tqdm(devset, desc='Generating SPARQL'):
+        # The generator.forward takes (question, entities, relations, ...)
+        prediction = generator(
+            question=ex.question, 
+            entities=ex.entities, 
+            relations=ex.relations
+        )
+        sparql = getattr(prediction, "sparql", "Empty Result")
+        cur_answers_dict[ex.question_id] = sparql
+    
+    save_answers_as_tsv(cur_answers_dict, output_path)
 
     # --- Initialize evaluator ---
     evaluator = dspy.Evaluate(
@@ -165,17 +181,15 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     )
 
     # --- Call evaluator on generator ---
-    # We can pass additional arguments to the generator via a wrapper or by 
-    # ensuring the generator handles the defaults. 
-    # Note: dspy.Evaluate calls generator(question=..., entities=..., relations=...)
     result = evaluator(generator)
     
-    # Save results
+    # Save overall score
     final_results = {
         "proc_name": proc_name,
         "score": result.score,
         "metrics": result.metrics if hasattr(result, 'metrics') else {}
     }
-    save_json_file(final_results, output_path)
+    save_json_file(final_results, output_path.replace('.tsv', '_score.json'))
     
     return result
+
