@@ -55,7 +55,7 @@ def answer_f1(gold: set, pred: set) -> float:
 def sparql_f1_metric(example: dspy.Example, prediction: dspy.Prediction,
                      trace=None) -> float:
     """DSPy metric: (example, prediction, trace) -> float in [0, 1]."""
-    gold_answers = example.expected_answerset  # already a set of values
+    gold_answers = set(example.expected_answerset)  # stored as list for JSON serialisability
     pred_sparql  = getattr(prediction, "sparql", None)
     if not pred_sparql:
         return 0.0
@@ -141,7 +141,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
             question=aug_text,
             entities=ent_dict_str,
             relations=rel_dict_str,
-            expected_answerset=_extract_gold_answerset(question_item.get('answers', [])),
+            expected_answerset=list(_extract_gold_answerset(question_item.get('answers', []))),
             wd_endpoint=wd_ep,
         ).with_inputs("question", "entities", "relations")
 
@@ -203,7 +203,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     #                  tail -f the files to watch evolution live during a long run.
     trials_dir = os.path.join(log_dir, "mipro_trials")
     print("[PE] Running MIPROv2 optimisation on trainset...")
-    print(f"[PE] Trial logs → {trials_dir}")
+    print(f"[PE] Trial program snapshots → {os.path.join(trials_dir, 'evaluated_programs')}/")
     from dspy.teleprompt import MIPROv2
     optimizer = MIPROv2(metric=sparql_f1_metric, auto="light", num_threads=4,
                         verbose=True, log_dir=trials_dir)
