@@ -41,10 +41,12 @@ JOB_ID=${SLURM_JOB_ID:-}
 LOG_DIR="data_dir/llama-server-logs/${JOB_ID}"
 mkdir -p "$LOG_DIR"
 
+MACHINE_NAME="${RUN_SYS_NAME:-$(hostname)}"
+
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
-PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.pid"
-LOG_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.log"
-SENTINEL_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${TIMESTAMP}.stop"
+PID_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${MACHINE_NAME}.pid"
+LOG_FILE="${LOG_DIR}/llama-server-${HOST_PORT}--${MACHINE_NAME}-${TIMESTAMP}.log"
+SENTINEL_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${MACHINE_NAME}.stop"
 
 # Stop logic
 if [[ "$ACTION" == "stop" ]]; then
@@ -55,6 +57,10 @@ if [[ "$ACTION" == "stop" ]]; then
     echo "Apptainer instance stopped."
   else
     docker stop "$LLAMA_CONTAINER_NAME"
+  fi
+  if [ -f "$PID_FILE" ]; then
+    kill "$(cat "$PID_FILE")" 2>/dev/null || true
+    rm -f "$PID_FILE"
   fi
   exit 0
 fi
