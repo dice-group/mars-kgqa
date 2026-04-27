@@ -2,7 +2,7 @@
 from src.util.llm import get_embeddings
 from src.const.llm import DEFAULT_EMBED_LLM_CONFIG
 from src.const.misc import TRIPLE_VERBALIZATION_LENGTH_LIMIT
-from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file
+from src.util.common import dot, read_json_file, create_directory_if_not_exists, save_json_file, sparql_one_line
 from src.util.qald_io import get_qald_answer_sparql
 import csv
 from tqdm import tqdm
@@ -110,7 +110,7 @@ def save_answers_as_tsv(answers_dict, file_path):
         writer.writerow(['Question ID', 'Answer'])
         # Write data
         for question_id, answer in answers_dict.items():
-            writer.writerow([question_id, answer])
+            writer.writerow([question_id, sparql_one_line(answer) if isinstance(answer, str) else answer])
             
 def _build_output_path(approach_name: str, input_file_path: str,
                        leaf_dir: str, file_ext: str) -> str:

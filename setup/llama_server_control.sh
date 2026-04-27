@@ -89,7 +89,7 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
         --env LLAMA_SET_ROWS=1 \
         llama-cpp-server-cuda12-b8763.sif \
         "$LLAMA_CONTAINER_NAME" \
-        --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --verbose
+        --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --verbose --sleep-idle-seconds 600
 
       # Poll until the instance disappears
       while apptainer instance list | grep -q "$LLAMA_CONTAINER_NAME"; do
@@ -126,7 +126,7 @@ else
       --env LLAMA_SET_ROWS=1 \
       --name "$LLAMA_CONTAINER_NAME" \
       ghcr.io/ggml-org/llama.cpp:server-cuda12-b8562 \
-      --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE"
+      --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --sleep-idle-seconds 600
   }
 
   (

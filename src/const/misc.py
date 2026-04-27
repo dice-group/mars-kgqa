@@ -87,7 +87,8 @@ PREFIX_MAP = _build_prefix_map(PREFIX_BLOCK)
 
 class EntityAnnotator(Enum):
     # AUG_EL_V0D1 = 'aug_linker_v0.1'
-    T5AUG_ERL = 't5_aug'
+    T5AUG_ERL = 't5_aug'   # used by most datasets (qald9plus test, qald10, lcquad2)
+    T5_ERL    = 't5'        # used by qald9plus/train/tentrismain_aug_gold.json only
 
 NOMIC_V2_TOKENIZER = AutoTokenizer.from_pretrained("nomic-ai/nomic-embed-text-v2-moe")
 
