@@ -316,15 +316,15 @@ def estimate_mhop(question_txt,  entity_dict_str, rel_dict_str, model_config, pr
         {"question": question_txt, "entity_dict_str": entity_dict_str,  "rel_dict_str": rel_dict_str}
     ).add_step("Building mhop estimation prompt")
     
-    llm_prompt = f"""For the given question alongwith augmented context, recognized entities and relations. Estimate the number of hops required in the graph from these entities to generate a SPARQL that answers this question. Strictly follow the provided "Answer Format", do not write anything else. 
+    llm_prompt = f"""For the given question alongwith augmented context, recognized entities and relations. Estimate the number of hops required in the graph from these entities to generate a SPARQL that answers this question. Strictly follow the provided "Answer Format", do not write anything else.
 
     Question: {question_txt}
 
     ### Identified Question Entities:
     {entity_dict_str}
-    
+
     ### Identified Relations:
-    {entity_dict_str}
+    {rel_dict_str}
 
     ---
 
