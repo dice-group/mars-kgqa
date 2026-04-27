@@ -6,3 +6,4 @@ pandas
 lxml
 transformers[torch]
 dspy
+ipywidgets
