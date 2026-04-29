@@ -149,7 +149,7 @@ def get_approach_name(args, app_id):
     if use_goldentrel:
         approach_config.append(f"gld-enrl")
     else:
-        approach_config.append(f"{ent_annot.name.lower()}")
+        approach_config.append(f"{ent_annot.name.lower()}-el")
     if args.conc_ex_limit:
         approach_config.append(f"exlim{args.conc_ex_limit}")
     if args.use_class_info:
