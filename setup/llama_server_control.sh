@@ -8,6 +8,7 @@ set -eu
 # To restart a specific port: bash setup/llama_server_control.sh restart 9393
 
 CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${CUR_SCRIPT_DIR}/.." && pwd)"
 
 # Default host port (maps to container's 8080)
 DEFAULT_PORT=9292
@@ -38,7 +39,7 @@ fi
 
 # Define where we keep logs for each port
 JOB_ID=${SLURM_JOB_ID:-}
-LOG_DIR="data_dir/llama-server-logs/${JOB_ID}"
+LOG_DIR="${PROJECT_ROOT}/data_dir/llama-server-logs/${JOB_ID}"
 mkdir -p "$LOG_DIR"
 
 MACHINE_NAME="${RUN_SYS_NAME:-$(hostname)}"
@@ -52,6 +53,7 @@ SENTINEL_FILE="${LOG_DIR}/llama-server-${HOST_PORT}-${MACHINE_NAME}.stop"
 if [[ "$ACTION" == "stop" ]]; then
   echo "Stopping $LLAMA_CONTAINER_NAME ..."
   if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+    export APPTAINER_CONFIGDIR="${PROJECT_ROOT}/data_dir/apptainer-config-dir/${JOB_ID}"
     touch "$SENTINEL_FILE"   # Signal to the retry loop: don't restart
     apptainer instance stop "$LLAMA_CONTAINER_NAME" 2>/dev/null || true
     echo "Apptainer instance stopped."
@@ -72,7 +74,7 @@ echo "Starting $LLAMA_CONTAINER_NAME on host port $HOST_PORT ..."
 rm -f "$SENTINEL_FILE"
 
 if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
-  export APPTAINER_CONFIGDIR="data_dir/apptainer-config-dir/${JOB_ID}"
+  export APPTAINER_CONFIGDIR="${PROJECT_ROOT}/data_dir/apptainer-config-dir/${JOB_ID}"
   mkdir -p "$APPTAINER_CONFIGDIR"
   # NOTE: Build the apptainer SIF from OCI beforehand: "apptainer build llama-cpp-server.sif docker://ghcr.io/ggml-org/llama.cpp:server-cuda13-b8763"
   # Use `apptainer instance run` so the container's runscript (entrypoint) is
@@ -87,7 +89,7 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
         -B "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
         --env LLAMA_CACHE=/models \
         --env LLAMA_SET_ROWS=1 \
-        llama-cpp-server-cuda12-b8763.sif \
+        llama-cpp-server-cuda12-b8562.sif \
         "$LLAMA_CONTAINER_NAME" \
         --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --verbose --sleep-idle-seconds 600
 
