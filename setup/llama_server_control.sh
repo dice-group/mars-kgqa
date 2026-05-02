@@ -18,6 +18,8 @@ DEFAULT_PORT=9292
 ACTION="${1:-start}"
 # $2 = host port; defaults to $DEFAULT_PORT
 HOST_PORT="${2:-$DEFAULT_PORT}"
+# $3 = llama server version tag; defaults to b8994
+LLAMA_VERSION="${3:-b8994}"
 # Container/instance name is derived from the port so each instance is unique
 LLAMA_CONTAINER_NAME="llama-server-$HOST_PORT"
 
@@ -89,7 +91,7 @@ if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
         -B "$CUR_SCRIPT_DIR/llama_server_models.ini":/app/models.ini \
         --env LLAMA_CACHE=/models \
         --env LLAMA_SET_ROWS=1 \
-        llama-cpp-server-cuda12-b8562.sif \
+        llama-cpp-server-cuda12-${LLAMA_VERSION}.sif \
         "$LLAMA_CONTAINER_NAME" \
         --models-preset /app/models.ini --host 0.0.0.0 --port $HOST_PORT --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --verbose --sleep-idle-seconds 600
 
@@ -127,7 +129,7 @@ else
       --env LLAMA_CACHE=/models \
       --env LLAMA_SET_ROWS=1 \
       --name "$LLAMA_CONTAINER_NAME" \
-      ghcr.io/ggml-org/llama.cpp:server-cuda12-b8562 \
+      ghcr.io/ggml-org/llama.cpp:server-cuda12-${LLAMA_VERSION} \
       --models-preset /app/models.ini --host 0.0.0.0 --port 8080 --models-max 2 --parallel 1 --ctx-size "$LLAMA_ARG_CTX_SIZE" --sleep-idle-seconds 600
   }
 

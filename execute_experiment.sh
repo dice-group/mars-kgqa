@@ -152,8 +152,14 @@ export GPU_DEVICE
 #   exit 1
 # fi
 export LLAMA_CONTAINER_NAME="llama-server-$PORT"
+# Choose llama server version based on model
+if [[ "$LLM" == "GPTOSS120B" ]]; then
+  LLAMA_SERVER_VERSION="b8562"
+else
+  LLAMA_SERVER_VERSION="b8994"
+fi
 # Start llama‑server container (and ensure it stops on script exit)
-bash setup/llama_server_control.sh start "$PORT"
+bash setup/llama_server_control.sh start "$PORT" "$LLAMA_SERVER_VERSION"
 # Register a trap to stop the container when the script exits or is interrupted
 cleanup() {
   echo "Cleaning up processes..."
