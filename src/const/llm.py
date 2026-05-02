@@ -59,6 +59,7 @@ class ChatModel(Enum):
     NEMOTRON3SUPER = ModelAPIConfig("nemotron-3-super-120B-a12b", LLM_ENDPOINT, LLM_API_KEY) # Works
     GEMMA4_31B = ModelAPIConfig("gemma-4-31b", LLM_ENDPOINT, LLM_API_KEY) # WIP
     QWEN3D5_122B = ModelAPIConfig("qwen3d5-122B-a10b", LLM_ENDPOINT, LLM_API_KEY) # WIP
+    QWEN3D6_27B = ModelAPIConfig("qwen-3.6-27b", LLM_ENDPOINT, LLM_API_KEY) # WIP
 
 # Embedding model
 class EmbeddingModel(Enum):
