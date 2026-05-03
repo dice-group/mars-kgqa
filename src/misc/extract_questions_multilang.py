@@ -49,6 +49,8 @@ def build_question_map(input_pattern, output_file):
 
 
 if __name__ == "__main__":
-    input_pattern = "/local/nikit/repos/mars-kgqa/data_dir/processed_kgqa_ds/*/*/tentrismain_aug_gold.json"
-    output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/question_map.json"
+    # input_pattern = "/local/nikit/repos/mars-kgqa/data_dir/processed_kgqa_ds/*/*/tentrismain_aug_gold.json"
+    # output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/question_map.json"
+    input_pattern = "/local/nikit/repos/mars-kgqa/data_dir/processed_kgqa_ds/spinach/*/tentrismain_aug_gold.json"
+    output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/spinach_question_map.json"
     build_question_map(input_pattern, output_path)

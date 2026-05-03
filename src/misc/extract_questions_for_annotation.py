@@ -39,6 +39,8 @@ def generate_jsonl(map_file, output_file):
 
 
 if __name__ == "__main__":
-    map_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/question_map.json"
-    output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/questions_for_annotation.jsonl"
+    # map_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/question_map.json"
+    # output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/questions_for_annotation.jsonl"
+    map_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/spinach_question_map.json"
+    output_path = "/local/nikit/repos/mars-kgqa/data_dir/misc/spinach_questions_for_annotation.jsonl"
     generate_jsonl(map_path, output_path)
