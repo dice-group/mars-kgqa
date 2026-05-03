@@ -60,24 +60,24 @@ class KgqaDataset(Enum):
     
     ## Obsolete datasets - End
     
-    ## Working datasets - Start
+    ## Previous tentris datasets - Start
     
-    QALD9PLUS_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald9plus_tentrisq10", "QALD-9-plus (Updated on QALD 10 Wikidata - Tentris)", {
-        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json"
-    }, QALD10_TENTRIS_WIKIDATA_EP)
+    # QALD9PLUS_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald9plus_tentrisq10", "QALD-9-plus (Updated on QALD 10 Wikidata - Tentris)", {
+    #     DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study
+    #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json"
+    # }, QALD10_TENTRIS_WIKIDATA_EP)
     
-    QALD10_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald10_tentrisq10", "QALD-10  (Updated on QALD 10 Wikidata - Tentris)", {
-        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study,
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json"
-    }, QALD10_TENTRIS_WIKIDATA_EP)
+    # QALD10_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("qald10_tentrisq10", "QALD-10  (Updated on QALD 10 Wikidata - Tentris)", {
+    #     DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/qald9plus/train/tentrisq10_aug_gold.json", # NOTE: We do not generate annotations for train, since ent-rel linkers have seen this data. This data should only be used for ablation study,
+    #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json"
+    # }, QALD10_TENTRIS_WIKIDATA_EP)
     
-    LCQUAD2_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("lcquad2_tentrisq10", "LC-QuAD2.0 (Updated on QALD 10 Wikidata - Tentris)", {
-        # DatasetSplit.TRAIN: "", # Too large, no point in using this split
-        DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json"
-    }, QALD10_TENTRIS_WIKIDATA_EP)
+    # LCQUAD2_UPDATED_TENTRISQ10 =  KgqaDatasetInfo("lcquad2_tentrisq10", "LC-QuAD2.0 (Updated on QALD 10 Wikidata - Tentris)", {
+    #     # DatasetSplit.TRAIN: "", # Too large, no point in using this split
+    #     DatasetSplit.TEST: "data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json"
+    # }, QALD10_TENTRIS_WIKIDATA_EP)
     
-    ## Working datasets - End
+    ## Previous tentris datasets - End
     
     ## New Working datasets - Start
     
