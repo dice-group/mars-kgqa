@@ -79,17 +79,22 @@ import json
 import re
 import os
 import sys
-import requests
+from datetime import datetime, timezone
 from tqdm import tqdm
 
+# Reuse existing endpoint execution utility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.util.common import execute_sparql_query, create_directory_if_not_exists
+from src.const import misc as misc_consts
+
+# execute_sparql_query (via log_sparql_query) writes to
+# misc_consts.sparql_log_filehandle which is normally set by run.py.
+# Initialize it here so standalone execution works.
+misc_consts.sparql_log_filehandle = open("/dev/null", "w")
+
 # ----- Configuration -----
-INPUT_FILE = "data_dir/processed_kgqa_ds/spinach/train/qald_dev_final.json"
-OUTPUT_FILE = "data_dir/processed_kgqa_ds/spinach/train/qald_dev_final_fixed.json"
+DEFAULT_INPUT = "data_dir/processed_kgqa_ds/spinach/train/qald_dev_final.json"
 ENDPOINT = "http://enexa1.cs.uni-paderborn.de:9080/sparql"
-HEADERS = {
-    "Accept": "application/sparql-results+json",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0"
-}
 TIMEOUT = 30
 
 # Standard Wikidata prefixes (used when a query is missing them)
@@ -783,31 +788,186 @@ def apply_all_fixes(sparql: str) -> tuple[str, list[str]]:
 
 
 def execute_query(sparql: str) -> tuple[dict, bool, str]:
-    """Execute a SPARQL query and return (response, failed, error_msg)."""
-    # Add LIMIT if missing
+    """Execute a SPARQL query and return (response, failed, error_msg).
+
+    Thin wrapper around src.util.common.execute_sparql_query that adds
+    LIMIT for testing and translates the return format to (data, failed, error).
+    """
     if "limit" not in sparql.lower() and "ask " not in sparql.lower():
         test_sparql = sparql + "\nLIMIT 1000"
     else:
         test_sparql = sparql
 
-    try:
-        resp = requests.post(ENDPOINT, data={'query': test_sparql, 'format': 'json'},
-                            headers=HEADERS, timeout=TIMEOUT)
-        if resp.status_code == 200:
-            return resp.json(), False, ""
-        else:
-            return {}, True, f"HTTP {resp.status_code}: {resp.text[:200]}"
-    except Exception as e:
-        return {}, True, f"Exception: {str(e)[:200]}"
+    data, failed = execute_sparql_query(test_sparql, ENDPOINT,
+                                        get_only_bindings=False, timeout=TIMEOUT)
+    if failed:
+        return {}, True, "RequestException (see stderr for details)"
+    return data, False, ""
+
+
+def derive_paths(input_file: str) -> tuple[str, str, str]:
+    """Derive output, report, and comments paths from the input file path.
+
+    For  data_dir/.../qald_test_final.json
+    produces
+      data_dir/.../qald_test_final_fixed.json
+      data_dir/.../qald_test_final_fix_report.json
+      data_dir/.../qald_test_final_fix_comments.txt
+    """
+    base, ext = os.path.splitext(input_file)
+    return (
+        f"{base}_fixed{ext}",
+        f"{base}_fix_report.json",
+        f"{base}_fix_comments.txt",
+    )
+
+
+def build_fix_description(fix_name: str) -> str:
+    """readable description for a fix identifier."""
+    descriptions = {
+        "remove_service_wikibase_label": "Replaced SERVICE wikibase:label with explicit rdfs:label lookups",
+        "inline_with_include": "Inlined WITH { ... } AS %name / INCLUDE %name blocks into main WHERE clause",
+        "fix_datetime_to_date": "Replaced xsd:dateTime with xsd:date for date-only literals",
+        "fix_group_by_having": "Replaced aggregate alias in HAVING with full aggregate expression",
+        "fix_variable_scope": "Renamed inner variable to avoid scope collision",
+        "add_missing_prefix": "Added missing PREFIX declaration",
+        "fix_invalid_date_components": "Normalized invalid date components (month=00 -> 01, day=00 -> 01)",
+        "remove_service_wikibase_around": "Removed SERVICE wikibase:around (degraded — proximity filtering lost)",
+        "fix_long_variable_names": "Renamed overly long or problematic variable names",
+        "fix_missing_trailing_period": "Added missing trailing period in triple pattern",
+    }
+    return descriptions.get(fix_name, fix_name)
+
+
+def write_report(input_file: str, report_path: str, comments_path: str,
+                 total: int, results: dict) -> None:
+    """Write the JSON report and readable comments file."""
+    fix_counts: dict[str, int] = {}
+    degraded_ids: list[str] = []
+    for item in results["success_fixed"]:
+        for fix in item["fixes"]:
+            fix_counts[fix] = fix_counts.get(fix, 0) + 1
+            if fix == "remove_service_wikibase_around":
+                degraded_ids.append(str(item["id"]))
+
+    orig_ok = len(results["success_original"])
+    fixed_ok = len(results["success_fixed"])
+    still_fail = len(results["still_failing"])
+    no_fix = len(results["no_fix_applied"])
+
+    # --- JSON report ---
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "input_file": os.path.abspath(input_file),
+        "endpoint": ENDPOINT,
+        "total_queries": total,
+        "summary": {
+            "original_working": orig_ok,
+            "successfully_fixed": fixed_ok,
+            "still_failing": still_fail,
+            "no_fix_applicable": no_fix,
+            "total_working_after": orig_ok + fixed_ok,
+            "working_percentage": round((orig_ok + fixed_ok) / total * 100, 2) if total else 0,
+        },
+        "fix_distribution": fix_counts,
+        "degraded_queries": degraded_ids,
+        "details": {
+            "original_working_ids": [str(i) for i in results["success_original"]],
+            "successfully_fixed": results["success_fixed"],
+            "still_failing": results["still_failing"],
+            "no_fix_applied": results["no_fix_applied"],
+        },
+    }
+    create_directory_if_not_exists(report_path)
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"Fix report saved to: {report_path}")
+
+    # --- readable comments file ---
+    lines: list[str] = []
+    lines.append("=" * 72)
+    lines.append("SPARQL ENDPOINT FIX — COMMENTS")
+    lines.append("=" * 72)
+    lines.append(f"Input file : {input_file}")
+    lines.append(f"Endpoint   : {ENDPOINT}")
+    lines.append(f"Generated  : {report['generated_at']}")
+    lines.append("")
+    lines.append("-" * 72)
+    lines.append("SUMMARY")
+    lines.append("-" * 72)
+    lines.append(f"Total queries:          {total}")
+    lines.append(f"Original working:       {orig_ok}")
+    lines.append(f"Successfully fixed:     {fixed_ok}")
+    lines.append(f"Still failing:          {still_fail}")
+    lines.append(f"No fix applicable:      {no_fix}")
+    lines.append(f"Working after fix:      {orig_ok + fixed_ok} / {total} "
+                 f"({report['summary']['working_percentage']}%)")
+    lines.append("")
+
+    if fix_counts:
+        lines.append("-" * 72)
+        lines.append("FIX DISTRIBUTION (successfully fixed queries)")
+        lines.append("-" * 72)
+        for fix, count in sorted(fix_counts.items(), key=lambda x: -x[1]):
+            desc = build_fix_description(fix)
+            lines.append(f"  {fix}  ({count})")
+            lines.append(f"    -> {desc}")
+        lines.append("")
+
+    if degraded_ids:
+        lines.append("-" * 72)
+        lines.append("DEGRADED QUERIES (semantics may differ)")
+        lines.append("-" * 72)
+        lines.append("The following queries had SERVICE wikibase:around removed.")
+        lines.append("Proximity/distance filtering is no longer applied.")
+        for qid in degraded_ids:
+            lines.append(f"  - Query {qid}")
+        lines.append("")
+
+    if results["still_failing"]:
+        lines.append("-" * 72)
+        lines.append("STILL FAILING QUERIES")
+        lines.append("-" * 72)
+        for item in results["still_failing"]:
+            lines.append(f"  Query {item['id']}:")
+            lines.append(f"    Fixes attempted : {item['fixes']}")
+            lines.append(f"    Error           : {item['error'][:120]}")
+        lines.append("")
+
+    if results["no_fix_applied"]:
+        lines.append("-" * 72)
+        lines.append("QUERIES WITH NO APPLICABLE FIX")
+        lines.append("-" * 72)
+        lines.append("These queries failed on the endpoint but none of the known")
+        lines.append("fix patterns matched. They may need manual inspection.")
+        ids = ", ".join(str(i["id"]) for i in results["no_fix_applied"])
+        lines.append(f"  IDs: {ids}")
+        lines.append("")
+
+    lines.append("=" * 72)
+    lines.append("END OF REPORT")
+    lines.append("=" * 72)
+    lines.append("")
+
+    create_directory_if_not_exists(comments_path)
+    with open(comments_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print(f"Comments file saved to: {comments_path}")
 
 
 def main():
-    print(f"Loading queries from {INPUT_FILE}")
-    with open(INPUT_FILE) as f:
+    input_file = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT
+    output_file, report_path, comments_path = derive_paths(input_file)
+
+    print(f"Loading queries from {input_file}")
+    with open(input_file) as f:
         data = json.load(f)
 
     total = len(data["questions"])
     print(f"Total queries: {total}")
+    print(f"Output file  : {output_file}")
+    print(f"Report file  : {report_path}")
+    print(f"Comments file: {comments_path}")
 
     results = {
         "success_original": [],
@@ -821,12 +981,7 @@ def main():
         qid = q["id"]
         sparql = q["query"]["sparql"]
 
-        # Add LIMIT for testing
-        test_sparql = sparql
-        if "limit" not in sparql.lower() and "ask " not in sparql.lower():
-            test_sparql = sparql + "\nLIMIT 1000"
-
-        _, failed, _ = execute_query(test_sparql)
+        _, failed, _ = execute_query(sparql)
         if not failed:
             results["success_original"].append(qid)
             q["_status"] = "original_ok"
@@ -894,14 +1049,16 @@ def main():
             print(f"  {item['id']}")
 
     # Save fixed dataset
-    # Clean up internal status field
     for q in data["questions"]:
         q.pop("_status", None)
 
-    output_path = OUTPUT_FILE
-    with open(output_path, 'w', encoding='utf-8') as f:
+    create_directory_if_not_exists(output_file)
+    with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-    print(f"\nFixed dataset saved to: {output_path}")
+    print(f"\nFixed dataset saved to: {output_file}")
+
+    # Write report and comments
+    write_report(input_file, report_path, comments_path, total, results)
 
     return results
 
