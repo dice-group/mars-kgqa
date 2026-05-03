@@ -138,6 +138,7 @@ def sparql_one_line(query):
     return re.sub(r'\s+', ' ', no_comments).strip()
 
 def kill_container(container_name: str, signal: str = "SIGKILL", use_apptainer: bool = False) -> int:
+    print(f"Apptainer config dir: {os.getenv('APPTAINER_CONFIGDIR', 'No Apptainer config dir set!')}")
     if use_apptainer:
         cmd = ["apptainer", "instance", "stop", "--signal", signal, container_name]
     else:

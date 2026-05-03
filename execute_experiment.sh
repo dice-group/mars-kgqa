@@ -10,9 +10,14 @@ set -euo pipefail
 
 # Determine the directory of the current script
 CUR_SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # This will get overriden at our next source call
+PROJECT_ROOT="$(cd "${CUR_SCRIPT_DIR}/.." && pwd)"
 
 # Loading environment variables (also loads slurm specific config if needed)
 source "$CUR_SCRIPT_DIR/setup/env.sh"
+
+if [[ "${SLURM_ACTIVE:-false}" == "true" ]]; then
+  export APPTAINER_CONFIGDIR="${PROJECT_ROOT}/data_dir/apptainer-config-dir/${SLURM_JOB_ID}"
+fi
 
 export ENV_PRELOADED=true
 
