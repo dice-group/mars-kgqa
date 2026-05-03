@@ -16,6 +16,9 @@ src/notebook/data_dir/**
 !data_dir/processed_kgqa_ds/qald9plus/train/
 !data_dir/processed_kgqa_ds/qald10/
 !data_dir/processed_kgqa_ds/qald10/test/
+!data_dir/processed_kgqa_ds/spinach/
+!data_dir/processed_kgqa_ds/spinach/test/
+!data_dir/processed_kgqa_ds/spinach/train/
 
 !data_dir/processed_kgqa_ds/lcquad2/test/tentrisq10_aug_gold.json
 !data_dir/processed_kgqa_ds/qald9plus/test/tentrisq10_aug_gold.json
@@ -26,6 +29,9 @@ src/notebook/data_dir/**
 !data_dir/processed_kgqa_ds/qald9plus/test/tentrismain_aug_gold.json
 !data_dir/processed_kgqa_ds/qald9plus/train/tentrismain_aug_gold.json
 !data_dir/processed_kgqa_ds/qald10/test/tentrismain_aug_gold.json
+
+!data_dir/processed_kgqa_ds/spinach/test/tentrismain_aug_gold.json
+!data_dir/processed_kgqa_ds/spinach/train/tentrismain_aug_gold.json
 
 !data_dir/gerbil_results
 !data_dir/figures/
