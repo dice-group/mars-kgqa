@@ -236,7 +236,11 @@ def count_sparql_hops(
         adj = defaultdict(set)
         for pat in patterns:
             s, o = pat.get("s"), pat.get("o")
-            if s and o:
+            # Skip wikibase:quantity* predicates — they access scalar parts of a
+            # quantity value node (amount, unit, bounds) and inflate hop depth
+            # without representing real knowledge-graph traversal steps.
+            p_uri = str(pat.get("p", ""))
+            if s and o and not p_uri.startswith("http://wikiba.se/ontology#quantity"):
                 adj[s].add(o)
                 adj[o].add(s)
         return adj

@@ -57,7 +57,7 @@ def extract_triples_from_algebra(alg_dict):
                     o = "?" + str(o)
                 elif isinstance(o, str) and o.startswith("http"):
                     o = uri_to_prefixed(o)
-                triples.append({"s": s, "o": o})
+                triples.append({"s": s, "p": str(t[1]), "o": o})
         for v in alg_dict.values():
             triples.extend(extract_triples_from_algebra(v))
     elif isinstance(alg_dict, list):

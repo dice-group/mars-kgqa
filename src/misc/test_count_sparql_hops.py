@@ -16,16 +16,17 @@ from src.util.common import count_sparql_hops
 PREFIX_MAP = {
     "http://www.wikidata.org/prop/direct/": "wdt:",
     "http://www.wikidata.org/entity/": "wd:",
-    "http://www.wikidata.org/prop/": "p:",
+    "http://www.wikidata.org/prop/statement/value-normalized/": "psn:",
+    "http://www.wikidata.org/prop/statement/value/": "psv:",
     "http://www.wikidata.org/prop/statement/": "ps:",
-    "http://www.wikidata.org/prop/statement/value/": "psn:",
-    "http://www.wikidata.org/prop/statement/value-normalized/": "psv:",
-    "http://www.wikidata.org/prop/qualifier/": "pq:",
-    "http://www.wikidata.org/prop/qualifier/value/": "pqv:",
     "http://www.wikidata.org/prop/qualifier/value-normalized/": "pqn:",
+    "http://www.wikidata.org/prop/qualifier/value/": "pqv:",
+    "http://www.wikidata.org/prop/qualifier/": "pq:",
+    "http://www.wikidata.org/prop/": "p:",
     "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf:",
     "http://schema.org/": "schema:",
     "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
+    "http://wikiba.se/ontology#": "wikibase:",
 }
 
 PREFIX_DECL = """
@@ -33,14 +34,15 @@ PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX ps: <http://www.wikidata.org/prop/statement/>
-PREFIX psn: <http://www.wikidata.org/prop/statement/value/>
-PREFIX psv: <http://www.wikidata.org/prop/statement/value-normalized/>
+PREFIX psv: <http://www.wikidata.org/prop/statement/value/>
+PREFIX psn: <http://www.wikidata.org/prop/statement/value-normalized/>
 PREFIX pq: <http://www.wikidata.org/prop/qualifier/>
 PREFIX pqv: <http://www.wikidata.org/prop/qualifier/value/>
 PREFIX pqn: <http://www.wikidata.org/prop/qualifier/value-normalized/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX schema: <http://schema.org/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX wikibase: <http://wikiba.se/ontology#>
 """
 
 
@@ -59,7 +61,6 @@ def extract_triples_from_algebra(alg_dict):
         if "triples" in alg_dict:
             for t in alg_dict["triples"]:
                 s = t[0]
-                p = t[1]
                 o = t[2]
                 # Convert Variable objects to ?var strings
                 if isinstance(s, Variable):
@@ -70,7 +71,7 @@ def extract_triples_from_algebra(alg_dict):
                     o = "?" + str(o)
                 elif isinstance(o, str) and o.startswith("http"):
                     o = uri_to_prefixed(o)
-                triples.append({"s": s, "p": p, "o": o})
+                triples.append({"s": s, "p": str(t[1]), "o": o})
         # Recurse into nested structures
         for v in alg_dict.values():
             triples.extend(extract_triples_from_algebra(v))
@@ -183,6 +184,31 @@ TEST_QUERIES = [
         "name": "spinach: 2-hop item with property",
         "sparql": "SELECT ?item WHERE { ?item p:P528 ?statement . ?statement pq:P972 wd:Q51278630 . }",
         "expected_hops": 2,  # wd:Q51278630 -> ?statement -> ?item
+    },
+    {
+        "name": "qald: PSV + wikibase quantity river-length query",
+        "sparql": (
+            "SELECT DISTINCT ?uri WHERE { "
+            "?uri wdt:P31 wd:Q4022 . "
+            "?uri p:P2043 ?stmnode. "
+            "?stmnode psv:P2043 ?valuenode . "
+            "?valuenode wikibase:quantityAmount ?length . "
+            "?valuenode wikibase:quantityUnit ?unit . "
+            "?valuenode wikibase:quantityLowerBound ?lowerbound. "
+            "?valuenode wikibase:quantityUpperBound ?upperbound. "
+            "BIND((?upperbound-?lowerbound)/2 AS ?precision). "
+            "?unit p:P2370 ?unitstmnode . "
+            "?unitstmnode psv:P2370 ?unitvaluenode . "
+            "?unitvaluenode wikibase:quantityAmount ?conversion . "
+            "?unitvaluenode wikibase:quantityUnit wd:Q11573 . "
+            "BIND(?length * ?conversion AS ?length_in_m) . "
+            "} ORDER BY DESC(?length_in_m) LIMIT 1"
+        ),
+        # Anchor: ?uri. wikibase:quantity* edges are skipped (value accessors, not hops).
+        # Chain: ?uri -[p:P2043]-> ?stmnode -[psv:P2043]-> ?valuenode = depth 2.
+        # wd:Q4022 at depth 1 (type constraint). wd:Q11573 unreachable (unit chain
+        # is disconnected when wikibase:quantityUnit edge is excluded).
+        "expected_hops": 2,
     },
 ]
 
