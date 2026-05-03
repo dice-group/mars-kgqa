@@ -7,3 +7,4 @@ lxml
 transformers[torch]
 dspy
 ipywidgets
+rdflib

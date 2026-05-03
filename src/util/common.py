@@ -186,7 +186,10 @@ def count_sparql_hops(
     # --- helper: check if an edge is a path-type pattern ---
     def is_path_edge(s, o):
         for pat in patterns:
-            if pat.get("type") == "path" and pat.get("s") == s and pat.get("o") == o:
+            if pat.get("type") == "path" and (
+                (pat.get("s") == s and pat.get("o") == o) or
+                (pat.get("s") == o and pat.get("o") == s)
+            ):
                 return True
         return False
     # --- helper: infer the anchor variable to start BFS from ---
@@ -253,21 +256,31 @@ def count_sparql_hops(
             # path-type edges: expand by number of predicates
             if is_path_edge(node, nbr):
                 for pat in patterns:
-                    if pat.get("type") == "path" and pat.get("s") == node and pat.get("o") == nbr:
+                    if pat.get("type") == "path" and (
+                        (pat.get("s") == node and pat.get("o") == nbr) or
+                        (pat.get("s") == nbr and pat.get("o") == node)
+                    ):
                         preds = pat.get("path", {}).get("predicates", [])
                         # type paths (P31 / P279) count as 1 hop
                         if set(preds).issubset({"wdt:P31", "wdt:P279"}):
                             hop_inc = 1
                         else:
                             hop_inc = len(preds)
-                        max_depth = max(max_depth, depth + hop_inc)
+                        new_depth = depth + hop_inc
+                        max_depth = max(max_depth, new_depth)
                         visited.add(nbr)
+                        # grounded entities are terminals; otherwise continue BFS
+                        if isinstance(nbr, str) and nbr.startswith("wd:Q"):
+                            entity_depths[nbr] = new_depth
+                        else:
+                            queue.append((nbr, new_depth))
                         break
                 continue
             # grounded entities (wd:Q…) are terminals
-            if isinstance(nbr, str) and nbr.startswith("wd:Q") and nbr != anchor:
-                max_depth = max(max_depth, depth + 1)
-                entity_depths[nbr] = depth + 1
+            if isinstance(nbr, str) and nbr.startswith("wd:Q"):
+                new_depth = depth + 1
+                max_depth = max(max_depth, new_depth)
+                entity_depths[nbr] = new_depth
                 visited.add(nbr)
                 continue
             visited.add(nbr)
