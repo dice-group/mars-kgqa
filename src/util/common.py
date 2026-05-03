@@ -7,6 +7,8 @@ import csv
 import time
 import re
 import subprocess
+from collections import deque, defaultdict
+from typing import Dict, List, Tuple, Any
 
 # Reference: https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe-GGUF
 def dot(va, vb):
@@ -152,3 +154,122 @@ def kill_container(container_name: str, signal: str = "SIGKILL", use_apptainer: 
     runtime = "Apptainer instance" if use_apptainer else "Docker container"
     print(f"{runtime} '{container_name}' killed with {signal}.")
     return result.returncode
+
+
+def count_sparql_hops(
+    sparql: str,
+    patterns: List[Dict[str, Any]],
+    default_var: str = "?uri"
+) -> Tuple[int, Dict[str, int]]:
+    """
+    Compute the reasoning depth (number of hops) a SPARQL query requires.
+    Builds an undirected graph from the triple patterns, infers the anchor
+    variable (starting point), then runs BFS to find the maximum depth to
+    any terminal node. Returns (max_hops, hops_per_entity).
+    Parameters
+    ----------
+    sparql : str
+        The raw SPARQL query string.
+    patterns : list of dict
+        Extracted triple patterns, each with at least "s" and "o" keys.
+        Path-type patterns may also have "type" == "path" and
+        "path.predicates" listing the predicate chain.
+    default_var : str
+        Fallback anchor variable if nothing else can be inferred.
+    Returns
+    -------
+    (max_hops, hops_per_entity)
+        max_hops : int — maximum BFS depth from anchor to a terminal.
+        hops_per_entity : dict mapping grounded entity URIs (wd:Q…) to
+                          their hop distance.
+    """
+    # --- helper: check if an edge is a path-type pattern ---
+    def is_path_edge(s, o):
+        for pat in patterns:
+            if pat.get("type") == "path" and pat.get("s") == s and pat.get("o") == o:
+                return True
+        return False
+    # --- helper: infer the anchor variable to start BFS from ---
+    def infer_anchor():
+        # 1) prefer ?uri if present
+        for pat in patterns:
+            if pat.get("s") == "?uri" or pat.get("o") == "?uri":
+                return "?uri"
+        # 2) infer answer variable from SELECT clause
+        answer_var = infer_answer_var()
+        for pat in patterns:
+            if pat.get("s") == answer_var or pat.get("o") == answer_var:
+                return answer_var
+        # 3) first grounded entity subject (wd:Q…)
+        for pat in patterns:
+            s = pat.get("s")
+            if isinstance(s, str) and s.startswith("wd:Q"):
+                return s
+        # 4) any grounded entity
+        for pat in patterns:
+            for node in (pat.get("s"), pat.get("o")):
+                if isinstance(node, str) and node.startswith("wd:Q"):
+                    return node
+        return default_var
+    # --- helper: extract the answer variable from SELECT ---
+    def infer_answer_var():
+        s = sparql.strip()
+        # aggregate queries fall back to default
+        if re.search(r"\b(COUNT|SUM|AVG|MIN|MAX)\s*\(", s, re.IGNORECASE):
+            return default_var
+        m = re.search(
+            r"SELECT\s+(DISTINCT\s+|REDUCED\s+)?(.+?)\s+WHERE",
+            s,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not m:
+            return default_var
+        for tok in m.group(2).strip().split():
+            if tok.startswith("?"):
+                return tok
+        return default_var
+    # --- helper: build adjacency list from patterns ---
+    def build_adj():
+        adj = defaultdict(set)
+        for pat in patterns:
+            s, o = pat.get("s"), pat.get("o")
+            if s and o:
+                adj[s].add(o)
+                adj[o].add(s)
+        return adj
+    # --- BFS from anchor ---
+    anchor = infer_anchor()
+    adj = build_adj()
+    visited = {anchor}
+    queue = deque([(anchor, 0)])
+    max_depth = 0
+    entity_depths: Dict[str, int] = {}
+    while queue:
+        node, depth = queue.popleft()
+        max_depth = max(max_depth, depth)
+        for nbr in adj.get(node, []):
+            if nbr in visited:
+                continue
+            # path-type edges: expand by number of predicates
+            if is_path_edge(node, nbr):
+                for pat in patterns:
+                    if pat.get("type") == "path" and pat.get("s") == node and pat.get("o") == nbr:
+                        preds = pat.get("path", {}).get("predicates", [])
+                        # type paths (P31 / P279) count as 1 hop
+                        if set(preds).issubset({"wdt:P31", "wdt:P279"}):
+                            hop_inc = 1
+                        else:
+                            hop_inc = len(preds)
+                        max_depth = max(max_depth, depth + hop_inc)
+                        visited.add(nbr)
+                        break
+                continue
+            # grounded entities (wd:Q…) are terminals
+            if isinstance(nbr, str) and nbr.startswith("wd:Q") and nbr != anchor:
+                max_depth = max(max_depth, depth + 1)
+                entity_depths[nbr] = depth + 1
+                visited.add(nbr)
+                continue
+            visited.add(nbr)
+            queue.append((nbr, depth + 1))
+    return max_depth, entity_depths
