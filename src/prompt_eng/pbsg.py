@@ -145,7 +145,9 @@ class MinimalPbsgModule(dspy.Module):
     def forward(self, question: str, entities: str, relations: str,
                 wd_ep: str = DEFAULT_WIKIDATA_ENDPOINT_URL,
                 mhop_limit: int = -1, refine: bool = True,
-                verify_update_sparql: bool = False, use_sleep: bool = False):
+                verify_update_sparql: bool = False, use_sleep: bool = False,
+                conc_ex_limit: int = 0, scoring_text: str = None,
+                include_pattern_count: bool = False, use_class_info: bool = False):
 
         if PROC_LOGGER is None:
             init_proc_logger()
@@ -156,15 +158,17 @@ class MinimalPbsgModule(dspy.Module):
             for line in entities.split('\n') if ': ' in line
         }
 
-        # Determine mhop_limit (require explicit value for PE optimisation)
+      # Determine mhop_limit (require explicit value for PE optimisation)
         if mhop_limit < 1:
             mhop_limit = 1
 
+        scoring_text = scoring_text or question
+
         # Collect 1-hop root patterns for each entity
         patterns, _, _ = _collect_root_patterns(entity_dict, wd_ep,
-                                                  proc_logger=PROC_LOGGER,
-                                                  use_sleep=use_sleep)
-        top = _score_and_select_top(question, patterns, proc_logger=PROC_LOGGER,
+                                                   proc_logger=PROC_LOGGER,
+                                                   use_sleep=use_sleep)
+        top = _score_and_select_top(scoring_text, patterns, proc_logger=PROC_LOGGER,
                                     top_n=self.top_n)
 
         var_id = 1
@@ -178,8 +182,8 @@ class MinimalPbsgModule(dspy.Module):
 
         # ── mhop=1: direct finalisation ──
         if mhop_limit == 1:
-            verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
-                                          use_sleep=use_sleep)
+            verbs = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, cache, wd_ep,
+                                          use_sleep=use_sleep, use_class_info=use_class_info)
             patterns_str = '\n'.join(verbs)
             sparql = self.final_sparql(
                 question=question, entities=ent_dict_str, patterns=patterns_str
@@ -188,8 +192,8 @@ class MinimalPbsgModule(dspy.Module):
 
         # ── mhop>1: expand-or-finalise loop ──
         for hop in range(1, mhop_limit + 1):
-            verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
-                                          use_sleep=use_sleep)
+            verbs = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, cache, wd_ep,
+                                          use_sleep=use_sleep, use_class_info=use_class_info)
             patterns_str = '\n'.join(verbs)
             pred = self.expand_or_finalize(
                 question=question, entities=ent_dict_str, patterns=patterns_str
@@ -210,7 +214,7 @@ class MinimalPbsgModule(dspy.Module):
                 edge = selected_edges[idx]
                 if edge.variable_name in expanded_edges:
                     continue
-                _update_edge_cache(selected_edges, conc_ex_limit=0,
+                _update_edge_cache(selected_edges, conc_ex_limit=conc_ex_limit,
                                    conc_ex_and_constraints_cache=cache,
                                    wd_ep=wd_ep, use_sleep=use_sleep)
                 constraint_tp = cache[_build_cache_key(edge)][1]
@@ -224,7 +228,7 @@ class MinimalPbsgModule(dspy.Module):
             if not new_patterns:
                 break
 
-            next_top = _score_and_select_top(question, new_patterns, proc_logger=PROC_LOGGER,
+            next_top = _score_and_select_top(scoring_text, new_patterns, proc_logger=PROC_LOGGER,
                                              top_n=self.top_n)
             for _, edge in next_top:
                 edge.assign_variable_id(var_id)
@@ -232,8 +236,8 @@ class MinimalPbsgModule(dspy.Module):
                 selected_edges.append(edge)
 
         # ── Forced finalisation after hop limit ──
-        final_verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
-                                            use_sleep=use_sleep)
+        final_verbs = _build_verbalizations(selected_edges, include_pattern_count, conc_ex_limit, cache, wd_ep,
+                                            use_sleep=use_sleep, use_class_info=use_class_info)
         patterns_str = '\n'.join(final_verbs)
         sparql = self.final_sparql(
             question=question, entities=ent_dict_str, patterns=patterns_str

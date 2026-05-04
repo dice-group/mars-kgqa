@@ -140,11 +140,13 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
         ent_dict_str = "\n".join(f"{k}: {v}" for k, v in ent_dict.items())
         rel_dict_str = "\n".join(f"{k}: {v}" for k, v in rel_dict.items())
 
+        scoring_text = aug_text if use_aug_sim else question_text
         example = dspy.Example(
             question_id=question_id,
-            question=aug_text,
+            question=question_text,
             entities=ent_dict_str,
             relations=rel_dict_str,
+            scoring_text=scoring_text,
             expected_answerset=list(_extract_gold_answerset(question_item.get('answers', []))),
             wd_endpoint=wd_ep,
         ).with_inputs("question", "entities", "relations")
@@ -171,6 +173,9 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
         refine=refine_sparql,
         verify_update_sparql=verify_update_sparql,
         use_sleep=use_sleep,
+        conc_ex_limit=conc_ex_limit,
+        include_pattern_count=include_pattern_count,
+        use_class_info=use_class_info,
     )
 
     # ── Baseline: generate predictions on evalset ─────────────────────────────
@@ -178,7 +183,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     baseline_answers = {}
     for ex in tqdm(evalset, desc='Baseline predictions'):
         pred = generator(question=ex.question, entities=ex.entities,
-                         relations=ex.relations, **gen_kwargs)
+                         relations=ex.relations, scoring_text=ex.scoring_text, **gen_kwargs)
         baseline_answers[ex.question_id] = getattr(pred, "sparql", "") or ""
 
     # Merge cached + baseline answers and save baseline TSV
@@ -195,12 +200,11 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     baseline_result = evaluator(generator)
     print(f"[PE] Baseline F1 on evalset: {baseline_result.score:.3f}")
 
-    # ── Optimise with MIPROv2 (zero-shot, instructions only) ──────────────────
-    # MIPROv2 tunes only the instruction text inside each Signature's docstring.
-    # optimize="instructions" ensures no few-shot demonstrations are selected
-    # from the training data (zero-shot setting). Only SparqlFromPatterns and
-    # ExpandOrFinalize are optimised (the MinimalPbsgModule only contains these
-    # two predictors). sparql_f1_metric is used as the reward signal.
+    # ── Optimise with MIPROv2 (zero-shot) ──────────────────────────────────────
+    # MIPROv2 tunes the instruction text and may select few-shot demonstrations
+    # from the training data. Only SparqlFromPatterns and ExpandOrFinalize are
+    # optimised (the MinimalPbsgModule only contains these two predictors).
+    # sparql_f1_metric is used as the reward signal.
     # auto="light" runs the fewest trials; increase to "medium" or "heavy" for
     # better prompt quality at the cost of more LLM calls.
     #
@@ -213,7 +217,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     print(f"[PE] Trial program snapshots → {os.path.join(trials_dir, 'evaluated_programs')}/")
     from dspy.teleprompt import MIPROv2
     optimizer = MIPROv2(metric=sparql_f1_metric, auto="light", num_threads=4,
-                        verbose=True, log_dir=trials_dir, optimize="instructions")
+                        verbose=True, log_dir=trials_dir)
     compiled_generator = optimizer.compile(
         generator,
         trainset=trainset,
@@ -225,7 +229,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     optimised_answers = {}
     for ex in tqdm(evalset, desc='Optimised predictions'):
         pred = compiled_generator(question=ex.question, entities=ex.entities,
-                                  relations=ex.relations, **gen_kwargs)
+                                  relations=ex.relations, scoring_text=ex.scoring_text, **gen_kwargs)
         optimised_answers[ex.question_id] = getattr(pred, "sparql", "") or ""
 
     optimised_output_path = output_path.replace('.tsv', '_optimised.tsv')
