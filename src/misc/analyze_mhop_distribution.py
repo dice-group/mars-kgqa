@@ -245,7 +245,7 @@ def main():
                               os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                           ".."))
         short = rel.replace("data_dir/processed_kgqa_ds/", "").replace("/tentrismain_aug_gold.json", "")
-        short = short.replace("/qald_test_final_fixed.json", "").replace("/qald_dev_final_fixed.json", "")
+        #short = short.replace("/qald_test_final_fixed.json", "").replace("/qald_dev_final_fixed.json", "")
         print(f"\nAnalyzing: {short} ...")
         stats = analyze_file(filepath)
         stats["dataset_name"] = short

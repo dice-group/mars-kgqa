@@ -11,7 +11,9 @@ source $SETUP_DIR/env.sh
 #mkdir -p $HF_HOME
 
 # Tested with python 3.12.3
-python -m venv $PROJ_VENV_DIR
+if [ ! -d "$PROJ_VENV_DIR" ]; then
+  python -m venv $PROJ_VENV_DIR
+fi
 source $PROJ_VENV_DIR/bin/activate
 
 export TMPDIR="${SETUP_DIR}/../.tmp"
