@@ -96,6 +96,8 @@ def add_grasp_annotator(target_pattern, source_file, dry_run=True):
 
 
 if __name__ == "__main__":
-    target_pattern = "data_dir/processed_kgqa_ds/*/*/tentrismain_aug_gold.json"
-    source = "data_dir/misc/all_annotated_combined.jsonl"
+    # target_pattern = "data_dir/processed_kgqa_ds/*/*/tentrismain_aug_gold.json"
+    # source = "data_dir/misc/all_annotated_combined.jsonl"
+    target_pattern = "data_dir/processed_kgqa_ds/spinach/*/tentrismain_aug_gold.json"
+    source = "data_dir/misc/spinach_annotated_combined.jsonl"
     add_grasp_annotator(target_pattern, source, dry_run=False)
