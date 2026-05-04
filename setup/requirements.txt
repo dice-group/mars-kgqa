@@ -8,3 +8,4 @@ transformers[torch]
 dspy
 ipywidgets
 rdflib
+dspy[optuna]
