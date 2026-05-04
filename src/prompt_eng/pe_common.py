@@ -1,6 +1,7 @@
 # Common file to store reusable functions for the PE (prompt-engineering) pipeline.
-# The goal is to run DSPy's MIPROv2 optimizer on the PBSG module, then extract
-# the optimised instruction text and paste it back into llm_request.py.
+# Runs DSPy's MIPROv2 optimizer (zero-shot, instructions-only) on the MinimalPbsgModule
+# which contains only SparqlFromPatterns and ExpandOrFinalize. The optimised
+# instruction text is extracted and pasted back into llm_request.py.
 
 from src.util.common import read_json_file, create_directory_if_not_exists, save_json_file
 from src.sparql_gen.sparql_gen_common import save_answers_as_tsv
@@ -69,14 +70,17 @@ def sparql_f1_metric(example: dspy.Example, prediction: dspy.Prediction,
 
 def _extract_optimised_prompts(compiled_generator) -> str:
     """Return a human-readable string of the optimised instruction text per predictor.
-    Paste the relevant sections back into llm_request.py."""
-    lines = ["=" * 72, "OPTIMISED INSTRUCTION TEXT", "=" * 72]
+    Only extracts SparqlFromPatterns and ExpandOrFinalize (the two prompts targeted
+    for optimisation). Paste the relevant sections back into llm_request.py."""
+    target_sigs = {"SparqlFromPatterns", "ExpandOrFinalize"}
+    lines = ["=" * 72, "OPTIMISED INSTRUCTION TEXT (zero-shot)", "=" * 72]
     for name, predictor in compiled_generator.named_predictors():
+        sig_name = predictor.signature.__name__
+        if sig_name not in target_sigs:
+            continue
         sig = predictor.signature
-        lines.append(f"\n--- {name} ---")
+        lines.append(f"\n--- {sig_name} ---")
         lines.append(f"Instructions:\n{sig.instructions}")
-        demos = getattr(predictor, 'demos', [])
-        lines.append(f"Few-shot demos selected: {len(demos)}")
     lines.append("=" * 72)
     return "\n".join(lines)
 
@@ -191,9 +195,12 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     baseline_result = evaluator(generator)
     print(f"[PE] Baseline F1 on evalset: {baseline_result.score:.3f}")
 
-    # ── Optimise with MIPROv2 ─────────────────────────────────────────────────
-    # MIPROv2 tunes the instruction text inside each Signature's docstring and
-    # selects few-shot demonstrations, using sparql_f1_metric as the reward signal.
+    # ── Optimise with MIPROv2 (zero-shot, instructions only) ──────────────────
+    # MIPROv2 tunes only the instruction text inside each Signature's docstring.
+    # optimize="instructions" ensures no few-shot demonstrations are selected
+    # from the training data (zero-shot setting). Only SparqlFromPatterns and
+    # ExpandOrFinalize are optimised (the MinimalPbsgModule only contains these
+    # two predictors). sparql_f1_metric is used as the reward signal.
     # auto="light" runs the fewest trials; increase to "medium" or "heavy" for
     # better prompt quality at the cost of more LLM calls.
     #
@@ -206,7 +213,7 @@ def process_dataset(proc_name, qald_file_path, output_path, pe_generator, wd_ep,
     print(f"[PE] Trial program snapshots → {os.path.join(trials_dir, 'evaluated_programs')}/")
     from dspy.teleprompt import MIPROv2
     optimizer = MIPROv2(metric=sparql_f1_metric, auto="light", num_threads=4,
-                        verbose=True, log_dir=trials_dir)
+                        verbose=True, log_dir=trials_dir, optimize="instructions")
     compiled_generator = optimizer.compile(
         generator,
         trainset=trainset,

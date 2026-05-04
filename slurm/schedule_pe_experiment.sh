@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Sample usage: bash slurm/schedule_pe_experiment.sh --approach PBSG_MHOP \
-#   --dataset QALD10_UPDATED_TENTRISQ10 --split TRAIN --llm GPTOSS120B \
-#   --topn-count 20 --mhop-limit 5 --use-aug-similarity --language en
+#   --dataset CUSTOM_TRAIN_TENTRISMAIN --split TRAIN --llm QWEN3D6_27B \
+#   --topn-count 20 --mhop-limit 5 --language en --use-aug-similarity --use-class-info --conc-ex-limit 10 --include-pattern-count --verify-update-sparql
 
 set -eu
 

@@ -77,13 +77,7 @@ def configure_lm(llm_config: ModelAPIConfig) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class SparqlFromPatterns(dspy.Signature):
-    """Given a natural language question, identified entities and a set of Wikidata
-    triple patterns (subject, predicate, object) including entity IDs and domain/range
-    type restrictions, generate a valid Wikidata SPARQL query utilizing the relevant
-    provided IDs that answers the question. Prioritize triple patterns where the entity
-    IDs appear relevant to the question and the domain/range types align with the
-    expected answer type. Discard any triple patterns that do not contribute to
-    answering the question. Do not try to retrieve labels unless explicitly asked."""
+    """Generate a valid Wikidata SPARQL query from a question and candidate triple patterns."""
     question: str = dspy.InputField()
     entities: str = dspy.InputField(desc="identified question entities with their Wikidata QIDs, one per line as 'label: QID'")
     patterns: str = dspy.InputField(desc="candidate Wikidata triple patterns with entity IDs; one pattern per line, 0-indexed")
@@ -91,16 +85,7 @@ class SparqlFromPatterns(dspy.Signature):
 
 
 class ExpandOrFinalize(dspy.Signature):
-    """Given a natural language question, identified entities and a set of Wikidata triple
-    patterns (subject, predicate, object) including entity IDs and domain/range type
-    restrictions, decide whether enough information is available to generate a final SPARQL
-    query, or whether more graph traversal is needed. Prioritize triple patterns where the
-    entity IDs appear relevant to the question and the domain/range types align with the
-    expected answer type. Discard any triple patterns that do not contribute to answering
-    the question. Do not try to retrieve labels unless explicitly asked. If the patterns are
-    sufficient, produce a valid Wikidata SPARQL query. If not, return the comma-separated
-    0-based indices of the patterns to expand further — pick at least one and do not pick
-    too many."""
+    """Given a question and candidate triple patterns, either produce a SPARQL query or return indices of patterns to expand."""
     question: str = dspy.InputField()
     entities: str = dspy.InputField(desc="identified question entities with their Wikidata QIDs, one per line as 'label: QID'")
     patterns: str = dspy.InputField(desc="candidate Wikidata triple patterns indexed from 0; one pattern per line")
@@ -141,7 +126,123 @@ class VerifyUpdateSparql(dspy.Signature):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Module
+# Minimal module for PE optimisation
+# Only contains SparqlFromPatterns and ExpandOrFinalize predictors so that
+# MIPROv2 tunes exclusively these two signatures (zero-shot, instructions only).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class MinimalPbsgModule(dspy.Module):
+    """Lightweight module with only the two predictors targeted for MIPROv2 optimisation."""
+
+    def __init__(self, top_n: int = TRIPLE_PATTERN_N_TOP):
+        super().__init__()
+        initialize_aux_values()
+        self.top_n = top_n
+
+        self.expand_or_finalize = dspy.ChainOfThought(ExpandOrFinalize)
+        self.final_sparql       = dspy.Predict(SparqlFromPatterns)
+
+    def forward(self, question: str, entities: str, relations: str,
+                wd_ep: str = DEFAULT_WIKIDATA_ENDPOINT_URL,
+                mhop_limit: int = -1, refine: bool = True,
+                verify_update_sparql: bool = False, use_sleep: bool = False):
+
+        if PROC_LOGGER is None:
+            init_proc_logger()
+
+        ent_dict_str = entities
+        entity_dict = {
+            line.split(': ')[0]: line.split(': ')[1]
+            for line in entities.split('\n') if ': ' in line
+        }
+
+        # Determine mhop_limit (require explicit value for PE optimisation)
+        if mhop_limit < 1:
+            mhop_limit = 1
+
+        # Collect 1-hop root patterns for each entity
+        patterns, _, _ = _collect_root_patterns(entity_dict, wd_ep,
+                                                  proc_logger=PROC_LOGGER,
+                                                  use_sleep=use_sleep)
+        top = _score_and_select_top(question, patterns, proc_logger=PROC_LOGGER,
+                                    top_n=self.top_n)
+
+        var_id = 1
+        selected_edges = []
+        for _, edge in top:
+            edge.assign_variable_id(var_id)
+            var_id += 1
+            selected_edges.append(edge)
+
+        cache, expanded_edges = {}, set()
+
+        # ── mhop=1: direct finalisation ──
+        if mhop_limit == 1:
+            verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
+                                          use_sleep=use_sleep)
+            patterns_str = '\n'.join(verbs)
+            sparql = self.final_sparql(
+                question=question, entities=ent_dict_str, patterns=patterns_str
+            ).sparql
+            return dspy.Prediction(sparql=sparql, hops_used=1)
+
+        # ── mhop>1: expand-or-finalise loop ──
+        for hop in range(1, mhop_limit + 1):
+            verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
+                                          use_sleep=use_sleep)
+            patterns_str = '\n'.join(verbs)
+            pred = self.expand_or_finalize(
+                question=question, entities=ent_dict_str, patterns=patterns_str
+            )
+
+            if pred.sparql:
+                return dspy.Prediction(sparql=pred.sparql, hops_used=hop)
+
+            # Expand requested indices
+            new_patterns = []
+            for idx_str in [s.strip() for s in (pred.expand_indices or "").split(',') if s.strip()]:
+                try:
+                    idx = int(idx_str)
+                except ValueError:
+                    continue
+                if not (0 <= idx < len(selected_edges)):
+                    continue
+                edge = selected_edges[idx]
+                if edge.variable_name in expanded_edges:
+                    continue
+                _update_edge_cache(selected_edges, conc_ex_limit=0,
+                                   conc_ex_and_constraints_cache=cache,
+                                   wd_ep=wd_ep, use_sleep=use_sleep)
+                constraint_tp = cache[_build_cache_key(edge)][1]
+                next_raw = find_next_hop_patterns(constraint_tp, edge.variable_name,
+                                                   wd_ep, use_sleep=use_sleep)
+                extracted, _ = extract_patterns_data(edge.variable_name, edge.variable_name,
+                                                      next_raw, PROPERTY_ID_MAP)
+                expanded_edges.add(edge.variable_name)
+                new_patterns.extend(extracted)
+
+            if not new_patterns:
+                break
+
+            next_top = _score_and_select_top(question, new_patterns, proc_logger=PROC_LOGGER,
+                                             top_n=self.top_n)
+            for _, edge in next_top:
+                edge.assign_variable_id(var_id)
+                var_id += 1
+                selected_edges.append(edge)
+
+        # ── Forced finalisation after hop limit ──
+        final_verbs = _build_verbalizations(selected_edges, False, 0, cache, wd_ep,
+                                            use_sleep=use_sleep)
+        patterns_str = '\n'.join(final_verbs)
+        sparql = self.final_sparql(
+            question=question, entities=ent_dict_str, patterns=patterns_str
+        ).sparql
+        return dspy.Prediction(sparql=sparql, hops_used=mhop_limit)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Full module (production use – all five predictors)
 # Mirrors process_input_query_multi_hop() in pattern_based_sparql_generator.py
 # ─────────────────────────────────────────────────────────────────────────────
 

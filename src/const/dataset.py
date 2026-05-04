@@ -101,4 +101,9 @@ class KgqaDataset(Enum):
         DatasetSplit.TEST: "data_dir/processed_kgqa_ds/spinach/test/tentrismain_aug_gold.json"
     }, TENTRIS_MAIN_WIKIDATA_EP)
     
+    # Combined train data
+    CUSTOM_TRAIN_TENTRISMAIN =  KgqaDatasetInfo("custom_train_tentrismain", "SPINACH + QALD-9-Plus Train Combined (Updated on Wikidata Main Split from 22.01.2026 - Tentris)", {
+        DatasetSplit.TRAIN: "data_dir/processed_kgqa_ds/spinach_qald9plus_combined/train/tentrismain_aug_gold.json",
+    }, TENTRIS_MAIN_WIKIDATA_EP)
+    
     ## New Working datasets - End

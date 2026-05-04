@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Sample usage:
+## Sample usage (zero-shot, optimises SparqlFromPatterns + ExpandOrFinalize only):
 ## bash execute_pe_experiment.sh --gpu 0 --approach PBSG_MHOP \
 #   --dataset QALD10_UPDATED_TENTRISMAIN --split TRAIN --llm GPTOSS120B \
 #   --topn-count 20 --mhop-limit 5 --use-aug-similarity --language en
@@ -27,9 +27,10 @@ usage() {
 Usage: $0 [OPTIONS] --approach <APPROACH> --dataset <DATASET> \\
           --split <SPLIT> --llm <LLM> [other flags]
 
-Runs the prompt-engineering (PE) pipeline via src.prompt_eng.pe_entry.
-Optimises DSPy prompts with MIPROv2 and writes the improved instruction text
-to <output>_optimised_prompts.txt for pasting back into llm_request.py.
+Runs the zero-shot prompt-engineering (PE) pipeline via src.prompt_eng.pe_entry.
+Optimises only the SparqlFromPatterns and ExpandOrFinalize instruction prompts
+with MIPROv2 (instructions-only, no few-shot demos) and writes the improved
+text to <output>_optimised_prompts.txt for pasting back into llm_request.py.
 Recommended split: TRAIN (so the optimiser has labels to learn from).
 
 Options:

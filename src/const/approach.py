@@ -7,7 +7,7 @@ from src.sparql_gen.pattern_based_sparql_generator import (
 )
 from src.sparql_gen.simple_sparql_generator import process_input_query as ssg_fn
 
-from src.prompt_eng.pbsg import PatternBasedSparqlGenerator
+from src.prompt_eng.pbsg import PatternBasedSparqlGenerator, MinimalPbsgModule
 
 @unique
 class Approach(Enum):
@@ -23,7 +23,7 @@ class Approach(Enum):
         
         
 class PeApproach(Enum):
-    PBSG_MHOP =  ("PBSG_MHOP", PatternBasedSparqlGenerator, pbsg_init)
+    PBSG_MHOP =  ("PBSG_MHOP", MinimalPbsgModule, pbsg_init)
 
     def __init__(self, label: str, generator: any, aux_init: Callable):
         # expose the callable as a attribute for later use
