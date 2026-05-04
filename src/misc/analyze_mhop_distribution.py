@@ -134,11 +134,13 @@ def analyze_file(filepath):
     hop_counts = defaultdict(int)
     hop_ids = defaultdict(list)
     parse_errors = 0
+    skipped_ids = []
 
     for q in questions:
         qid = q.get("id", "?")
         sparql = get_sparql_from_question(q)
         if not sparql or "WHERE" not in sparql:
+            skipped_ids.append(str(qid))
             continue
 
         patterns = extract_patterns(sparql)
@@ -157,6 +159,8 @@ def analyze_file(filepath):
         "total_queries": len(questions),
         "analyzed": sum(hop_counts.values()),
         "parse_errors": parse_errors,
+        "skipped": len(skipped_ids),
+        "skipped_ids": skipped_ids,
         "hop_distribution": dict(sorted(hop_counts.items())),
         "hop_ids": {str(k): v for k, v in sorted(hop_ids.items())},
     }
@@ -175,12 +179,12 @@ def build_table(results):
     lines.append("")
     lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("")
-    lines.append("| Dataset | Total Qs | Analyzed | Errors |")
-    lines.append("|---------|----------|----------|--------|")
+    lines.append("| Dataset | Total Qs | Analyzed | Skipped | Errors |")
+    lines.append("|---------|----------|----------|---------|--------|")
 
     for r in results:
         ds = r["dataset_name"]
-        lines.append(f"| {ds} | {r['total_queries']} | {r['analyzed']} | {r['parse_errors']} |")
+        lines.append(f"| {ds} | {r['total_queries']} | {r['analyzed']} | {r['skipped']} | {r['parse_errors']} |")
 
     lines.append("")
     lines.append("## Hop Distribution")
@@ -250,7 +254,7 @@ def main():
         stats = analyze_file(filepath)
         stats["dataset_name"] = short
         print(f"  Total: {stats['total_queries']}, Analyzed: {stats['analyzed']}, "
-              f"Errors: {stats['parse_errors']}")
+               f"Skipped: {stats['skipped']}, Errors: {stats['parse_errors']}")
         print(f"  Distribution: {stats['hop_distribution']}")
         for h, ids in stats.get("hop_ids", {}).items():
             print(f"    {h}-hop: {len(ids)} queries")
