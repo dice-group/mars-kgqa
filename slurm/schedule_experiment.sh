@@ -6,8 +6,13 @@
 #   --use-aug-similarity --language en --conc-ex-limit 2 --use-class-info
 set -eu
 
+
 PASSED_ARGS="$@"
 CUR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Setting huggingface cache to local directory
+export HF_HOME="${CUR_SCRIPT_DIR}/../.hf_cache"
+mkdir -p $HF_HOME
 
 USE_GOLD="pred_ent"          # default value for run name to indicate that the predicted entites are to be used
 USE_AUG_SIMILARITY="false"
@@ -46,6 +51,6 @@ RUN_NAME="${LANGUAGE}-${APPROACH}-${DATASET}-${SPLIT}-${LLM}-${USE_GOLD}"
 [[ -n "${CONC_EX_LIMIT:-}" ]] && RUN_NAME="${RUN_NAME}-concelim${CONC_EX_LIMIT}"
 RUN_NAME="${RUN_NAME}-${TIMESTAMP}"
 
-sbatch --job-name="$RUN_NAME" --mem=180G --cpus-per-task=16 --gres=gpu:h100:1 --time=30:00:00 \
+sbatch --job-name="$RUN_NAME" --mem=256G --cpus-per-task=16 --gres=gpu:a100:4 --time=30:00:00 \
        -o "$CLUSTER_LOG_DIR/slurm-%j__%x.out" \
        "$CUR_SCRIPT_DIR/../execute_experiment.sh" $PASSED_ARGS

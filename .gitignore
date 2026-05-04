@@ -1,6 +1,7 @@
 data_dir/**
 venv_*/
 .vscode/
+.hf_cache/
 **__pycache__**
 *.out
 *.sif

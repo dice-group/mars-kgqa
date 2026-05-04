@@ -195,7 +195,7 @@ fi
 
 export LLAMA_SERVER_ENDPOINT="http://127.0.0.1:${PORT}"
 export LLAMA_SERVER_OPENAI_ENDPOINT="${LLAMA_SERVER_ENDPOINT}/v1"
-export OWUI=""
+export OWUI="no-api-key-required"
 
 # Build the argument list for run.py
 RUN_ARGS=(
