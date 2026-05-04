@@ -63,7 +63,7 @@ def configure_lm(llm_config: ModelAPIConfig) -> None:
         api_base=llm_config.endpoint,
         api_key=llm_config.api_key or "no-key",
         temperature=0.0,
-        max_tokens=2048,
+        max_tokens=32000,
         cache=True,
         model_type="chat",
     )
