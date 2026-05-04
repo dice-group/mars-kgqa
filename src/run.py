@@ -90,7 +90,7 @@ def parse_args(approach_enum) -> argparse.Namespace:
         "--entity-annotator",
         type=str,
         choices=[a.name for a in EntityAnnotator],
-        default=EntityAnnotator.T5AUG_ERL.name,
+        default=EntityAnnotator.GRASP.name,
         help="Select which entity annotator to apply."
     )
     parser.add_argument(
