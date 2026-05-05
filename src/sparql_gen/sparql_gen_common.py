@@ -67,7 +67,7 @@ def apply_sparql_verupdt(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other
         out.write(other_args[0] + '\t' + gen_sparql + '\t' + output_literal + '\n')
     # Call the verification reasoner function
     ver_res = verif_reasoner_fn(gen_sparql, output_literal, *other_args)
-    if ver_res is not None:
+    if ver_res and ver_res.strip():
         gen_sparql = ver_res
     return gen_sparql
 
