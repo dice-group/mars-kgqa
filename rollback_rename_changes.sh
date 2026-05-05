@@ -1,15 +1,18 @@
 #!/bin/bash
-PHASE_NAME=ablation_0
-PRED_PATH=processed_kgqa_ds/qald9plus/train
+PHASE_NAME=best_0
+PRED_PATHS=(
+  "processed_kgqa_ds/qald10/test"
+  "processed_kgqa_ds/qald9plus/test"
+)
+# Reverse: move the prediction files back out
+for PRED_PATH in "${PRED_PATHS[@]}"; do
+  mv data_dir/${PHASE_NAME}/${PRED_PATH}/${PHASE_NAME}.prediction data_dir/${PRED_PATH}/prediction
+done
 
-# Reverse: move everything back out of data_dir/ablation_0/
-mv data_dir/${PHASE_NAME}/${PRED_PATH}/${PHASE_NAME}.prediction data_dir/${PRED_PATH}/prediction
+# Move the non-path files back
 mv data_dir/${PHASE_NAME}/${PHASE_NAME}.cluster_logs data_dir/cluster_logs
 mv data_dir/${PHASE_NAME}/${PHASE_NAME}.llama-server-logs data_dir/llama-server-logs
 mv data_dir/${PHASE_NAME}/${PHASE_NAME}.apptainer-config-dir data_dir/apptainer-config-dir
 
-# Clean up empty directories
-rmdir data_dir/${PHASE_NAME}/${PRED_PATH} 2>/dev/null
-rmdir data_dir/${PHASE_NAME}/processed_kgqa_ds/qald9plus 2>/dev/null
-rmdir data_dir/${PHASE_NAME}/processed_kgqa_ds 2>/dev/null
-rmdir data_dir/${PHASE_NAME} 2>/dev/null
+# Clean up empty directories (handles any number of paths)
+find data_dir/${PHASE_NAME} -type d -empty -delete 2>/dev/null
