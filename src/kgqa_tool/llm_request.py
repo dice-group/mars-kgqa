@@ -297,7 +297,7 @@ def verify_update_generated_sparql_v2(generated_sparql, output_literal, verify_h
 {chr(10).join(history_parts)}
 """
 
-    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, verify if the generated Wikidata SPARQL for the question and its corresponding retrieved formatted answers is what the question expected. If yes, use the answer format 1. If not, then update the given SPARQL query accordingly utilizing answer format 2 alongside the relevant provided IDs that answers the question. Do not try to retrieve labels unless explicitly asked.
+    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, verify if the generated Wikidata SPARQL for the question and its corresponding retrieved formatted answers is what the question expected. If yes, use the answer format 1. If not, then generate a valid wikidata SPARQL query utilizing the relevant provided IDs that answers the question. Prioritize triple patterns where the entity IDs appear relevant to the question and the domain/range types align with the expected answer type. Discard any triple patterns that do not contribute to answering the question. Do not try to retrieve labels unless explicitly asked.
     Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
 
     Question: {question_txt}
