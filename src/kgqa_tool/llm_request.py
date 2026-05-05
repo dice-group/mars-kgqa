@@ -1,5 +1,6 @@
 
 from src.util.llm import prompt_chat_llm
+import warnings
 
 
 def old_generate_baseline_sparql(question_txt, model_config):
@@ -198,7 +199,13 @@ def generate_sparql_or_expansion_indices(question_txt, top_verbalized_patterns, 
 
 
 def verify_update_generated_sparql(generated_sparql, output_literal, question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str,
-                                 model_config, proc_logger):
+                                  model_config, proc_logger):
+    """[OBSOLETE] Use verify_update_generated_sparql_v2 for multi-round verification with history."""
+    warnings.warn(
+        "verify_update_generated_sparql is obsolete. Use verify_update_generated_sparql_v2 instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
 
     proc_logger.start_action(
         "verify_update_generated_sparql"
@@ -261,6 +268,86 @@ def verify_update_generated_sparql(generated_sparql, output_literal, question_tx
 
     proc_logger.set_output({"sparql": sparql}).complete_action()
     return sparql
+
+
+def verify_update_generated_sparql_v2(generated_sparql, output_literal, verify_history, question_txt, top_verbalized_patterns, entity_dict_str, rel_dict_str,
+                                  model_config, proc_logger):
+    """Multi-round verification: accepts verify_history of previous failed attempts and includes them in the prompt."""
+
+    proc_logger.start_action(
+        "verify_update_generated_sparql_v2"
+    ).add_step("Building prompt for SPARQL verification and update")
+
+    patterns_str = '\n'.join(top_verbalized_patterns)
+
+    # Build history section from previous failed verification rounds
+    history_section = ""
+    if verify_history:
+        history_parts = []
+        for i, attempt in enumerate(verify_history, 1):
+            history_parts.append(f"--- Attempt {i} ---")
+            history_parts.append(f"SPARQL: {attempt['sparql']}")
+            history_parts.append(f"Output: {attempt['output']}")
+            history_parts.append(f"Status: {attempt['status']}")
+            if attempt['status'] == 'updated' and 'updated_sparql' in attempt:
+                history_parts.append(f"Updated SPARQL: {attempt['updated_sparql']}")
+        history_section = f"""
+### Previous Verification Attempts (that did not converge):
+
+{chr(10).join(history_parts)}
+"""
+
+    gen_prompt = f"""Given a natural language question, identified entities and a set of Wikidata triple patterns (subject, predicate, object) including entity IDs and domain/range type restrictions, verify if the generated Wikidata SPARQL for the question and its corresponding retrieved formatted answers is what the question expected. If yes, use the answer format 1. If not, then update the given SPARQL query accordingly utilizing answer format 2 alongside the relevant provided IDs that answers the question. Do not try to retrieve labels unless explicitly asked.
+    Strictly follow ONLY one of the provided "Answer Format" depending upon your response, do not write anything else.
+
+    Question: {question_txt}
+
+    ### Identified Question Entities:
+    {entity_dict_str}
+
+    ### Triple Patterns:
+    {patterns_str}
+{history_section}
+    ### Generated SPARQL:
+    {generated_sparql}
+
+    ### SPARQL Output (formatted):
+    {output_literal}
+
+    ---
+
+    Answer Format 1 (No changes required):
+
+    No Changes Required
+
+    ---
+
+    Answer Format 2 (SPARQL Generation):
+
+    SPARQL: <place the generated SPARQL here in a single line>
+
+    """
+
+    proc_logger.add_step({"prompt": gen_prompt})
+    proc_logger.add_step("Calling LLM")
+
+    llm_resp_text, think_content = prompt_chat_llm(gen_prompt, model_config.sysprompt,
+                                    model_config.get_static_instance(),
+                                    model_config.model_id, model_config.postfix)
+
+    if think_content:
+        proc_logger.add_step({"LLM Reasoning": think_content})
+
+    proc_logger.add_step({"LLM Response": llm_resp_text})
+
+    sparql = None
+    if "SPARQL:" in llm_resp_text:
+        sparql = llm_resp_text.split("SPARQL:")[1].strip()
+        proc_logger.add_step("Extracted SPARQL from LLM output")
+
+    proc_logger.set_output({"sparql": sparql}).complete_action()
+    return sparql
+
 
 def sparql_refinement(question_txt, sparql_str, model_config, proc_logger):
     

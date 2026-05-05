@@ -8,6 +8,7 @@ import csv
 from tqdm import tqdm
 import os
 import json
+import warnings
 from src.util.process_flow_logger import ProcessFlowLogger
 from src.kgqa_tool.graph_traversal import get_node_label
 
@@ -58,6 +59,12 @@ def construct_results_literal(sparql_response, wd_ep, use_sleep, results_lim=10)
     return repr(rows)
 
 def apply_sparql_verupdt(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other_args):
+    """[OBSOLETE] Use apply_sparql_verupdt_v2 for multi-round verification with history."""
+    warnings.warn(
+        "apply_sparql_verupdt is obsolete. Use apply_sparql_verupdt_v2 instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     # Execute and the fetch the results
     _, sparql_response = get_qald_answer_sparql(gen_sparql, wd_ep, use_sleep)
     # Get output query literal
@@ -69,6 +76,50 @@ def apply_sparql_verupdt(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other
     ver_res = verif_reasoner_fn(gen_sparql, output_literal, *other_args)
     if ver_res and ver_res.strip():
         gen_sparql = ver_res
+    return gen_sparql
+
+
+def apply_sparql_verupdt_v2(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *other_args, max_verify_rounds=5):
+    """Multi-round verification: loops up to max_verify_rounds, accumulates history of failed attempts."""
+    verify_history = []
+
+    for round_num in range(1, max_verify_rounds + 1):
+        _, sparql_response = get_qald_answer_sparql(gen_sparql, wd_ep, use_sleep)
+        output_literal = construct_results_literal(sparql_response, wd_ep, use_sleep)
+        # TODO: Remove filewriting logic after debugging
+        with open('output_literals.out','a') as out:
+            out.write(other_args[0] + '\t' + gen_sparql + '\t' + output_literal + '\n')
+
+        ver_res = verif_reasoner_fn(gen_sparql, output_literal, verify_history, *other_args)
+
+        if ver_res and ver_res.strip():
+            if ver_res.strip() != gen_sparql.strip():
+                verify_history.append({
+                    'round': round_num,
+                    'sparql': gen_sparql,
+                    'output': output_literal,
+                    'status': 'updated',
+                    'updated_sparql': ver_res
+                })
+                gen_sparql = ver_res
+                continue
+            else:
+                verify_history.append({
+                    'round': round_num,
+                    'sparql': gen_sparql,
+                    'output': output_literal,
+                    'status': 'converged'
+                })
+                break
+        else:
+            verify_history.append({
+                'round': round_num,
+                'sparql': gen_sparql,
+                'output': output_literal,
+                'status': 'verified'
+            })
+            break
+
     return gen_sparql
 
 

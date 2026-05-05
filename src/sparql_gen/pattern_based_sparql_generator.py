@@ -1,8 +1,8 @@
 # Sample usage: python -m src.sparql_gen.pattern_based_sparql_generator
-from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir, apply_sparql_verupdt
+from src.sparql_gen.sparql_gen_common import get_verbalization_similarity, process_dataset, generate_output_path, generate_gerbil_export_path, get_log_dir, get_analysis_dir, apply_sparql_verupdt, apply_sparql_verupdt_v2
 from src.kgqa_tool.entity_retrieval import find_entities_and_relations
 from src.kgqa_tool.graph_traversal import find_1_hop_patterns, get_node_label, find_next_hop_patterns, find_concrete_examples
-from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices, estimate_mhop, verify_update_generated_sparql
+from src.kgqa_tool.llm_request import filter_common_nodes, generate_sparql_from_patterns, sparql_refinement, generate_sparql_or_expansion_indices, estimate_mhop, verify_update_generated_sparql, verify_update_generated_sparql_v2
 from src.const.misc import DEFAULT_WIKIDATA_ENDPOINT_URL, WIKIDATA_PROP_INFO_CACHE_FILEPATH, GERBIL_EXPERIMENT_URI_STORE_FILEPATH, TRIPLE_PATTERN_N_TOP, MAX_MULTI_HOP
 from src.const.llm import ChatModel
 from src.util.common import read_json_file, get_last_uri_fragment, get_prefixed_id
@@ -520,9 +520,9 @@ def process_input_query_multi_hop(
         if refine_sparql:
             final_sparql = sparql_refinement(question_text, final_sparql, model_config, proc_logger)
         if verify_update_sparql:
-            final_sparql = apply_sparql_verupdt(
+            final_sparql = apply_sparql_verupdt_v2(
                 final_sparql, wd_ep, use_sleep,
-                verify_update_generated_sparql, 
+                verify_update_generated_sparql_v2, 
                 question_text,
                 final_verbalizations,
                 ent_dict_str,
@@ -555,9 +555,9 @@ def process_input_query_multi_hop(
             if refine_sparql:
                 sparql = sparql_refinement(question_text, sparql, model_config, proc_logger)
             if verify_update_sparql:
-                sparql = apply_sparql_verupdt(
+                sparql = apply_sparql_verupdt_v2(
                     sparql, wd_ep, use_sleep,
-                    verify_update_generated_sparql, 
+                    verify_update_generated_sparql_v2, 
                     question_text,
                     verbalizations,
                     ent_dict_str,
@@ -671,9 +671,9 @@ def process_input_query_multi_hop(
         final_sparql = sparql_refinement(question_text, final_sparql, model_config, proc_logger)
     # SPARQL verification and update
     if verify_update_sparql:
-        final_sparql = apply_sparql_verupdt(
+        final_sparql = apply_sparql_verupdt_v2(
             final_sparql, wd_ep, use_sleep,
-            verify_update_generated_sparql, 
+            verify_update_generated_sparql_v2, 
             question_text,
             final_verbalizations,
             ent_dict_str,
