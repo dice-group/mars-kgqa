@@ -14,8 +14,12 @@ Filters: grasp/mst5 use native only; deeppavlov2 uses translated only.
 Usage:
     bash pylauncher.sh normal src.misc.external_systems_macro_f1
     bash pylauncher.sh normal src.misc.external_systems_macro_f1 --output-csv data_dir/misc/external_systems_macro_f1.csv --output-md data_dir/misc/external_systems_macro_f1.md
-    bash pylauncher.sh normal src.misc.external_systems_macro_f1 --flat
+ bash pylauncher.sh normal src.misc.external_systems_macro_f1 --flat
     bash pylauncher.sh normal src.misc.external_systems_macro_f1 --no-mars
+
+Scan gerbil directory and rank subdirectories by Macro F1:
+    bash pylauncher.sh normal src.misc.external_systems_macro_f1 --scan-gerbil-dir data_dir/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil
+    bash pylauncher.sh normal src.misc.external_systems_macro_f1 --scan-gerbil-dir data_dir/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil --scan-output-md data_dir/misc/gerbil_ranking.md
 """
 
 import argparse
@@ -131,6 +135,76 @@ def extract_macro_f1(csv_path: Path) -> float | None:
     except Exception as e:
         logger.warning("Failed to read %s: %s", csv_path, e)
     return None
+
+
+def scan_gerbil_directory(gerbil_dir: Path) -> list[dict]:
+    """
+    Scan a gerbil result directory and return a descending list of subdirectories
+    ranked by Macro F1 score.
+
+    Each subdirectory is expected to contain a .csv file with gerbil results.
+    Returns list of dicts with keys: name, macro_f1, gerbil_id, gerbil_url.
+    Sorted by macro_f1 in descending order.
+
+    Example path: data_dir/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil
+    """
+    if not gerbil_dir.exists() or not gerbil_dir.is_dir():
+        logger.warning("Gerbil directory does not exist: %s", gerbil_dir)
+        return []
+
+    results: list[dict] = []
+    for subdir in sorted(gerbil_dir.iterdir()):
+        if not subdir.is_dir():
+            continue
+
+        csv_files = [f for f in subdir.glob("*.csv") if not _is_placeholder(f)]
+        if not csv_files:
+            continue
+
+        csv_path = max(csv_files, key=lambda p: p.stat().st_mtime)
+        macro_f1 = extract_macro_f1(csv_path)
+        if macro_f1 is None:
+            continue
+
+        gerbil_id = csv_path.stem
+        gerbil_url = f"https://gerbil-qa.aksw.org/gerbil/experiment?id={gerbil_id}"
+
+        results.append({
+            "name": subdir.name,
+            "macro_f1": macro_f1,
+            "gerbil_id": gerbil_id,
+            "gerbil_url": gerbil_url,
+        })
+
+    results.sort(key=lambda x: x["macro_f1"], reverse=True)
+    return results
+
+
+def format_gerbil_ranking(rows: list[dict]) -> str:
+    """Format gerbil ranking rows as a markdown table sorted by Macro F1 descending."""
+    if not rows:
+        return "No gerbil results found."
+
+    headers = ["Rank", "Name", "Macro F1", "Gerbil ID", "Gerbil URL"]
+    col_widths = [len(h) for h in headers]
+
+    lines: list[str] = []
+    for idx, r in enumerate(rows, start=1):
+        vals = [
+            str(idx),
+            r["name"],
+            f"{r['macro_f1']:.4f}",
+            r["gerbil_id"],
+            r["gerbil_url"],
+        ]
+        for i, v in enumerate(vals):
+            col_widths[i] = max(col_widths[i], len(v))
+        lines.append(" | ".join(v.ljust(col_widths[i]) for i, v in enumerate(vals)))
+
+    header_line = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+    sep_line = "-+-".join("-" * col_widths[i] for i in range(len(headers)))
+
+    return "\n".join([header_line, sep_line] + lines)
 
 
 def parse_dir_name(dir_name: str, system_name: str) -> dict | None:
@@ -611,7 +685,30 @@ def main() -> None:
         default=None,
         help="Output LaTeX table file path.",
     )
+    parser.add_argument(
+        "--scan-gerbil-dir",
+        default=None,
+        help="Scan a gerbil directory and print subdirectories ranked by Macro F1 descending.",
+    )
+    parser.add_argument(
+        "--scan-output-md",
+        default=None,
+        help="Output markdown file path for --scan-gerbil-dir results.",
+    )
     args = parser.parse_args()
+
+    if args.scan_gerbil_dir:
+        gerbil_dir = Path(args.scan_gerbil_dir)
+        rows = scan_gerbil_directory(gerbil_dir)
+        table = format_gerbil_ranking(rows)
+        print(table)
+        if args.scan_output_md:
+            out_path = Path(args.scan_output_md)
+            create_directory_if_not_exists(str(out_path))
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(table + "\n")
+            logger.info("Ranking saved to %s", out_path)
+        return
 
     base_dir = Path(args.base_dir)
     if not base_dir.exists():
