@@ -16,6 +16,7 @@ Usage:
     bash pylauncher.sh normal src.misc.external_systems_macro_f1 --output-csv data_dir/misc/external_systems_macro_f1.csv --output-md data_dir/misc/external_systems_macro_f1.md
  bash pylauncher.sh normal src.misc.external_systems_macro_f1 --flat
     bash pylauncher.sh normal src.misc.external_systems_macro_f1 --no-mars
+ bash pylauncher.sh normal src.misc.external_systems_macro_f1 --output-csv data_dir/misc/external_systems_macro_f1.csv --output-md data_dir/misc/external_systems_macro_f1.md --output-latex data_dir/misc/external_systems_macro_f1.tex --mars-base-dir data_dir/best_1/processed_kgqa_ds
 
 Scan gerbil directory and rank subdirectories by Macro F1:
     bash pylauncher.sh normal src.misc.external_systems_macro_f1 --scan-gerbil-dir data_dir/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil
@@ -257,7 +258,7 @@ def parse_mars_filename(filename: str) -> dict | None:
         en__otus__PBSG_MHOP__t20-h10-pc-ausm-grasp-el-exlim10-clsinf-verupdt__gptoss120b.csv
     """
     m = re.match(
-        r"^(?P<lang>[a-z]{2,3})__otus__(?P<config>PBSG_MHOP__[^_]+)__gptoss120b\.csv$",
+        r"^(?P<lang>[a-z]{2,3})__(?:otus|noctua2)__(?P<config>PBSG_MHOP__[^_]+)__gptoss120b\.csv$",
         filename,
     )
     if not m:
