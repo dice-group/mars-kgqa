@@ -1,23 +1,67 @@
 #!/bin/bash
-PHASE_NAME=best_0
+# Archive prediction data and logs into a phase directory.
+# Usage: bash rename_experiment_output.sh [--dry-run]
+set -euo pipefail
+
+DRY_RUN=false
+if [ "${1:-}" = "--dry-run" ]; then
+  DRY_RUN=true
+fi
+
+PHASE_NAME=best_1
 PRED_PATHS=(
   "processed_kgqa_ds/qald10/test"
   "processed_kgqa_ds/qald9plus/test"
 )
+STATIC_ITEMS=(
+  "cluster_logs"
+  "llama-server-logs"
+  "apptainer-config-dir"
+)
 
-mv data_dir/apptainer-config-dir data_dir/${PHASE_NAME}.apptainer-config-dir
-mv data_dir/cluster_logs data_dir/${PHASE_NAME}.cluster_logs
-mv data_dir/llama-server-logs data_dir/${PHASE_NAME}.llama-server-logs
+if [ "$DRY_RUN" = true ]; then
+  echo "[DRY RUN] Would archive into data_dir/${PHASE_NAME}/"
+else
+  echo "==> Archiving into data_dir/${PHASE_NAME}/"
+  mkdir -p "data_dir/${PHASE_NAME}/"
+fi
 
-# Move all renamed data into data_dir/ablation_0/
-mkdir -p data_dir/${PHASE_NAME}/
-
-mv data_dir/${PHASE_NAME}.apptainer-config-dir data_dir/${PHASE_NAME}/
-mv data_dir/${PHASE_NAME}.cluster_logs data_dir/${PHASE_NAME}/
-mv data_dir/${PHASE_NAME}.llama-server-logs data_dir/${PHASE_NAME}/
-
-# Loop over each prediction path
-for PRED_PATH in "${PRED_PATHS[@]}"; do
-  mkdir -p data_dir/${PHASE_NAME}/${PRED_PATH}/
-  mv data_dir/${PRED_PATH}/prediction data_dir/${PHASE_NAME}/${PRED_PATH}/prediction
+# Move static items (logs, config dirs)
+for item in "${STATIC_ITEMS[@]}"; do
+  src="data_dir/${item}"
+  dest="data_dir/${PHASE_NAME}/${item}"
+  if [ -e "${src}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "[DRY RUN] Would move: ${src} -> ${dest}"
+    else
+      mv "${src}" "${dest}"
+      echo "  moved: ${item}"
+    fi
+  else
+    echo "  skip  : ${item} (not found)" >&2
+  fi
 done
+
+# Move prediction directories
+for PRED_PATH in "${PRED_PATHS[@]}"; do
+  src="data_dir/${PRED_PATH}/prediction"
+  dest="data_dir/${PHASE_NAME}/${PRED_PATH}/prediction"
+  if [ -e "${src}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "[DRY RUN] Would create dir: data_dir/${PHASE_NAME}/${PRED_PATH}/"
+      echo "[DRY RUN] Would move: ${src} -> ${dest}"
+    else
+      mkdir -p "data_dir/${PHASE_NAME}/${PRED_PATH}/"
+      mv "${src}" "${dest}"
+      echo "  moved: ${PRED_PATH}/prediction"
+    fi
+  else
+    echo "  skip  : ${PRED_PATH}/prediction (not found)" >&2
+  fi
+done
+
+if [ "$DRY_RUN" = true ]; then
+  echo "[DRY RUN] Done."
+else
+  echo "==> Done."
+fi
