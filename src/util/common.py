@@ -149,7 +149,14 @@ def kill_container(container_name: str, signal: str = "SIGKILL", use_apptainer: 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"Failed to kill container '{container_name}': {result.stderr.strip()}")
+        stderr = result.stderr.strip()
+        # If the instance/container is already gone, that's the desired outcome
+        no_instance_patterns = ["no instance found", "no such container", "not found"]
+        if any(pat in stderr.lower() for pat in no_instance_patterns):
+            runtime = "Apptainer instance" if use_apptainer else "Docker container"
+            print(f"{runtime} '{container_name}' already stopped.")
+            return 0
+        raise RuntimeError(f"Failed to kill container '{container_name}': {stderr}")
 
     runtime = "Apptainer instance" if use_apptainer else "Docker container"
     print(f"{runtime} '{container_name}' killed with {signal}.")
