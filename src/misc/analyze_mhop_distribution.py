@@ -66,10 +66,42 @@ def extract_triples_from_algebra(alg_dict):
     return triples
 
 
+def strip_filter_clauses(sparql_str):
+    """Remove FILTER clauses from SPARQL to avoid parse errors from malformed expressions.
+    FILTER doesn't affect hop count since it only constrains variables, not graph traversal."""
+    import re
+    # Remove FILTER(...) expressions, handling nested parentheses
+    result = sparql_str
+    max_iter = 50
+    while "FILTER" in result.upper() and max_iter > 0:
+        m = re.search(r'(?i)\bFILTER\s*(?:NOT\s*)?\(', result)
+        if not m:
+            break
+        start = m.start()
+        depth = 0
+        i = m.end() - 1  # position of opening paren
+        for j in range(i, len(result)):
+            if result[j] == '(':
+                depth += 1
+            elif result[j] == ')':
+                depth -= 1
+                if depth == 0:
+                    result = result[:start] + result[j + 1:]
+                    break
+        else:
+            break
+        max_iter -= 1
+    # Clean up double dots left behind after removing FILTER
+    result = re.sub(r'\.\s*\.', '.', result)
+    return result
+
+
 def extract_patterns(sparql_str):
     """Parse SPARQL and extract triple patterns as dicts with 's' and 'o' keys."""
+    # Strip FILTER clauses first to avoid parse errors from malformed expressions
+    cleaned = strip_filter_clauses(sparql_str)
     try:
-        parsed = parseQuery(sparql_str)
+        parsed = parseQuery(cleaned)
     except Exception:
         return []
 
@@ -197,8 +229,8 @@ def group_hops(dist):
 
 def build_latex_table(results):
     """Build a LaTeX table from analysis results."""
-    col_order = ["1", "2", "3+", "*"]
-    col_labels = [r"\textbf{1-hop}", r"\textbf{2-hop}", r"$>\,\text{\textbf{3-hop}}$", r"\textbf{*}"]
+    col_order = ["1", "2", "3+"]
+    col_labels = [r"\textbf{1-hop}", r"\textbf{2-hop}", r"$>\,\text{\textbf{3-hop}}$"]
 
     ds_map = {
         "qald9plus/test": r"\dataset{QALD-9plus}",
@@ -214,9 +246,7 @@ def build_latex_table(results):
         if r is None:
             continue
         g = group_hops(r["hop_distribution"])
-        star_extra = r.get("skipped", 0) + r.get("parse_errors", 0)
-        g["*"] += star_extra
-        total = sum(g.values()) or 1
+        total = sum(g[c] for c in col_order) or 1
         cells = []
         for col in col_order:
             cnt = g[col]
