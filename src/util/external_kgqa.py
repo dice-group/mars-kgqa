@@ -1,3 +1,9 @@
+# Req:
+# export LLAMA_SERVER_ENDPOINT="http://dice-merlin.cs.uni-paderborn.de:9292"
+# export LLAMA_SERVER_OPENAI_ENDPOINT="${LLAMA_SERVER_ENDPOINT}/v1"
+# export OWUI="no-api-key"
+# export LLAMA_CTX=32768
+
 # Sample usage: bash pylauncher.sh normal src.util.external_kgqa
 import os
 import json
@@ -9,7 +15,7 @@ from typing import Pattern
 from src.kgqa_tool.llm_request import sparql_filter
 from src.util.process_flow_logger import ProcessFlowLogger
 from src.const.llm import ChatModel
-from src.util.qald_io import convert_basic_output
+from src.util.qald_io import convert_basic_output, _get_gerbil_ready_filepath
 from src.util.gerbil import create_export_gerbil_experiment
 from src.const.misc import GERBIL_EXPERIMENT_URI_STORE_FILEPATH
 from src.util.common import read_json_file, create_directory_if_not_exists, sparql_one_line
@@ -190,36 +196,59 @@ def evaluate_external_system(system_name, kgqa_dataset, split, qald_file_path, e
     gerbil_result_path = os.path.join(gerbil_output_dir, f'{system_name}__{gold_dataset_label}.csv')
     
     create_export_gerbil_experiment(gold_dataset_label, qald_file_path, system_name, json_output_path, lang, gerbil_result_path, GERBIL_EXPERIMENT_URI_STORE_FILEPATH)
+
+def perform_grasp_gerbil_eval(key, ds_info, ds_split, output_tsv_file_path, gerbilready_gold_json_path, gerbil_out_dir):
+    print(f'Evaluating {output_tsv_file_path}')
+    lang_id = os.path.splitext(os.path.basename(output_tsv_file_path))[0]
+    sysname = f'grasp-{key}-{lang_id}'
+    evaluate_external_system(sysname, ds_info['ds'], ds_split, gerbilready_gold_json_path, str(output_tsv_file_path), gerbil_out_dir, 'en')
             
 # Example usage
 if __name__ == "__main__":
+    
+    ## Expects these defaults
+    # server_endpoint = "http://dice-merlin.cs.uni-paderborn.de:9292"
+    # os.environ["LLAMA_SERVER_ENDPOINT"] = server_endpoint
+    # os.environ["LLAMA_SERVER_OPENAI_ENDPOINT"] = f"{server_endpoint}/v1"
+    # os.environ["OWUI"] = "no-api-key"
+    # os.environ["LLAMA_CTX"]="32768"
+    
     from src.const.dataset import KgqaDataset, DatasetSplit
     from src.const.llm import ChatModel
+    from datetime import datetime
+    import src.const.misc as misc_consts
+    
+    # init sparql logger
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    sparql_log_fp = os.path.join('data_dir/sparql_logs', f"external_systems_{timestamp}.txt")
+    create_directory_if_not_exists(sparql_log_fp)
+    misc_consts.sparql_log_filehandle = open(sparql_log_fp, 'a', buffering=1) # buffering=1 for line-buffering
     
     llm_config = ChatModel.GPTOSS120B.value # LLM to use
     
     ## Dictionary of input dataset and output path
     grasp_info = {
-        'qald10_test': {
-            'ds': KgqaDataset.QALD10_UPDATED_TENTRISQ10,
-            'split' : DatasetSplit.TEST,
-            'input_dir': 'data_dir/external_systems/grasp/input/qald10',
-            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
-            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
-            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
-            'langs': ['en', 'de', 'ru', 'zh']
-        },
-        'qald9plus_test': {
-            'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISQ10,
-            'split' : DatasetSplit.TEST,
-            'input_dir': 'data_dir/external_systems/grasp/input/qald9plus',
-            'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald9plus',
-            'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald9plus',
-            'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
-            'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
-        },
+        # 'qald10_test': {
+        #     'ds': KgqaDataset.QALD10_UPDATED_TENTRISMAIN,
+        #     'split' : DatasetSplit.TEST,
+        #     'input_dir': 'data_dir/external_systems/grasp/input/qald10',
+        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald10',
+        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald10',
+        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald10',
+        #     'langs': ['en', 'de', 'ru', 'zh']
+        # },
+        # 'qald9plus_test': {
+        #     'ds': KgqaDataset.QALD9PLUS_UPDATED_TENTRISMAIN,
+        #     'split' : DatasetSplit.TEST,
+        #     'input_dir': 'data_dir/external_systems/grasp/input/qald9plus',
+        #     'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/qald9plus',
+        #     'tsv_out_dir': f'data_dir/external_systems/grasp/output/tsv/{llm_config.model_id}/qald9plus',
+        #     'gerbil_out_dir': f'data_dir/external_systems/grasp/output/gerbil/{llm_config.model_id}/qald9plus',
+        #     'langs': ['en', 'de', 'fr', 'ba', 'be', 'es', 'hy', 'ru', 'uk']
+        # },
         'lcquad2_test': {
-            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISQ10,
+            'ds': KgqaDataset.LCQUAD2_UPDATED_TENTRISMAIN,
             'split' : DatasetSplit.TEST,
             'input_dir': 'data_dir/external_systems/grasp/input/lcquad2',
             'orig_out_dir': f'data_dir/external_systems/grasp/output/original/{llm_config.model_id}/lcquad2',
@@ -239,6 +268,7 @@ if __name__ == "__main__":
         jsonl_dir = ds_info['input_dir']
         orig_out_dir = ds_info['orig_out_dir']
         tsv_out_dir = ds_info['tsv_out_dir']
+        gerbil_out_dir = ds_info['gerbil_out_dir']
         
         for lang in tqdm(ds_langs, desc='Processing languages'):
             file_base_name = f'{ds_obj.dataset_id}_{ds_split.name.lower()}_output'
@@ -247,9 +277,14 @@ if __name__ == "__main__":
             
             output_tsv = f'{lang}_native_{file_base_name}.tsv'
             output_tsv_file_path = os.path.join(tsv_out_dir, output_tsv)
+            # extract the gold qald file path
+            gold_qald_fp = ds_obj.split_dict[ds_split]
+            gerbilready_gold_json_path = _get_gerbil_ready_filepath(gold_qald_fp)
             
             # process native file
-            grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+            #grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+            perform_grasp_gerbil_eval(key, ds_info, ds_split, output_tsv_file_path, gerbilready_gold_json_path, gerbil_out_dir)
+            
             if lang != "en":
                 print(f'Creating jsonl (translated) for: {lang}')
                 jsonl_file_name = f'{lang}_translated_{file_base_name}.jsonl'
@@ -258,7 +293,8 @@ if __name__ == "__main__":
                 output_tsv = f'{lang}_translated_{file_base_name}.tsv'
                 output_tsv_file_path = os.path.join(tsv_out_dir, output_tsv)
                 # process translated file
-                grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+                #grasp_output_to_tsv(output_jsonl_file_path, output_tsv_file_path, True, llm_config)
+                perform_grasp_gerbil_eval(key, ds_info, ds_split, output_tsv_file_path, gerbilready_gold_json_path, gerbil_out_dir)
 
 def qald_to_deeppavlov2_jsonl(
     qald_file: str,
