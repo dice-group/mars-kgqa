@@ -40,8 +40,8 @@ EXCLUDE_SYSTEMS = {"bkp.deeppavlov2"}
 MARS_SYSTEM_LABEL = "mars/gptoss120b"
 MARS_BASE_DIR_DEFAULT = "data_dir/processed_kgqa_ds"
 MARS_DATASETS = {"qald9plus", "qald10", "lcquad2"}
-NATIVE_ONLY_SYSTEMS = {"grasp/gpt-oss-120b", "mst5"}
-TRANSLATED_ONLY_SYSTEMS = {"deeppavlov2"}
+NATIVE_ONLY_SYSTEMS = {"mst5"}
+TRANSLATED_ONLY_SYSTEMS = {"deeppavlov2", "grasp/gpt-oss-120b"}
 
 SYSTEM_ORDER = [
     "deeppavlov2",
@@ -404,6 +404,8 @@ def filter_excluded_langs(rows: list[dict]) -> list[dict]:
         r for r in rows
         if r["language"] not in EXCLUDED_LANGS.get(r["dataset"], set())
     ]
+
+
 
 
 def build_summary(base_dir: Path) -> list[dict]:

@@ -139,7 +139,16 @@ def analyze_file(filepath):
     for q in questions:
         qid = q.get("id", "?")
         sparql = get_sparql_from_question(q)
-        if not sparql or "WHERE" not in sparql:
+        if not sparql:
+            skipped_ids.append(str(qid))
+            continue
+
+        # Accept queries with WHERE clause (case-insensitive) or SELECT/ASK/CONSTRUCT/DESCRIBE + graph pattern
+        upper = sparql.upper().strip()
+        has_where = "WHERE" in upper
+        has_sparql_query = any(kw in upper for kw in ["SELECT", "ASK", "CONSTRUCT", "DESCRIBE"])
+        has_graph_pattern = "{" in sparql
+        if not (has_where or (has_sparql_query and has_graph_pattern)):
             skipped_ids.append(str(qid))
             continue
 
@@ -164,6 +173,89 @@ def analyze_file(filepath):
         "hop_distribution": dict(sorted(hop_counts.items())),
         "hop_ids": {str(k): v for k, v in sorted(hop_ids.items())},
     }
+
+
+def group_hops(dist):
+    """Group hop counts: 0+1 -> '1', 2 -> '2', >=3 -> '3+', '*' -> '*'.
+    0-hop and 1-hop are combined because both represent simple queries:
+    0-hop is a single triple lookup, and 1-hop traverses one edge.
+    Both require no multi-hop chaining, unlike 2-hop+ queries."""
+    g = {"1": 0, "2": 0, "3+": 0, "*": 0}
+    for k, v in dist.items():
+        if k == "*":
+            g["*"] += v
+        else:
+            n = int(k)
+            if n <= 1:  # 0-hop + 1-hop combined as "simple" queries
+                g["1"] += v
+            elif n == 2:
+                g["2"] += v
+            else:
+                g["3+"] += v
+    return g
+
+
+def build_latex_table(results):
+    """Build a LaTeX table from analysis results."""
+    col_order = ["1", "2", "3+", "*"]
+    col_labels = [r"\textbf{1-hop}", r"\textbf{2-hop}", r"$>\,\text{\textbf{3-hop}}$", r"\textbf{*}"]
+
+    ds_map = {
+        "qald9plus/test": r"\dataset{QALD-9plus}",
+        "qald10/test": r"\dataset{QALD-10}",
+        "lcquad2/test": r"\dataset{LC-QuAD2.0}",
+    }
+    ds_order = ["qald9plus/test", "qald10/test", "lcquad2/test"]
+
+    lookup = {r["dataset_name"]: r for r in results}
+    rows = []
+    for key in ds_order:
+        r = lookup.get(key)
+        if r is None:
+            continue
+        g = group_hops(r["hop_distribution"])
+        star_extra = r.get("skipped", 0) + r.get("parse_errors", 0)
+        g["*"] += star_extra
+        total = sum(g.values()) or 1
+        cells = []
+        for col in col_order:
+            cnt = g[col]
+            pct = cnt / total * 100
+            if cnt == 0:
+                cells.append("0")
+            else:
+                cells.append(f"{cnt} ({pct:.2f}\\%)")
+        rows.append((ds_map[key], key, r["hop_distribution"], r.get("skipped", 0),
+                      r.get("parse_errors", 0), cells))
+
+    lines = []
+    lines.append(r"\begin{table}")
+    lines.append(r"\caption{Proportion of multi-hop queries across datasets.}")
+    lines.append(r"\label{tab:mhop_analysis}")
+    lines.append(r"\centering")
+    lines.append(r"\resizebox{0.75\textwidth}{!}{%")
+    lines.append(r"\rowcolors{2}{white}{gray!20}")
+    lines.append(r"\setlength{\tabcolsep}{5pt}")
+    cols = "l " + " ".join(["r"] * len(col_order))
+    lines.append(f"\\begin{{tabular}}{{{cols}}}")
+    lines.append(r"\toprule")
+    header = r"\textbf{Dataset} & " + " & ".join(col_labels)
+    lines.append(f"{header}  \\")
+    lines.append(r"\midrule")
+    for ds_label, key, dist, skipped, errors, cells in rows:
+        dist_str = str(dist).replace("'", "\\'")
+        has_zero = "0" in dist
+        comment = f"% {key} mhop map: {dist_str}"
+        if has_zero:
+            comment += " % 0 and 1 can be interpreted the same"
+        lines.append(comment)
+        line = f"{ds_label} & " + " & ".join(cells) + "  \\\\"
+        lines.append(line)
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"}%")
+    lines.append(r"\end{table}")
+    return "\n".join(lines)
 
 
 def build_table(results):
@@ -268,6 +360,7 @@ def main():
 
     md_path = os.path.join(out_dir, "mhop_analysis.md")
     json_path = os.path.join(out_dir, "mhop_analysis.json")
+    tex_path = os.path.join(out_dir, "mhop_analysis.tex")
 
     table = build_table(results)
     with open(md_path, "w", encoding="utf-8") as f:
@@ -276,9 +369,14 @@ def main():
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
+    latex_table = build_latex_table(results)
+    with open(tex_path, "w", encoding="utf-8") as f:
+        f.write(latex_table)
+
     print(f"\nOutput written to:")
     print(f"  {md_path}")
     print(f"  {json_path}")
+    print(f"  {tex_path}")
 
 
 if __name__ == "__main__":
