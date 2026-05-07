@@ -84,6 +84,8 @@ def convert_lcquad2_to_qald(lcquad2_file_path, output_qald_file_path,
 
 def get_qald_answer_sparql(sparql, endpoint, use_sleep=False):
     
+    if sparql is None or not sparql.strip():
+        return None, None
     if "prefix" in sparql.lower():
         formatted_sparql = sparql
     else:

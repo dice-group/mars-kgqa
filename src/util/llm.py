@@ -7,6 +7,8 @@ import time
 from src.const.misc import LLAMA_SERVER_ENDPOINT, LLAMA_MAX_CTX, RUN_STATS, LLAMA_CONTAINER_NAME, SLURM_ACTIVE
 from src.util.common import kill_container
 
+_empty_response_history = []
+
 def get_opai_client(endpoint=None, api_key=None):
     opai_client = OpenAI(base_url=endpoint, api_key=api_key)
     return opai_client
@@ -27,6 +29,10 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
     if total_len > LLAMA_MAX_CTX:
         print(f'Context size exceeded for message: {message_list}')
         print('Returning empty values!')
+        _empty_response_history.append(True)
+        if len(_empty_response_history) >= 3:
+            _empty_response_history.clear()
+            raise RuntimeError("LLM returned empty responses 3 consecutive times. The LLM may be malfunctioning or returning unexpected output.")
         return " ", " "
 
     try:
@@ -46,7 +52,10 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
         kill_container(LLAMA_CONTAINER_NAME, use_apptainer=SLURM_ACTIVE)
         print(f'Waiting for llama-server to restart...')
         time.sleep(30)
-        # raise e
+        _empty_response_history.append(True)
+        if len(_empty_response_history) >= 3:
+            _empty_response_history.clear()
+            raise RuntimeError("LLM returned empty responses 3 consecutive times. The LLM may be malfunctioning or returning unexpected output.") from e
         return " ", " "
     # Extract the analysis from theresponse
     
@@ -58,6 +67,17 @@ def prompt_chat_llm(user_prompt, sys_prompt, client_instance, model_id, postfix=
     reasoning_content = model_msg.model_extra.get('reasoning_content')
     if not reasoning_content:
         model_res_text, reasoning_content = remove_think_context(model_res_text)
+    
+    # Track empty response history
+    is_empty = not model_res_text or not model_res_text.strip()
+    if is_empty:
+        _empty_response_history.append(True)
+        if len(_empty_response_history) >= 3:
+            _empty_response_history.clear()
+            raise RuntimeError("LLM returned empty responses 3 consecutive times. The LLM may be malfunctioning or returning unexpected output.")
+    else:
+        _empty_response_history.clear()
+    
     return model_res_text, reasoning_content
 
 def tokenize_content(content, model_id, llama_server_ep):

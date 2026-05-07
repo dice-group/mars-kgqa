@@ -85,6 +85,8 @@ def apply_sparql_verupdt_v2(gen_sparql, wd_ep, use_sleep, verif_reasoner_fn, *ot
 
     for round_num in range(1, max_verify_rounds + 1):
         _, sparql_response = get_qald_answer_sparql(gen_sparql, wd_ep, use_sleep)
+        if sparql_response is None:
+            return gen_sparql
         output_literal = construct_results_literal(sparql_response, wd_ep, use_sleep)
         # TODO: Remove filewriting logic after debugging
         with open('output_literals.out','a') as out:
