@@ -32,7 +32,7 @@ We tested MARS with the following models:
 
 - [MARS QALD10 performance](../data_dir/analysis/qald10_test_pbsg_comparison.md)
 - [MARS QALD9Plus performance](../data_dir/analysis/qald9plus_test_pbsg_comparison.md)
-- [MARS scaling across MHOP and TOPN (Already in markdown)](../data_dir/analysis/mhop_scaling.md)
+- [MARS scaling across MHOP and TOPN](../data_dir/analysis/mhop_scaling.md)
 
 ## Dataset Analyses
 
