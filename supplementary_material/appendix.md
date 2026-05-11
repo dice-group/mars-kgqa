@@ -25,9 +25,14 @@ We tested MARS with the following models:
 - [Full MARS performance tables (in CSV)*](https://files.dice-research.org/projects/MARS/EKAW/run_log/best_1/processed_kgqa_ds/)
 - [Full baseline performance tables (in CSV)*](https://files.dice-research.org/projects/MARS/EKAW/baseline_data)
 - [Ablation result tables (Already in markdown)](https://files.dice-research.org/projects/MARS/EKAW/analyses/ablation/)
-- [MARS scaling across MHOP and TOPN (Already in markdown)](../data_dir/analysis/mhop_scaling.md)
 
 \* To find the CSV tables, you will have to navigate to a directory like this: [qald10/test/prediction/tentrismain_aug_gold/gerbil/en__noctua2__PBSG_MHOP__t20-h10-pc-ausm-grasp-el-exlim10-clsinf-verupdt__gptoss120b.csv/](https://files.dice-research.org/projects/MARS/EKAW/run_log/best_1/processed_kgqa_ds/qald10/test/prediction/tentrismain_aug_gold/gerbil/en__noctua2__PBSG_MHOP__t20-h10-pc-ausm-grasp-el-exlim10-clsinf-verupdt__gptoss120b.csv/)
+
+## MARS Performance Analyses
+
+- [MARS QALD10 performance](../data_dir/analysis/qald10_test_pbsg_comparison.md)
+- [MARS QALD9Plus performance](../data_dir/analysis/qald9plus_test_pbsg_comparison.md)
+- [MARS scaling across MHOP and TOPN (Already in markdown)](../data_dir/analysis/mhop_scaling.md)
 
 ## Dataset Analyses
 
