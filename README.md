@@ -30,6 +30,12 @@ bash setup/setup_venv.sh
 
 This creates a python virtual environment, which will be used for the experiments.
 
+### SPARQL Endpoint
+MARS uses a [Tentris](https://tentris.io/) SPARQL endpoint for querying Wikidata. The Tentris server configuration and data loading scripts are available in [`wikidata_prep/tentris/`](wikidata_prep/tentris/).
+
+### Wikidata Data Split
+Since May 2025, the Wikidata Query Service has split its graph into a **main** graph and a **scholarly** graph ([details](https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split)). MARS operates on the **main** split. Scripts to download the full Wikidata dump and extract the main split are provided in [`wikidata_prep/`](wikidata_prep/). See [`wikidata_prep/README.md`](wikidata_prep/README.md) for instructions.
+
 ### Wikidata Relations Indexing
 We pre‑index the URIs and labels of Wikidata relations for quicker access. To run the process, simply execute the script below:
 ```bash
