@@ -37,26 +37,13 @@ python -m src.cache.wikidata_relation_info_extractor
 ```
 
 ### LLM Management
-<!-- MARS relies on local LLM instances, for which it uses a *llama-swap*-based (https://github.com/mostlygeek/llama-swap) *llama.cpp* (https://github.com/ggml-org/llama.cpp) server deployment. It expects model weights to be available at the path provided in the `$LLAMA_CACHE` environment variable, please make sure that this value points to an existing directory before you download the models. The recommended way to download the models is by having  `llama-cli` tool installed locally (https://github.com/ggml-org/llama.cpp?tab=readme-ov-file#llama-cli). Once installed, you can simply download the chosen model using the following commands:
-```bash
-llama-cli -hf nomic-ai/nomic-embed-text-v2-moe-GGUF:F16
-llama-cli -hf unsloth/gpt-oss-120b-GGUF:Q8_0
-```
+MARS utilizes local LLM instances served via a [*llama.cpp*](https://github.com/ggml-org/llama.cpp) server, managed through [`setup/llama_server_control.sh`](setup/llama_server_control.sh).
 
-You can also download these the models using the *llama-swap* instance by first running it:
-```bash
-GPU_DEVICE='"device=0"' bash setup/llama_swap_control.sh start 9292
-```
-and then downloading the required models using the *llama-swap* ui: http://localhost:9292/ui/models, however, this can lead to request timeout issues for larger models or lower internet bandwidths.
-
-To find the full list of models used in our implementation, please look into [llama_swap_config.yml](setup/llama_swap_config.yml). You do not need to download all of the mentioned models, just downloading the ones you need is sufficient. -->
-MARS utilizes local LLM instances that are served via a *llama‑swap*‑based deployment of *llama.cpp* (see the repositories [`mostlygeek/llama-swap`](https://github.com/mostlygeek/llama-swap) and [`ggml‑org/llama.cpp`](https://github.com/ggml-org/llama.cpp)).  
-
-The server expects the model weights to be located in the directory referenced by the `$LLAMA_CACHE` environment variable. Make sure this variable points to a valid directory **before** you start downloading any models.
+The server expects the model weights to be located in the directory referenced by the `$LLAMA_CACHE` environment variable. Make sure this variable points to a valid directory **before** you start downloading any models.
 
 #### Recommended download method
 
-1. Install the `llama-cli` tool (instructions are in the [llama.cpp README](https://github.com/ggml-org/llama.cpp?tab=readme-ov-file#llama-cli)).  
+1. Install the `llama-cli` tool (instructions are in the [llama.cpp README](https://github.com/ggml-org/llama.cpp?tab=readme-ov-file#llama-cli)).
 2. Use `llama-cli` to fetch the models you need, for example:
 
 ```bash
@@ -64,22 +51,32 @@ llama-cli -hf nomic-ai/nomic-embed-text-v2-moe-GGUF:F16
 llama-cli -hf unsloth/gpt-oss-120b-GGUF:Q8_0
 ```
 
-#### Alternative: downloading through a running *llama‑swap* instance
+#### Starting the server
 
 ```bash
-GPU_DEVICE='"device=0"' bash setup/llama_swap_control.sh start 9292
+bash setup/llama_server_control.sh start
 ```
 
-After the service is up, open the UI at <http://localhost:9292/ui/models> and download the desired models there.  
-> **Note:** This method may suffer from request‑timeout problems with large models or on slow internet connections.
+By default the server starts on port `9292`. To use a different port:
+
+```bash
+bash setup/llama_server_control.sh start 9393
+```
+
+Other useful commands:
+
+```bash
+bash setup/llama_server_control.sh stop 9292
+bash setup/llama_server_control.sh restart 9292
+```
 
 #### Which models are required?
 
-The complete list of models used by MARS is defined in [`setup/llama_swap_config.yml`](setup/llama_swap_config.yml). You don't have to download every entry, only the models you plan to use.
+The complete list of configured models is defined in [`setup/llama_server_models.ini`](setup/llama_server_models.ini). You don't have to download every entry, only the models you plan to use.
 
 ## Running Experiments
 
-> **Note**: At the moment, MARS uses pre-annotated entity data appended directly within the QALD‑formatted dataset files (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)). The annotations were generated using [entity_linking_tool](entity_linking_tool/) and were then processed using [qald_util.ipynb](src/notebook/qald_util.ipynb) notebook. We will integrate an end-to-end entity/relations annotating logic soon.
+> **Note**: Entity annotations in the QALD-formatted dataset files (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)) are generated using the [GRASP entity linking pipeline](https://github.com/dice-group/grasp_el). See the [annotation pipeline documentation](https://github.com/dice-group/grasp_el/blob/main/ANNOTATION_PIPELINE.md) for details on how to annotate questions with entity and property links.
 
 Here's a sample command to run MARS pipeline for QALD10 dataset:
 ```bash
@@ -93,8 +90,7 @@ For SLURM-based setup, look into the scripts provided in: [`slurm/`](slurm/).
 
 ## Resources
 
+> **Note:** Future updates to supplementary materials will be maintained in the [`supplementary_material/`](supplementary_material/) directory. See the markdown files there for the latest resources.
+
 ### Error Analysis Pipeline
 Our automated error analysis pipeline is already integrated in our experiments. Some examples of the final compiled analysis can be found at: [`data_dir/analysis/`](data_dir/analysis/).
-
-### Gerbil Results
-Links to all the gerbil results from our experiments can be found at:  [`data_dir/gerbil_results/`](data_dir/gerbil_results/).
