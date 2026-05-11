@@ -15,4 +15,7 @@
 
 | Tool | Link |
 |------|------|
+| Wikidata split utility | [wikidata_prep/](../wikidata_prep/) |
 | Entity linking (Grasp) | [ANNOTATION_PIPELINE.md](https://github.com/dice-group/grasp_el/blob/main/ANNOTATION_PIPELINE.md) |
+
+The [wikidata_prep](../wikidata_prep/) directory contains scripts to download the latest Wikidata dump and extract the main/scholarly split following the official [WDQS graph split](https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split) specifications. It also includes the Tentris SPARQL endpoint configuration and loading scripts.
