@@ -77,6 +77,8 @@ The complete list of configured models is defined in [`setup/llama_server_models
 ## Running Experiments
 
 > **Note**: Entity annotations in the QALD-formatted dataset files (e.g., [tentrisq10_aug_gold.json](data_dir/processed_kgqa_ds/qald10/test/tentrisq10_aug_gold.json)) are generated using the [GRASP entity linking pipeline](https://github.com/dice-group/grasp_el). See the [annotation pipeline documentation](https://github.com/dice-group/grasp_el/blob/main/ANNOTATION_PIPELINE.md) for details on how to annotate questions with entity and property links.
+>
+> We have also experimented with an alternative entity linking approach called `t5_aug`, which uses LLM-augmented text for annotation with a fine-tuned T5 model. This is not actively used, but the code can be found at [`t5_aug.entity_linking_tool`](t5_aug.entity_linking_tool).
 
 Here's a sample command to run MARS pipeline for QALD10 dataset:
 ```bash
