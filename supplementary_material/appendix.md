@@ -27,3 +27,8 @@ We tested MARS with the following models:
 - [Ablation result tables (Already in markdown)](https://files.dice-research.org/projects/MARS/EKAW/analyses/ablation/)
 
 \* To find the CSV tables, you will have to navigate to a directory like this: [qald10/test/prediction/tentrismain_aug_gold/gerbil/en__noctua2__PBSG_MHOP__t20-h10-pc-ausm-grasp-el-exlim10-clsinf-verupdt__gptoss120b.csv/](https://files.dice-research.org/projects/MARS/EKAW/run_log/best_1/processed_kgqa_ds/qald10/test/prediction/tentrismain_aug_gold/gerbil/en__noctua2__PBSG_MHOP__t20-h10-pc-ausm-grasp-el-exlim10-clsinf-verupdt__gptoss120b.csv/)
+
+## Dataset Analyses
+
+- [Multi-Hop Distribution](https://files.dice-research.org/projects/MARS/EKAW/analyses/datasets/mhop_analysis.md)
+- [Language Distribution](https://files.dice-research.org/projects/MARS/EKAW/analyses/datasets/lang_analysis.md)

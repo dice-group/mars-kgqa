@@ -5,7 +5,6 @@ import os
 import sys
 import glob
 from collections import defaultdict
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -298,8 +297,6 @@ def build_table(results):
 
     lines = []
     lines.append("# Multi-Hop Query Analysis")
-    lines.append("")
-    lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("")
     lines.append("| Dataset | Total Qs | Analyzed | Skipped | Errors |")
     lines.append("|---------|----------|----------|---------|--------|")
