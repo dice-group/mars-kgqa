@@ -328,7 +328,7 @@ def compare_datasets(gold_path: str, pred_path: str) -> dict:
         if ans_exact:
             ans_exact_count += 1
 
-        total_precision += precision
+            total_precision += precision
         total_recall += recall
         total_f1 += f1
 
@@ -399,13 +399,13 @@ def compare_datasets(gold_path: str, pred_path: str) -> dict:
         'answer_stats': {
             'exact_match_count': ans_exact_count,
             'exact_match_rate': round(ans_exact_count / n * 100, 2) if n else 0,
-            'avg_precision_all': round(avg_precision, 4),
-            'avg_recall_all': round(avg_recall, 4),
-            'avg_f1_all': round(avg_f1, 4),
+            'macro_precision': round(avg_precision, 4),
+            'macro_recall': round(avg_recall, 4),
+            'macro_f1': round(avg_f1, 4),
             'answered_questions': answered_count,
-            'avg_precision_answered': round(answered_precision, 4),
-            'avg_recall_answered': round(answered_recall, 4),
-            'avg_f1_answered': round(answered_f1, 4),
+            'macro_precision_answered': round(answered_precision, 4),
+            'macro_recall_answered': round(answered_recall, 4),
+            'macro_f1_answered': round(answered_f1, 4),
         },
         'categories': {
             'correct_sparql_correct_answer': cat_correct_sparql_correct_ans,
@@ -458,14 +458,14 @@ def format_markdown_report(res: dict) -> str:
     lines.append("## Answer Set Comparison")
     lines.append(f"| Metric | Value |")
     lines.append(f"|--------|-------|")
-    lines.append(f"| Exact match (all) | {res['answer_stats']['exact_match_count']} ({res['answer_stats']['exact_match_rate']}%) |")
-    lines.append(f"| Avg Precision (all) | {res['answer_stats']['avg_precision_all']} |")
-    lines.append(f"| Avg Recall (all) | {res['answer_stats']['avg_recall_all']} |")
-    lines.append(f"| Avg F1 (all) | {res['answer_stats']['avg_f1_all']} |")
+    lines.append(f"| Exact match (all questions) | {res['answer_stats']['exact_match_count']} ({res['answer_stats']['exact_match_rate']}%) |")
+    lines.append(f"| Macro P (all) | {res['answer_stats']['macro_precision']} |")
+    lines.append(f"| Macro R (all) | {res['answer_stats']['macro_recall']} |")
+    lines.append(f"| Macro F1 (all) | {res['answer_stats']['macro_f1']} |")
     lines.append(f"| Answered questions | {res['answer_stats']['answered_questions']} |")
-    lines.append(f"| Avg Precision (answered) | {res['answer_stats']['avg_precision_answered']} |")
-    lines.append(f"| Avg Recall (answered) | {res['answer_stats']['avg_recall_answered']} |")
-    lines.append(f"| Avg F1 (answered) | {res['answer_stats']['avg_f1_answered']} |")
+    lines.append(f"| Macro P (answered) | {res['answer_stats']['macro_precision_answered']} |")
+    lines.append(f"| Macro R (answered) | {res['answer_stats']['macro_recall_answered']} |")
+    lines.append(f"| Macro F1 (answered) | {res['answer_stats']['macro_f1_answered']} |")
 
     lines.append("")
     lines.append("## Categories (answered questions only)")
@@ -570,8 +570,8 @@ def main():
         print(f"  SPARQL normalized: {res['sparql_stats']['normalized_match_count']} ({res['sparql_stats']['normalized_match_rate']}%)")
         print(f"  SPARQL loose: {res['sparql_stats']['loose_match_count']} ({res['sparql_stats']['loose_match_rate']}%)")
         print(f"  Answer exact: {res['answer_stats']['exact_match_count']} ({res['answer_stats']['exact_match_rate']}%)")
-        print(f"  Avg F1 (all): {res['answer_stats']['avg_f1_all']}")
-        print(f"  Avg F1 (answered): {res['answer_stats']['avg_f1_answered']}")
+        print(f"  Macro F1 (all): {res['answer_stats']['macro_f1']}")
+        print(f"  Macro F1 (answered): {res['answer_stats']['macro_f1_answered']}")
         print()
 
     # Save outputs

@@ -14,14 +14,14 @@
 ## Answer Set Comparison
 | Metric | Value |
 |--------|-------|
-| Exact match (all) | 62 (48.82%) |
-| Avg Precision (all) | 0.6274 |
-| Avg Recall (all) | 0.6 |
-| Avg F1 (all) | 0.5871 |
+| Exact match (all questions) | 62 (48.82%) |
+| Macro P (all) | 0.4882 |
+| Macro R (all) | 0.6 |
+| Macro F1 (all) | 0.5871 |
 | Answered questions | 99 |
-| Avg Precision (answered) | 0.7846 |
-| Avg Recall (answered) | 0.7495 |
-| Avg F1 (answered) | 0.733 |
+| Macro P (answered) | 0.7846 |
+| Macro R (answered) | 0.7495 |
+| Macro F1 (answered) | 0.733 |
 
 ## Categories (answered questions only)
 | Category | Count |
