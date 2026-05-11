@@ -1,0 +1,3 @@
+- Link to the main split of wikidata
+- Link the the updated datasets
+- Link to the entity linking tooling from Grasp
