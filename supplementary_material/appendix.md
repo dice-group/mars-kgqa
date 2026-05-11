@@ -30,5 +30,5 @@ We tested MARS with the following models:
 
 ## Dataset Analyses
 
-- [Multi-Hop Distribution](https://files.dice-research.org/projects/MARS/EKAW/analyses/datasets/mhop_analysis.md)
-- [Language Distribution](https://files.dice-research.org/projects/MARS/EKAW/analyses/datasets/lang_analysis.md)
+- [Multi-Hop Distribution](../data_dir/analysis/multi-hop_distribution.md)
+- [Language Distribution](../data_dir/analysis/language_distribution.md)

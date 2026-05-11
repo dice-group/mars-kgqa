@@ -3,7 +3,7 @@
 ## Datasets
 
 - [Main split of Wikidata](https://files.dice-research.org/projects/MARS/EKAW/main_wd22012026.nt.zst)
-- [Updated datasets](https://github.com/dice-group/mars-kgqa/tree/master/data_dir/processed_kgqa_ds)
+- [Updated datasets](../data_dir/processed_kgqa_ds)
 
 ## Tooling
 
