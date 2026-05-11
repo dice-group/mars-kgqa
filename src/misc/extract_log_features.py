@@ -1,4 +1,29 @@
-"""Extract prediction times and feature flags from cluster log files."""
+"""Extract prediction times, feature flags, Macro F1 scores, and LLM token stats from cluster log files.
+
+Parses `.out` slurm log files to extract:
+- Prediction time from ``[TIME] Prediction on dataset took Xs`` lines
+- Feature flags (top_n, max_hops, include_pattern_count, etc.) from JSON log lines
+- LLM token counts from ``Total tokens in the message: X`` lines
+- Macro F1 from gerbil result CSVs (when --gerbil-dir is provided)
+
+Outputs sorted JSON, CSV, and Markdown tables.
+
+Example usage:
+    # Basic extraction (no Macro F1)
+    python -m src.misc.extract_log_features data_dir/ablation_4/cluster_logs
+
+    # With Macro F1 lookup and custom output directory
+    python -m src.misc.extract_log_features \\
+        data_dir/ablation_4/cluster_logs \\
+        --gerbil-dir data_dir/ablation_4/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil \\
+        --out-dir data_dir/misc
+
+    # Or via pylauncher
+    bash pylauncher.sh normal src.misc.extract_log_features \\
+        data_dir/ablation_4/cluster_logs \\
+        --out-dir data_dir/misc \\
+        --gerbil-dir data_dir/ablation_4/processed_kgqa_ds/qald9plus/train/prediction/tentrismain_aug_gold/gerbil
+"""
 import argparse
 import csv
 import json

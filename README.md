@@ -92,7 +92,4 @@ For SLURM-based setup, look into the scripts provided in: [`slurm/`](slurm/).
 
 ## Resources
 
-> **Note:** Future updates to supplementary materials will be maintained in the [`supplementary_material/`](supplementary_material/) directory. See the markdown files there for the latest resources.
-
-### Error Analysis Pipeline
-Our automated error analysis pipeline is already integrated in our experiments. Some examples of the final compiled analysis can be found at: [`data_dir/analysis/`](data_dir/analysis/).
+Links to all the available resources and analyses can be found in markdown files inside [`supplementary_material/`](supplementary_material/) directory.
