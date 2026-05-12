@@ -1,4 +1,4 @@
-# MARS: Multi-hop Retrieval-Augmented SPARQL Generation for Multilingual KGQA
+# MARS: Multi-hop Adaptive Retrieval and SPARQL Generation for KGQA
 
 A semantic-parsing based KGQA system that generates ([Wikidata](https://www.wikidata.org/)) SPARQL for a given natural language query.
 
