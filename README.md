@@ -14,9 +14,6 @@ A semantic-parsing based KGQA system that generates ([Wikidata](https://www.wiki
   </figcaption>
 </figure>
 
-## Abstract
-In multilingual real‑world scenarios, large language models (LLMs) are being increasingly applied in knowledge-intensive tasks where access to up-to-date and grounded knowledge is typically essential. However, LLMs hallucinate facts and fine-tuning them remains computationally inefficient and resource-intensive. By synthesizing knowledge graphs (KGs) and LLMs, systems can benefit from (a) explicit symbolic knowledge that allows continuous efficient updates, and (b) rapidly evolving LLM reasoning abilities, which together might have the potential to strengthen both accuracy and robustness of system results. We propose MARS, a scalable retrieval and reasoning system for multilingual knowledge graph question answering (KGQA) without requiring costly model fine-tuning. MARS links question entities to a KG and iteratively retrieves relevant next-hop information from the graph, feeding this structured information context-augmented into the LLM. In multiple rounds, the LLM uses this information to refine its understanding of the question-relevant context and generates a SPARQL query. We evaluate our approach on three established KGQA benchmarks with several LLMs and settings, providing insights with our ablation studies and error analysis. Our approach achieves robust state-of-the-art results, surpassing five baseline systems.
-
 ## Local Setup
 
 ### Prerequisites
