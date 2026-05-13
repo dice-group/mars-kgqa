@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Analyze hop-count distribution of SPARQL queries across KGQA datasets."""
+"""Analyze hop-count distribution of SPARQL queries across KGQA datasets.
+
+Usage:
+    bash pylauncher.sh normal src.misc.analyze_mhop_distribution
+"""
 import json
 import os
 import sys
@@ -138,19 +142,13 @@ def find_target_files():
                         "..", "data_dir", "processed_kgqa_ds")
     base = os.path.normpath(base)
 
+    allowed_datasets = {"lcquad2", "qald10", "qald9plus"}
+
     files = []
 
-    # All tentrismain_aug_gold.json files
     for f in glob.glob(os.path.join(base, "**", "tentrismain_aug_gold.json"), recursive=True):
-        files.append(f)
-
-    # Specific spinach files
-    spinach_files = [
-        os.path.join(base, "spinach", "test", "qald_test_final_fixed.json"),
-        os.path.join(base, "spinach", "train", "qald_dev_final_fixed.json"),
-    ]
-    for f in spinach_files:
-        if os.path.exists(f):
+        parts = f.replace("\\", "/").split("/")
+        if any(p in allowed_datasets for p in parts) and not ("qald9plus" in parts and "train" in parts):
             files.append(f)
 
     return sorted(set(files))
