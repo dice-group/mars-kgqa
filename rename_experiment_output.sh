@@ -8,10 +8,12 @@ if [ "${1:-}" = "--dry-run" ]; then
   DRY_RUN=true
 fi
 
-PHASE_NAME=best_1
+PHASE_NAME=ssg_1
 PRED_PATHS=(
-  "processed_kgqa_ds/qald10/test"
-  "processed_kgqa_ds/qald9plus/test"
+  #"processed_kgqa_ds/qald10/test"
+  #"processed_kgqa_ds/qald9plus/test"
+  #"processed_kgqa_ds/lcquad2/test"
+  "processed_kgqa_ds/qald9plus/train"
 )
 STATIC_ITEMS=(
   "cluster_logs"
