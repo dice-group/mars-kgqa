@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data_dir/figures/mars_logo.png"  width="300" />
+  <img src="data_dir/figures/mars_logo_300px.png" />
 </p>
 
 # MARS: Multi-hop Adaptive Retrieval and SPARQL Generation for KGQA
